@@ -1,0 +1,102 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+spring:
+  application:
+    name: volunteer-cert-portrait
+  # 数据库为云上 PostgreSQL（非本地实例），凭证按你的要求直接写在此处。
+  # 注意：仓库若日后要公开或多人协作，请改回环境变量或 application-local.yml（已在 .gitignore 中）
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # 库名 volunteer_cert_portrait 取自知识库《命名体系总表》
+    # sslmode=prefer：优先 SSL，服务端不支持时自动回退，兼容强制/非强制 SSL 两种云实例
+    url: jdbc:postgresql://103.40.14.100:19476/volunteer_cert_portrait?currentSchema=public&stringtype=unspecified&sslmode=prefer
+    username: postgres
+    # 必须加引号：以 0 开头的数字串在 YAML 里会被当作八进制整数解析（实测 041014 → 16908），口令就错了
+    password: "041014"
+    hikari:
+      pool-name: VcpHikariPool
+      # 云数据库的并发连接配额通常远小于本地实例，池子刻意调小
+      minimum-idle: 2
+      maximum-pool-size: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+  # 数据库迁移：脚本统一放 classpath:db/migration，命名与使用约定见 V1__init_baseline.sql 头部注释
+  flyway:
+    # 【当前阶段刻意关闭】建表脚本以仓库根目录 sql/ 下的脚本为准（手工执行），避免同一份 DDL 维护两遍而漂移。
+    # Flyway 的已执行脚本受 checksum 保护、不可再改，而表结构在开发期会频繁变动，此时开启只会处处报错。
+    # 【何时开启】表结构稳定后：把 sql/02_schema.sql、sql/03_init_data.sql 原样复制到
+    #            vcp-boot/src/main/resources/db/migration/ 下并改名为 V2__init_schema.sql、V3__init_data.sql，
+    #            然后把这里改回 true，应用启动时会自动建表并写入初始化数据。
+    enabled: false
+    # 迁移脚本目录，显式写出，后续如需按环境追加位置在此扩展
+    locations: classpath:db/migration
+    # 脚本编码，与工程源码保持一致
+    encoding: UTF-8
+    # 对非空 schema 自动打基线：若库里已存在手工建的表/数据，没有该开关 Flyway 会直接报
+    # "Found non-empty schema(s) ... but no schema history table" 并拒绝启动；空库场景下无副作用
+    baseline-on-migrate: true
+    # 基线版本号取 0，保证打过基线的库上 V1 及之后的脚本仍会被执行
+    baseline-version: '0'
+    # 历史表单独命名，避免与业务表命名风格冲突
+    table: flyway_schema_history
+    # 启动时校验已执行脚本的 checksum，防止已执行脚本被事后修改
+    validate-on-migrate: true
+    # 迁移目录不存在时直接失败，避免路径写错却静默跳过迁移
+    fail-on-missing-locations: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  # 各业务模块的 mapper xml 统一放 src/main/resources/mapper/ 下
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # TODO 实体类包路径确定后补上，例如 com.vcp.**.domain.entity
+  # type-aliases-package: com.vcp.**.domain.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      # 必须与建表脚本一致：DDL 用的是 BIGSERIAL（数据库自增），
+      # 若配成 MyBatis-Plus 默认的 assign_id（雪花 ID），则由应用生成主键、绕过序列，
+      # 会与脚本里显式写入的初始数据（id=1,2,3…）以及 setval 修复逻辑冲突
+      id-type: auto
+      # 逻辑删除约定：实体含 deleted 字段即自动生效（1=已删除，0=未删除）
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+sa-token:
+  # 前端在 Authorization 请求头中携带，值形如 "Bearer xxx"
+  token-name: Authorization
+  token-prefix: Bearer
+  # 30 天有效期，-1 表示不限制活跃超时
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  # 仅从请求头读取，不写 Cookie，避免前后端分离场景下的 CSRF 问题
+  is-read-header: true
+  is-read-cookie: false
+  is-log: false
+
+# 接口文档 Knife4j Next：/doc.html 是文档页，/v3/api-docs 是 OpenAPI JSON
+knife4j:
+  # 必开项：该属性默认 false 且没有 matchIfMissing，不开则增强能力（接口过滤、调试、/knife4j/config）
+  # 全部静默失效 —— 但 /doc.html 仍能打开，极易误判为已接好
+  enable: true
+
+logging:
+  level:
+    root: info
+    # debug 级别下 MyBatis 会输出执行的 SQL，生产环境请调回 info
+    com.vcp: debug

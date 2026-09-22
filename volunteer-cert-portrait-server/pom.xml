@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 继承 Spring Boot 官方父工程：统一依赖与插件版本（含 spring-boot-maven-plugin） -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.vcp</groupId>
+    <artifactId>volunteer-cert-portrait-server</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>volunteer-cert-portrait-server</name>
+    <description>高校志愿服务时长认证与公益画像数据分析系统 - 后端聚合工程</description>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 引入自研 BOM：三方依赖 + 内部模块版本统一管理 -->
+            <dependency>
+                <groupId>com.vcp</groupId>
+                <artifactId>vcp-dependencies</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <modules>
+        <module>vcp-dependencies</module>
+        <module>vcp-common</module>
+        <module>vcp-framework</module>
+        <module>vcp-system</module>
+        <module>vcp-org</module>
+        <module>vcp-volunteer</module>
+        <module>vcp-certification</module>
+        <module>vcp-portrait</module>
+        <module>vcp-analytics</module>
+        <module>vcp-boot</module>
+    </modules>
+</project>

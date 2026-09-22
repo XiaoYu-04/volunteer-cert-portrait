@@ -1,0 +1,20 @@
+# ===== Maven 构建产物 =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== 操作系统 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 本地环境配置（数据库密码等敏感信息不入库）=====
+application-local.yml
+application-local.yaml
+application-local.properties
+*.local.yml
