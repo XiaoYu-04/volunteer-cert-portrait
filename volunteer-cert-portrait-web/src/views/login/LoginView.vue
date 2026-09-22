@@ -17,7 +17,7 @@ const loading = ref(false)
 /** 演示账号，一键填入 */
 const demos = [
   { role: '学生', username: 'student', password: '123456' },
-  { role: '组织管理员', username: 'org', password: '123456' },
+  { role: '组织管理员', username: 'org_admin', password: '123456' },
   { role: '学校管理员', username: 'admin', password: '123456' },
 ]
 

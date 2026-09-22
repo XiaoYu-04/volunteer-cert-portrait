@@ -654,7 +654,7 @@ const seedUsers = [
   },
   {
     id: 2,
-    username: 'org',
+    username: 'org_admin',
     password: '123456',
     name: '李明',
     role: 'ORG_ADMIN',
@@ -767,7 +767,7 @@ export const logs = [
   { id: 5, operator: '赵慧敏', role: '学校管理员', action: '新增用户', module: '用户与权限', target: 'stu202210138', ip: '10.12.33.41', time: '2025-03-20 11:35:20', result: 'SUCCESS' },
   { id: 6, operator: '王芳', role: '组织管理员', action: '导出签到表', module: '签到签退', target: '校园植树节绿化行动', ip: '10.12.51.77', time: '2025-03-19 17:08:44', result: 'SUCCESS' },
   { id: 7, operator: '赵慧敏', role: '学校管理员', action: '审核组织资质', module: '志愿组织', target: '校园文明督导队', ip: '10.12.33.41', time: '2025-03-19 10:22:16', result: 'SUCCESS' },
-  { id: 8, operator: '李明', role: '组织管理员', action: '登录失败', module: '认证', target: 'org', ip: '10.12.44.18', time: '2025-03-18 22:41:09', result: 'FAIL' },
+  { id: 8, operator: '李明', role: '组织管理员', action: '登录失败', module: '认证', target: 'org_admin', ip: '10.12.44.18', time: '2025-03-18 22:41:09', result: 'FAIL' },
 ]
 
 /** 报名记录（覆盖活动 1 的 46 人 + 其他活动若干） */

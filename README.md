@@ -9,13 +9,18 @@
 
 | 部分 | 状态 |
 |---|---|
-| 前端 `volunteer-cert-portrait-web` | ✅ 已完成，可独立运行（走本地模拟数据） |
-| 后端 `volunteer-cert-portrait-server` | ⬜ 未开始（规划为 Spring Boot 4.1.1 多模块） |
-| 数据库脚本 `sql/` | ⬜ 未开始 |
-| 文档 `docs/` | ⬜ 未开始 |
+| 前端 `volunteer-cert-portrait-web` | ✅ 已完成，28 个页面，可独立运行（走本地模拟数据） |
+| 后端 `volunteer-cert-portrait-server` | 🟡 基础设施已完成；业务模块完成 **1/6**（`vcp-system` 已端到端跑通） |
+| 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 |
+| 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、开发计划与分工 |
 
-前端已按真实后端契约写好接口层，后端就绪后**只需把 `.env` 里的 `VITE_USE_MOCK` 改成 `false`**，
+前端已按真实后端契约写好接口层，**把 `.env` 里的 `VITE_USE_MOCK` 改成 `false`** 即可切到真实后端，
 页面代码一行都不用动。详见 [前端 README](volunteer-cert-portrait-web/README.md)。
+
+**后端接口现状**：`/api/v1/auth/*`（登录、注册、退出、查改本人资料）与
+`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）已可用，实测通过 42 项端到端断言；
+`vcp-org` / `vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`
+五个模块尚未开始，对应页面还连不上真实数据。进度以 [待办清单](docs/待办清单.md) 为准。
 
 ## 快速开始（前端）
 
@@ -30,17 +35,45 @@ npm run dev
 | 角色 | 用户名 | 密码 |
 |---|---|---|
 | 学生 | `student` | `123456` |
-| 组织管理员 | `org` | `123456` |
+| 组织管理员 | `org_admin` | `123456` |
 | 学校管理员 | `admin` | `123456` |
+
+## 快速开始（后端）
+
+```bash
+# 1) 建库建表：按顺序执行 sql/ 下的脚本
+#    01_create_database.sql → 02_schema.sql → 03_init_data.sql
+#    → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
+#    注意：05 是后端接口的前置依赖，缺了它登录接口会直接报错
+
+# 2) 编译并启动（默认端口 8080）
+cd volunteer-cert-portrait-server
+mvn package -DskipTests
+java -jar vcp-boot/target/vcp-boot-1.0.0.jar
+```
+
+启动后接口文档在 <http://localhost:8080/doc.html>，可直接在页面上登录调试。
+
+后端连的是云上 PostgreSQL（连接信息见 `vcp-boot/src/main/resources/application.yml`），
+**不需要本地装数据库**。
 
 ## 仓库结构
 
 ```text
 volunteer-cert-portrait/
 ├── volunteer-cert-portrait-web/     # 前端工程（Vue 3 + Vite）
-├── volunteer-cert-portrait-server/  # 后端工程（Spring Boot 多模块，待建）
-├── sql/                             # 建表脚本 + 初始化数据（待建）
-├── docs/                            # 需求、数据库设计、接口文档、测试用例（待建）
+├── volunteer-cert-portrait-server/  # 后端工程（Spring Boot 多模块，11 个模块）
+│   ├── vcp-common/                  # 统一返回、分页、枚举、异常、工具
+│   ├── vcp-framework/               # Sa-Token、全局异常、MyBatis-Plus、操作日志切面
+│   ├── vcp-system/                  # ✅ 用户 / 角色 / 字典 / 学生档案 / 通知 / 操作日志
+│   ├── vcp-org/                     # ⬜ 组织信息 + 资质审核
+│   ├── vcp-volunteer/               # ⬜ 活动 / 报名 / 签到签退
+│   ├── vcp-certification/           # ⬜ 服务时长提交与审核
+│   ├── vcp-portrait/                # ⬜ 公益画像
+│   ├── vcp-analytics/               # ⬜ 看板统计
+│   └── vcp-boot/                    # 启动模块，打包为唯一可执行 jar
+├── sql/                             # 建表 + 初始化 + 演示数据 + 补列脚本
+├── docs/                            # 待办清单、进展记录、规则方案、开发计划
 └── 知识库已确认项目选题与技术背景.md   # 选题与技术选型依据
 ```
 
@@ -49,7 +82,7 @@ volunteer-cert-portrait/
 **前端**：Vue 3 + Vite + Pinia + Vue Router + Axios + ECharts
 UI 组件全部手写，视觉风格为**新中式水墨风**（纸白底 + 墨黑 + 朱砂 + 石青，零圆角、细墨线分隔），不引入第三方组件库。
 
-**后端（规划）**：Java 21 + Spring Boot 4.1.1 + MyBatis-Plus 3.5.17 + Sa-Token 1.46 + PostgreSQL 16
+**后端**：Java 21 + Spring Boot 4.1.1 + MyBatis-Plus 3.5.17 + Sa-Token 1.46 + PostgreSQL（建表脚本按 16+ 编写，当前实例为 18.6）
 
 > 后端选型有两个易踩的坑：MyBatis-Plus 必须用 `mybatis-plus-spring-boot4-starter`（不是 boot3 版）；
 > Sa-Token 必须用 `sa-token-spring-boot4-starter`。Knife4j 官方版仅适配到 Boot 3，Boot 4 需用 Knife4j Next。
