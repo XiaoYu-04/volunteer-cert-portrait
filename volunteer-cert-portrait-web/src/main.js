@@ -3,10 +3,22 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { setupRouterGuard } from './router/guard'
+import perm from './directives/perm'
+
+// 样式按层引入：令牌 → 结构 → 组件。顺序不能颠倒。
+import './styles/tokens.css'
+import './styles/base.css'
+import './styles/ink.css'
 
 const app = createApp(App)
 
 app.use(createPinia())
+
+// 守卫里会用到 store，必须在 pinia 装好之后再挂
+setupRouterGuard(router)
 app.use(router)
+
+app.directive('perm', perm)
 
 app.mount('#app')

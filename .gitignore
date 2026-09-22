@@ -12,11 +12,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment / local overrides
+# 本地覆盖与密钥文件不入库。
+# 注意 .env.development / .env.production 是**要**入库的：它们只放接口地址
+# 与 mock 开关，不含密钥，缺了它们 clone 下来会走真实 HTTP 导致页面全空。
+# 将来若加入数据库口令之类的敏感项，请放到 .env.local（已被忽略）。
 *.local
-.env
-.env.*
-!.env.example
+.env.local
+.env.*.local
 
 # Editor / OS
 .DS_Store

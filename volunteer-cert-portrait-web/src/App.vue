@@ -1,11 +1,12 @@
-<script setup></script>
+<script setup>
+import InkToast from '@/components/common/InkToast.vue'
+import InkConfirm from '@/components/common/InkConfirm.vue'
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
-</template>
+  <RouterView />
 
-<style scoped></style>
+  <!-- 全局反馈：轻提示与确认框，挂在根组件，任意页面通过 composable 唤起 -->
+  <InkToast />
+  <InkConfirm />
+</template>

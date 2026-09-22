@@ -21,6 +21,17 @@ export default defineConfig([
     },
   },
 
+  {
+    // 构建期脚本跑在 Node 里，不是浏览器
+    name: 'app/node-scripts',
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
 

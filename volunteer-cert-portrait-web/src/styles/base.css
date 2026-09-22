@@ -1,0 +1,81 @@
+/* ============================================================
+   结构层 — reset、无障碍、容器与图表尺寸
+   不含任何视觉识别，外观一律由 tokens.css 的令牌驱动
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  font-size: 16px;
+  line-height: 1.7;
+  background: var(--c-bg, #ffffff);
+  color: var(--c-ink-2, #454b57);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure, dl, dd, dt { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+img, svg { display: block; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; }
+[hidden] { display: none !important; }
+
+/* 标题统一走衬线体 */
+h1, h2, h3, h4 { font-family: var(--font-display, inherit); color: var(--c-ink, #101318); }
+
+/* ---------- 键盘可达与焦点态 ---------- */
+:focus-visible {
+  outline: 2px solid var(--c-focus, var(--c-a1, #1b46c8));
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 300;
+}
+.skip:focus {
+  left: 12px;
+  top: 12px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: var(--c-panel, #fff);
+  color: var(--c-ink, #101318);
+  border: 1px solid var(--c-line, #e3e6ec);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- 容器 ---------- */
+.wrap {
+  width: 100%;
+  max-width: var(--wrap, 1200px);
+  margin-inline: auto;
+  padding-inline: var(--pad, 24px);
+}
+
+/* ---------- 图表容器：ECharts 需要显式高度 ---------- */
+.chart { width: 100%; min-height: 220px; }
+.chart-sm { min-height: 180px; }
+.chart-md { min-height: 240px; }
+.chart-lg { min-height: 300px; }
+
+/* ---------- 数据文本约定 ---------- */
+.num { font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; }
