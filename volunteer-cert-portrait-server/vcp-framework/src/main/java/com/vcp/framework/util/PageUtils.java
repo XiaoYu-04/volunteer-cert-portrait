@@ -1,6 +1,8 @@
 package com.vcp.framework.util;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.vcp.common.dto.PageQuery;
 import com.vcp.common.result.PageResult;
 
 import java.util.List;
@@ -34,6 +36,24 @@ public final class PageUtils {
      */
     public static <T> PageResult<T> page(IPage<T> page) {
         return PageResult.of(page.getTotal(), page.getRecords());
+    }
+
+    /**
+     * 把前端的分页参数转成 MyBatis-Plus 的分页对象。
+     *
+     * <p>放在这里而不是 PageQuery 里的原因：PageQuery 属于 vcp-common，
+     * 而 vcp-common 刻意不引入 ORM 依赖，构造 IPage 这件事只能落在 vcp-framework。
+     *
+     * <p>分页参数的归一化（页码下限、条数上限）由 PageQuery 的 getter 负责，
+     * 本方法只做转换。
+     *
+     * @param query 前端分页参数，为 null 时按默认页码与条数处理
+     * @param <T>   列表元素类型
+     * @return MyBatis-Plus 分页对象
+     */
+    public static <T> Page<T> toPage(PageQuery query) {
+        PageQuery source = query == null ? new PageQuery() : query;
+        return new Page<>(source.getPage(), source.getPageSize());
     }
 
     /**

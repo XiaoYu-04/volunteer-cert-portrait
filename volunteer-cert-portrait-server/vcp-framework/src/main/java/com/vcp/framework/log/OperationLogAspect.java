@@ -43,9 +43,9 @@ import java.util.List;
  *   <li>返回值和异常都原样透传（{@code return joinPoint.proceed()} + {@code finally}），
  *       对业务方法完全透明。</li>
  * </ul>
- * 代价是"方法抛异常时也会记一条日志"，而 {@code operation_log} 目前没有 {@code result} 列
- * （见 B16），落库后无法区分成功与失败。这是刻意的取舍：宁可有记录、不可漏记录；
- * B16 扩表后把 {@code result} 补上即可区分。
+ * 代价是"方法抛异常时也会记一条日志"。这是刻意的取舍：宁可有记录、不可漏记录。
+ * B16 扩表后 {@code operation_log} 已有 {@code result} 列，本类据业务方法是否正常返回
+ * 写入 {@code SUCCESS} / {@code FAIL}，成功与失败因此可区分。
  *
  * <p><b>必须防住的坑</b>（改动本类前务必读一遍）：
  * <ol>
@@ -90,6 +90,12 @@ public class OperationLogAspect {
     /** 模块与动作之间的分隔符，拼成入库的 operation 字段 */
     private static final String OPERATION_SEPARATOR = " - ";
 
+    /** 执行结果：业务方法正常返回 */
+    private static final String RESULT_SUCCESS = "SUCCESS";
+
+    /** 执行结果：业务方法抛出异常 */
+    private static final String RESULT_FAIL = "FAIL";
+
     private final ApplicationEventPublisher eventPublisher;
 
     private final ObjectMapper objectMapper;
@@ -105,11 +111,16 @@ public class OperationLogAspect {
     @Around("@annotation(operationLog)")
     public Object around(ProceedingJoinPoint joinPoint, OperationLog operationLog) throws Throwable {
         long start = System.currentTimeMillis();
+        // 先置失败，方法正常返回后再置成功：异常路径上 finally 先于异常向外传播执行，
+        // 此刻 success 仍为 false，正好判定为失败，不需要额外捕获异常。
+        boolean success = false;
         try {
-            return joinPoint.proceed();
+            Object result = joinPoint.proceed();
+            success = true;
+            return result;
         } finally {
             // 放 finally：成功与异常两条路径都要留痕。此处绝不能抛出异常，否则会顶替业务异常。
-            collect(joinPoint, operationLog, System.currentTimeMillis() - start);
+            collect(joinPoint, operationLog, System.currentTimeMillis() - start, success);
         }
     }
 
@@ -119,12 +130,17 @@ public class OperationLogAspect {
      * @param joinPoint    连接点
      * @param operationLog 操作日志注解
      * @param cost         业务方法耗时（毫秒）
+     * @param success      业务方法是否正常返回
      */
-    private void collect(ProceedingJoinPoint joinPoint, OperationLog operationLog, long cost) {
+    private void collect(ProceedingJoinPoint joinPoint, OperationLog operationLog, long cost, boolean success) {
         try {
-            String operation = operationLog.module() + OPERATION_SEPARATOR + operationLog.action();
+            String module = operationLog.module();
+            String action = operationLog.action();
+            String operation = module + OPERATION_SEPARATOR + action;
             String method = joinPoint.getSignature().toShortString();
-            String params = toJson(joinPoint.getArgs());
+            // 注解显式关掉参数采集时不落 params：登录、注册的请求体里有明文密码，
+            // 序列化进库等于把全站口令永久留痕（见 OperationLog#params 的说明）。
+            String params = operationLog.params() ? toJson(joinPoint.getArgs()) : "";
             String ip = currentIp();
 
             // 未登录时留空，不抛异常：开放接口与登录接口也会走这里。
@@ -139,6 +155,7 @@ public class OperationLogAspect {
             }
 
             eventPublisher.publishEvent(new OperationLogEvent(this, userId, username, operation,
+                    module, action, success ? RESULT_SUCCESS : RESULT_FAIL,
                     method, params, ip, LocalDateTime.now(), cost));
         } catch (Exception e) {
             log.warn("[操作日志] 采集失败，已忽略，不影响业务方法。method={}",

@@ -74,6 +74,22 @@ public class StpInterfaceImpl implements StpInterface {
     );
 
     /**
+     * 取指定角色码的权限标识集合。
+     *
+     * <p>角色管理页（{@code src/views/admin/RoleManageView.vue}）要展示每个角色的权限清单，
+     * 而权限表在后端并不存在（原因见类注释），这份静态映射就是唯一事实来源，故对外开放读取。
+     *
+     * @param roleCode 角色码，取值见 {@link RoleCodeEnum}
+     * @return 权限标识集合（不可变）；roleCode 为 null 或角色未知时返回空集合而非 null
+     */
+    public static List<String> getPermsByRoleCode(String roleCode) {
+        if (roleCode == null) {
+            return List.of();
+        }
+        return ROLE_PERMS.getOrDefault(roleCode, List.of());
+    }
+
+    /**
      * 返回指定账号拥有的权限码集合。
      *
      * <p>权限完全由角色决定，因此先从会话里取角色码再查静态表；取不到角色（会话缺失或
