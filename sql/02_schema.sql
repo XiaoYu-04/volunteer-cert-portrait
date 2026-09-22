@@ -465,7 +465,7 @@ CREATE TABLE student_profile (
 
 COMMENT ON TABLE  student_profile                     IS '学生公益画像表（每个学生一行，由定时/手动任务重算）';
 COMMENT ON COLUMN student_profile.student_id          IS '学生ID → student_info.id（唯一）';
-COMMENT ON COLUMN student_profile.total_activities    IS '参与活动次数（按审核通过的报名计）';
+COMMENT ON COLUMN student_profile.total_activities    IS '参与活动次数（按已完成 COMPLETED 的报名计，即真的签到参加了，而非仅报名被批准）';
 COMMENT ON COLUMN student_profile.total_duration      IS '累计志愿时长（小时）；权威值在 student_info.total_duration，此处为画像快照，见 README 待定项';
 COMMENT ON COLUMN student_profile.category_preference IS '偏好活动类型（参与最多的分类名）';
 COMMENT ON COLUMN student_profile.tags                IS '公益标签，逗号分隔（如"热心志愿者,校园服务型"）；【判定规则尚未确定，见 README 待定项】';
