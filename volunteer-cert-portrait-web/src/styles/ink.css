@@ -373,9 +373,13 @@
    三、控制台布局（组织端 / 学校端）
    ============================================================ */
 .console{min-height:100vh; display:grid; grid-template-columns:236px minmax(0,1fr)}
+/* 侧边栏吸顶：内容区很长时（如数据看板）底部用户区仍始终可见，
+   否则「退出登录」要滚到页面最底才找得到。
+   align-self:start 不能省 —— 默认 stretch 会让它撑满整行，sticky 就失效了。 */
 .console-side{
   background:var(--c-bg); border-right:1px solid var(--c-ink);
-  display:flex; flex-direction:column; min-height:100vh;
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; align-self:start;
 }
 .console-brand{display:flex; align-items:center; gap:12px; padding:22px 20px; border-bottom:1px solid var(--c-line)}
 .console-brand .seal{width:36px; height:36px; font-size:11px}
@@ -459,7 +463,8 @@
   .ink-form-grid{grid-template-columns:1fr}
   .ink-desc{grid-template-columns:1fr}
   .console{grid-template-columns:1fr}
-  .console-side{min-height:auto; border-right:0; border-bottom:1px solid var(--c-ink)}
+  /* 窄屏下侧边栏变成顶部横向条，取消吸顶与固定高度 */
+  .console-side{position:static; height:auto; min-height:auto; border-right:0; border-bottom:1px solid var(--c-ink)}
   .console-nav{display:flex; flex-wrap:wrap; gap:0; padding:8px 0}
   .console-nav-group{margin-bottom:0; display:flex; align-items:center; flex-wrap:wrap}
   .console-nav-group-title{padding:8px 14px 8px 20px}

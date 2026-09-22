@@ -56,3 +56,37 @@ export function now() {
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
+
+/* ============================================================
+   注册账号的跨刷新持久化
+   ============================================================
+   mock 数据活在内存里，整页刷新会重置模块。注册产生的新账号如果不落盘，
+   就会出现「注册 → 刷新 → 被踢回登录页，且新账号再也登不回来」。
+
+   只持久化账号这一项：其余实体（活动、报名、时长…）保持内存态，
+   演示时刷新即回到干净的种子数据，可以反复走同一条流程。
+   ============================================================ */
+
+const USERS_KEY = 'vcp_mock_extra_users'
+
+export function loadPersistedUsers(seed) {
+  try {
+    const raw = localStorage.getItem(USERS_KEY)
+    const extra = raw ? JSON.parse(raw) : []
+    return Array.isArray(extra) && extra.length ? [...seed, ...extra] : seed
+  } catch {
+    // localStorage 不可用（或 Node 里跑校验脚本）时退回种子数据
+    return seed
+  }
+}
+
+export function persistUser(user) {
+  try {
+    const raw = localStorage.getItem(USERS_KEY)
+    const extra = raw ? JSON.parse(raw) : []
+    extra.push(user)
+    localStorage.setItem(USERS_KEY, JSON.stringify(extra))
+  } catch {
+    // 存储写不进去不影响本次会话
+  }
+}

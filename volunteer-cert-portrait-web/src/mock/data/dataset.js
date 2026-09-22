@@ -16,6 +16,10 @@
  * 扩充到 24 场；扩充部分不参与上面的聚合校验，聚合数字仍以冻结值为准。
  */
 
+// 带 .js 后缀：本文件会被 scripts/verify-mock-data.mjs 用 Node 直接加载，
+// Node 的 ESM 解析器不像 Vite 那样会自动补扩展名
+import { loadPersistedUsers } from './_helpers.js'
+
 /* ============================================================
    一、聚合指标（冻结）
    ============================================================ */
@@ -632,8 +636,8 @@ export const students = Array.from({ length: 60 }, (_, i) => {
   }
 })
 
-/** 账号 */
-export const users = [
+/** 账号。注册产生的新账号会跨刷新存活，见 _helpers.js 的说明 */
+const seedUsers = [
   {
     id: 1,
     username: 'student',
@@ -690,6 +694,8 @@ export const users = [
     lastLoginAt: '2025-03-20 19:30:00',
   })),
 ]
+
+export const users = loadPersistedUsers(seedUsers)
 
 /** 角色 */
 export const roles = [
