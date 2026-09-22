@@ -41,4 +41,16 @@ public @interface OperationLog {
      * @return 动作描述
      */
     String action();
+
+    /**
+     * 是否采集请求参数。
+     *
+     * <p>默认采集。但登录与注册这两个接口的请求体里带着<b>明文密码</b>，
+     * 采集后会被序列化进 {@code operation_log.params} 并永久留存 ——
+     * 数据库一旦被读走，等于泄露了全站口令。因此凡请求体含密码的接口，
+     * 必须显式写 {@code params = false}。
+     *
+     * @return true 采集参数（默认），false 只记录「谁在什么时候调了什么」，不记参数
+     */
+    boolean params() default true;
 }
