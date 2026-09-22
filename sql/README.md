@@ -13,7 +13,7 @@
 | 1 | `01_create_database.sql` | 创建数据库 `volunteer_cert_portrait` | 必需 |
 | 2 | `02_schema.sql` | 建表脚本：16 张表 + 表/字段注释 + 索引 | 必需 |
 | 3 | `03_init_data.sql` | 基础初始化数据：角色、账号、学生档案、组织、活动分类、数据字典 | 必需 |
-| 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 约 160 条报名及对应签到与时长 | 可选（开发与答辩演示用） |
+| 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | 可选（开发与答辩演示用） |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
 先跑 `02`，再依次跑 `03`、`04`。
@@ -152,6 +152,7 @@ CONSTRAINT uk_dict_type_key UNIQUE (dict_type, dict_key)
 | 6 | **审核驳回后如何重新提交** | 测试项提到该场景，但无状态机定义 | 影响 `service_duration` / `activity_signup` 的状态流转 |
 | 7 | **`total_duration` 有两处** | `student_info.total_duration` 与 `student_profile.total_duration` 含义相同、注释相同 | 需明确以哪个为准。**建议以 `student_info` 为准**，`student_profile` 仅作画像快照 |
 | 8 | **时间类型是否用 `timestamptz`** | 现按原脚本用 `TIMESTAMP`（无时区） | 单时区部署无影响；若将来跨时区或服务器时区不一致，`timestamptz` 更安全 |
+| 9 | **逻辑删除与唯一约束的冲突** | `activity_signup` 有 `uk_activity_student(activity_id, student_id)`，同时又有 `deleted` 软删除 | 若"取消报名"用 `deleted=1` 实现，该学生再次报名会撞唯一约束。需二选一：改成部分唯一索引 `UNIQUE (activity_id, student_id) WHERE deleted = 0`，或明确"取消=改 status、复用同一行"。`service_duration.signup_id` 的 UNIQUE 同理 |
 
 ## 六、发现的文档问题
 
