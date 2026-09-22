@@ -127,6 +127,36 @@ vcp-dependencies  独立 BOM
 10. **时间类型用的是 `TIMESTAMP`（无时区）而非 `timestamptz`**
     沿用原始设计，单时区部署无影响。若将来跨时区需改。
 
+### 前端（`volunteer-cert-portrait-web/`）
+
+1. **Vue 3.5 的模板解析器只在属性值含分号时才按「多语句」解析**
+   换行分隔、没有分号的多语句内联处理器会报
+   `Error parsing JavaScript expression: Unexpected token, expected ","`，
+   **会让整个 `vite build` 失败**。多语句一律抽成具名函数再 `@click="fn"`。
+   （曾同时卡住三个并行开发会话。）
+
+2. **ECharts 是按需注册的**
+   新增图表类型必须在 `src/components/charts/echarts.js` 里补注册，
+   否则运行时**静默不渲染且不报错**，很难排查。
+
+3. **图表内柱状元素的 `borderRadius` 是原型的刻意选择**
+   页面 UI 零圆角、图表内元素轻微圆角（`[6,6,0,0]`）。不要"顺手统一"成零圆角。
+
+4. **mock 路由里静态段必须排在 `:id` 之前**
+   `/v1/activities/org-overview` 会被 `/v1/activities/:id` 抢先匹配，
+   把 `org-overview` 当成 id。同类的还有 `/v1/portraits/me`、`/v1/portraits/distribution`。
+
+5. **`src/mock/data/dataset.js` 的 import 要带 `.js` 后缀**
+   该文件会被 `scripts/verify-mock-data.mjs` 用 Node 直接加载，
+   而 Node 的 ESM 解析器不像 Vite 那样自动补扩展名。
+
+6. **样式三层顺序不可颠倒**：`tokens.css` → `base.css` → `ink.css`。
+   令牌层没先加载，后面的组件类会全部取不到 CSS 变量。
+
+7. **改了模拟数据要跑 `npm run verify:mock`**
+   聚合数字之间有隐性约束（如学院时长合计 = 累计志愿时长 = 86,420），
+   改一个数很容易让不同页面显示的数字互相打架。断言已写成脚本。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动；数据库 16 张表已建成并验证
@@ -143,6 +173,7 @@ vcp-dependencies  独立 BOM
 | 文档 | 内容 |
 |---|---|
 | `docs/后端进展与待办.md` | **后端现状、已完成、决策理由、待办、环境信息** |
+| `docs/前端进展与待办.md` | **前端现状、设计系统、关键决策、待办**（前端可脱离后端独立运行） |
 | `docs/公益等级与标签规则方案.md` | 公益等级阈值与标签判定规则（**已确认**，含落地效果） |
 | `sql/README.md` | 脚本执行方式、设计约定、7 项待定事项 |
 | `docs/高校志愿服务时长认证与公益画像数据分析系统_开发计划与分工.md` | 原始开发计划 |
