@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.vcp</groupId>
+        <artifactId>volunteer-cert-portrait-server</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>vcp-system</artifactId>
+    <name>vcp-system</name>
+    <description>系统域：用户/角色/权限、学生档案、字典、通知、操作日志、附件</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

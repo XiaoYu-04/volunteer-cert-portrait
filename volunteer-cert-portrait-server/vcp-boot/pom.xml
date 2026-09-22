@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.vcp</groupId>
+        <artifactId>volunteer-cert-portrait-server</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>vcp-boot</artifactId>
+    <name>vcp-boot</name>
+    <description>启动模块：主类、配置文件，打包为唯一可执行 jar</description>
+
+    <dependencies>
+        <!-- 聚合全部业务模块 -->
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-system</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-org</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-volunteer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-certification</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-portrait</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vcp</groupId>
+            <artifactId>vcp-analytics</artifactId>
+        </dependency>
+
+        <!-- 数据库迁移：starter 只带入 flyway-core 与 JDBC 支持，不含任何数据库方言 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
+        </dependency>
+        <!-- PostgreSQL 方言必须单独声明，starter 不会传递进来；
+             缺失时启动报 "Unsupported Database: PostgreSQL"，配置项 spring.flyway.postgresql.* 也不生效 -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 只有启动模块打可执行 jar；其余模块是普通内部 jar -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.vcp.VcpApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
