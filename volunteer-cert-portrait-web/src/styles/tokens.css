@@ -1,0 +1,41 @@
+/* ============================================================
+   风格 12 · 新中式水墨风 — 设计令牌
+   纸白底 #F8F7F4 + 墨 #1A1A1A + 朱砂 #B03A2E + 石青 #3E6B7A
+   大量留白、细墨线分隔、竖排装饰题字、印章式标签，区块间距 88px
+   注：纸白底带极轻微暖调，是为「宣纸」质感做的刻意选择，
+       页面主体仍由墨黑与留白主导，正文一律用墨色保证对比度
+   ============================================================ */
+:root{
+  --c-bg:#F8F7F4;
+  --c-panel:#FFFFFF;
+  --c-line:#DCD8D0;
+  --c-line-2:#EAE7E1;
+  --c-ink:#1A1A1A;
+  --c-ink-2:#4A4642;
+  --c-ink-3:#6B6560;
+  --c-a1:#1A1A1A; --c-a2:#B03A2E; --c-a3:#3E6B7A;
+  --c-a4:#A8894A; --c-a5:#6B6560; --c-a6:#C4BEB4;
+  --c-ok:#3E6B4A; --c-warn:#A8894A; --c-bad:#B03A2E;
+  --c-focus:#B03A2E;
+  --font-body:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --font-display:"Source Han Serif SC","Noto Serif SC","Songti SC","STSong","SimSun",Georgia,serif;
+  --font-mono:"JetBrains Mono","Cascadia Code",ui-monospace,Consolas,monospace;
+  --wrap:1180px; --pad:28px;
+  --r-sm:0; --r-md:0; --r-lg:0;
+}
+
+/* ---------- 动效降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- 打印 ---------- */
+@media print {
+  .skip, .no-print { display: none !important; }
+  body { background: #fff; }
+}

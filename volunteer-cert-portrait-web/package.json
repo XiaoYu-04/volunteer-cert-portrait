@@ -10,9 +10,12 @@
     "lint": "run-s \"lint:*\"",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "verify:mock": "node scripts/verify-mock-data.mjs"
   },
   "dependencies": {
+    "axios": "^1.20.0",
+    "echarts": "^6.1.0",
     "pinia": "^4.0.3",
     "vue": "^3.5.42",
     "vue-router": "^5.3.1"
