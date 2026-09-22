@@ -8,7 +8,9 @@
 --   组织 8 个（其中 2 个留作待审核，便于演示组织审核流程）
 --   活动 20 个（12 个已结束 / 6 个已发布 / 1 个草稿 / 1 个已取消）
 --   学生 30 个 + 基础脚本里的 1 个 = 31 个
---   报名约 160 条，其中已完成约 130 条，并生成对应签到与时长记录
+--   报名 149 条、其中已完成 81 条（精确值：由活动 id 与取模共同决定，非随机波动）
+--   另生成对应签到记录 81 条、服务时长记录 72 条、审核流水 135 条、通知 212 条
+--   （以上均为在 PostgreSQL 18.6 上实跑得到的实测值）
 --
 -- 前置条件：必须先执行 03_init_data.sql（本脚本依赖其中的角色、账号、分类）
 --
@@ -74,9 +76,11 @@ SELECT g + 1,
        g + 10,
        -- 学号从 20230002 起，避开 03_init_data.sql 里基础学生已占用的 20230001
        '2023' || lpad((g + 1)::text, 4, '0'),
-       (ARRAY['计算机学院','电子信息学院','经济管理学院','外国语学院','机械工程学院'])[1 + (g % 5)],
-       (ARRAY['软件技术','计算机应用技术','电子信息工程技术','工商企业管理','商务英语','机械设计与制造'])[1 + (g % 6)],
-       (ARRAY['软件2301','计应2302','电信2301','工商2301','商英2301','机制2301'])[1 + (g % 6)],
+       -- 学院 / 专业 / 班级 必须用同一个下标。若各用不同模数（如 5 与 6），
+       -- 会出现"经济管理学院-电子信息工程技术"这类现实中不存在的组合，30 个学生里会有 24 个错配
+       (ARRAY['计算机学院','电子信息学院','经济管理学院','外国语学院','机械工程学院','计算机学院'])[1 + (g % 6)],
+       (ARRAY['软件技术','电子信息工程技术','工商企业管理','商务英语','机械设计与制造','计算机应用技术'])[1 + (g % 6)],
+       (ARRAY['软件2301','电信2301','工商2301','商英2301','机制2301','计应2302'])[1 + (g % 6)],
        0,
        '普通志愿者'
 FROM generate_series(1, 30) AS g;
@@ -142,9 +146,12 @@ SELECT a.id,
             WHEN a.status = 'PUBLISHED' AND ((s.id * 3 + a.id * 7) % 20 <= 11
                                           OR (s.id * 3 + a.id * 7) % 20 = 19) THEN o.contact_user_id
             ELSE NULL END,
-       CASE WHEN a.status = 'CLOSED'     AND (s.id * 3 + a.id * 7) % 20 <= 18 THEN a.start_time - INTERVAL '12 hours'
+       -- 用 LEAST 兜底：已发布活动的 start_time 在未来，直接减 12 小时会算出"未来的审核时间"
+       CASE WHEN a.status = 'CLOSED'     AND (s.id * 3 + a.id * 7) % 20 <= 18
+                 THEN LEAST(a.start_time - INTERVAL '12 hours', CURRENT_TIMESTAMP)
             WHEN a.status = 'PUBLISHED' AND ((s.id * 3 + a.id * 7) % 20 <= 11
-                                          OR (s.id * 3 + a.id * 7) % 20 = 19) THEN a.start_time - INTERVAL '12 hours'
+                                          OR (s.id * 3 + a.id * 7) % 20 = 19)
+                 THEN LEAST(a.start_time - INTERVAL '12 hours', CURRENT_TIMESTAMP)
             ELSE NULL END,
        -- 审核意见：仅驳回时填写（取消不是审核动作，不填）
        CASE WHEN a.status = 'CLOSED'     AND (s.id * 3 + a.id * 7) % 20 IN (17, 18) THEN '该同学已有同类活动记录，名额有限'
@@ -167,12 +174,15 @@ WHERE a.status IN ('CLOSED', 'PUBLISHED');
 INSERT INTO attendance_record (signup_id, sign_in_time, sign_out_time, status, remark)
 SELECT sg.id,
        CASE WHEN (sg.id * 7) % 10 < 9 THEN a.start_time + INTERVAL '10 minutes' ELSE NULL END,
-       CASE WHEN (sg.id * 7) % 10 < 9 THEN a.end_time ELSE NULL END,
+       -- 异常记录的时间要真的偏离正常值，否则备注说"提前离场"、数据却与正常记录完全相同，自相矛盾
+       CASE WHEN (sg.id * 7) % 10 < 8 THEN a.end_time
+            WHEN (sg.id * 7) % 10 < 9 THEN a.start_time + INTERVAL '50 minutes'
+            ELSE NULL END,
        CASE WHEN (sg.id * 7) % 10 < 8 THEN 'SIGNED_OUT'
             WHEN (sg.id * 7) % 10 < 9 THEN 'ABNORMAL'
             ELSE 'ABSENT' END,
        CASE WHEN (sg.id * 7) % 10 < 8 THEN '正常签到签退'
-            WHEN (sg.id * 7) % 10 < 9 THEN '签退时间与活动结束时间不符，已由组织管理员标记'
+            WHEN (sg.id * 7) % 10 < 9 THEN '提前离场，签退时间明显早于活动结束时间，已由组织管理员标记'
             ELSE '未到场，记为缺勤' END
 FROM activity_signup sg
 JOIN volunteer_activity a ON a.id = sg.activity_id
@@ -189,14 +199,18 @@ SELECT sg.id,
        sg.activity_id,
        sg.student_id,
        -- 实际时长 = 签退时间 - 签到时间，保留 1 位小数（与 NUMERIC(10,1) 对齐）
-       ROUND(EXTRACT(EPOCH FROM (ar.sign_out_time - ar.sign_in_time)) / 3600.0, 1),
+       -- ::numeric 强转：PG14 之前 EXTRACT 返回 double precision，而 PG 没有 round(double, int) 重载
+       ROUND((EXTRACT(EPOCH FROM (ar.sign_out_time - ar.sign_in_time)) / 3600.0)::numeric, 1),
        CASE WHEN (sg.id * 11) % 20 < 15 THEN 'APPROVED'
             WHEN (sg.id * 11) % 20 < 18 THEN 'PENDING_AUDIT'
             ELSE 'REJECTED' END,
        a.end_time + INTERVAL '1 day',
-       -- 待审核的记录尚无审核人
-       CASE WHEN (sg.id * 11) % 20 >= 15 THEN (SELECT id FROM sys_user WHERE username = 'admin') ELSE NULL END,
-       CASE WHEN (sg.id * 11) % 20 >= 15 THEN a.end_time + INTERVAL '2 days' ELSE NULL END,
+       -- 只有"已通过"(余数 <15) 或"已驳回"(余数 >=18) 才有审核人与审核时间；
+       -- "待审核"(余数 15..17) 不应有审核人 —— 条件写反会导致待审核的反而带审核人
+       CASE WHEN (sg.id * 11) % 20 < 15 OR (sg.id * 11) % 20 >= 18
+            THEN (SELECT id FROM sys_user WHERE username = 'admin') ELSE NULL END,
+       CASE WHEN (sg.id * 11) % 20 < 15 OR (sg.id * 11) % 20 >= 18
+            THEN a.end_time + INTERVAL '2 days' ELSE NULL END,
        CASE WHEN (sg.id * 11) % 20 >= 18 THEN '服务时长与签到记录不符，请重新核对后提交' ELSE NULL END
 FROM activity_signup sg
 JOIN attendance_record ar ON ar.signup_id = sg.id
@@ -253,7 +267,8 @@ SET signed_count = (
 --      不是文档结论，正式实现时必须由团队自行拍板后重写。
 --      占位规则：
 --        · 累计时长 > 0                    → 「热心志愿者」
---        · 参与活动次数 >= 5               → 「长期坚持型」
+--        · 参与活动次数 >= 3               → 「长期坚持型」
+--          （阈值取 3 而非 5：演示数据里单个学生最多只有 4 次已完成活动，取 5 会导致该标签永远不出现）
 --        · 按参与最多的活动分类追加：校园服务型 / 社区服务型 / 环保行动型 / 大型活动型
 --          （助老服务、文化传播两类在文档给出的 6 个标签名里没有对应项，不追加）
 -- =============================================================
@@ -271,14 +286,19 @@ SELECT si.id,
         JOIN activity_category ac ON ac.id = a.category_id
         WHERE sg.student_id = si.id AND sg.status = 'COMPLETED'
         GROUP BY ac.category_name
-        ORDER BY COUNT(*) DESC, ac.category_name
+        -- 用 id 而非中文名打破并列：中文串的排序结果依赖数据库 collation，
+        -- 换成 MIN(ac.id) 才能保证任何机器上执行结果都一致
+        ORDER BY COUNT(*) DESC, MIN(ac.id)
         LIMIT 1),
        -- 公益标签（占位规则，见上方说明）
-       CONCAT_WS(',',
+       -- 外层套 NULLIF：三个 CASE 全为 NULL 时 CONCAT_WS 返回空字符串 ''（不是 NULL），
+       -- 前端 tags.split(',') 会渲染出一个空标签
+       NULLIF(CONCAT_WS(',',
            CASE WHEN si.total_duration > 0 THEN '热心志愿者' END,
+           -- 阈值取 3 而非 5：演示数据里单个学生最多只有 4 次已完成活动，取 5 该标签永远不会出现
            CASE WHEN (SELECT COUNT(DISTINCT sg.activity_id)
                       FROM activity_signup sg
-                      WHERE sg.student_id = si.id AND sg.status = 'COMPLETED') >= 5
+                      WHERE sg.student_id = si.id AND sg.status = 'COMPLETED') >= 3
                 THEN '长期坚持型' END,
            CASE (SELECT ac.category_name
                  FROM activity_signup sg
@@ -286,13 +306,13 @@ SELECT si.id,
                  JOIN activity_category ac ON ac.id = a.category_id
                  WHERE sg.student_id = si.id AND sg.status = 'COMPLETED'
                  GROUP BY ac.category_name
-                 ORDER BY COUNT(*) DESC, ac.category_name
+                 ORDER BY COUNT(*) DESC, MIN(ac.id)
                  LIMIT 1)
                WHEN '校园服务' THEN '校园服务型'
                WHEN '社区服务' THEN '社区服务型'
                WHEN '环保公益' THEN '环保行动型'
                WHEN '大型赛事' THEN '大型活动型'
-           END),
+           END), ''),
        '该同学累计参与志愿活动 ' ||
        (SELECT COUNT(DISTINCT sg.activity_id)
         FROM activity_signup sg
@@ -306,7 +326,9 @@ FROM student_info si;
 INSERT INTO notification (user_id, title, content, type, is_read)
 SELECT si.user_id,
        CASE WHEN sg.status = 'COMPLETED' THEN '活动已完成' ELSE '报名审核通过' END,
-       '您报名的活动「' || a.title || '」已通过审核。',
+       CASE WHEN sg.status = 'COMPLETED'
+            THEN '您报名的活动「' || a.title || '」已完成，服务时长待组织管理员提交。'
+            ELSE '您报名的活动「' || a.title || '」已通过审核。' END,
        'SIGNUP',
        -- 约 1/3 标记为已读，便于演示未读角标
        (sg.id % 3 = 0)
