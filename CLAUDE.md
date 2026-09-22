@@ -1,0 +1,162 @@
+# CLAUDE.md
+
+> 本文件由 Claude Code 自动加载。放在仓库根目录，任何新会话都会读到，
+> 用来把项目上下文与踩过的坑带过去。**新增约定或踩坑后请补充到对应章节。**
+
+## 项目
+
+**高校志愿服务时长认证与公益画像数据分析系统**（毕业设计，3 人小组）
+
+围绕志愿活动发布 → 学生报名 → 组织审核 → 签到签退 → 组织提交时长 →
+学校审核 → 学生获得时长 → 公益画像与数据看板，形成完整闭环。
+三个角色：学生 / 组织管理员 / 学校管理员。
+
+## 目录结构
+
+```
+volunteer-cert-portrait/
+├── volunteer-cert-portrait-server/   # 后端（Spring Boot 多模块 Maven）
+├── volunteer-cert-portrait-web/      # 前端（Vue 3 + Vite）
+├── sql/                              # 建表 + 初始化 + 演示数据脚本（附 README）
+├── docs/                             # 需求、开发计划、知识库、后端进展与待办、公益规则方案
+└── bug/                              # 前端同学的缺陷笔记
+```
+
+## 技术栈（版本均已核实可用）
+
+| 组件 | 版本 |
+|---|---|
+| Spring Boot | 4.1.1（Spring Framework 7.0.9、内嵌 Tomcat 11） |
+| JDK | 21 |
+| Maven | 3.9.16 |
+| ORM | MyBatis-Plus 3.5.17（**必须用 `mybatis-plus-spring-boot4-starter`**） |
+| 认证 | Sa-Token 1.46.0（**必须用 `sa-token-spring-boot4-starter`**） |
+| 接口文档 | Knife4j Next 5.7.5（groupId 是 `com.baizhukui`，**不是** `com.github.xiaoymin`） |
+| 数据库 | PostgreSQL 18.6 |
+
+## 常用命令
+
+```bash
+# 构建（11 个模块）
+cd volunteer-cert-portrait-server && mvn -B package -DskipTests
+
+# 启动
+java -jar vcp-boot/target/vcp-boot-1.0.0.jar
+
+# 接口文档
+open http://localhost:8080/doc.html
+
+# 重建数据库（会清空数据）
+cd sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
+```
+
+数据库连接信息见 `vcp-boot/src/main/resources/application.yml`。
+默认账号：`admin` / `org_admin` / `student`（密码均为 `123456`，明文，接入加密后须替换）。
+
+## 后端模块结构
+
+```
+vcp-boot          启动类 VcpApplication + 配置 + 唯一可执行 jar
+vcp-framework     安全认证、全局异常、ORM 配置、字段自动填充、操作日志
+vcp-common        统一返回 R<T>、异常体系、常量、枚举、工具类（无业务依赖）
+vcp-system        用户/角色/学生档案/字典/通知/日志/附件
+vcp-org           志愿组织
+vcp-volunteer     活动分类/活动/报名/签到
+vcp-certification 服务时长/审核
+vcp-portrait      公益画像
+vcp-analytics     看板统计（只读聚合，无独立表）
+vcp-dependencies  独立 BOM
+```
+
+**依赖规则**（防乱用，答辩加分）：禁止反向依赖与循环依赖；跨模块只调用对方
+**Service 接口**，禁止直接访问对方 Mapper/表；通知类耦合用 Spring Event 解耦。
+`vcp-dependencies` **不得继承聚合根**（原因见下方"踩过的坑"）。
+
+## 关键约定
+
+- 主键 `BIGSERIAL`（数据库自增）→ MyBatis-Plus 必须配 `id-type: auto`
+- 命名 `snake_case`；时间字段 `create_time` / `update_time`
+- 时长字段 `NUMERIC(10,1)`，单位**小时**
+- **状态字段统一存英文大写码**，中文由 `sys_dict` 翻译。完整码表见
+  `docs/后端进展与待办.md` 第七节
+- 逻辑删除 `deleted SMALLINT`，但**仅用于业务数据表**；关联表、流水/日志表不加
+- 接口前缀 `/api/v1/`；统一返回 `{ code, message, data }`，成功 `code=0`
+- 权限标识格式 `域:资源:操作`（如 `system:user:list`）
+- 枚举里 `APPROVED`/`REJECTED`（状态）与 `APPROVE`/`REJECT`（审核动作）**不同形**，别混
+
+## ⚠️ 踩过的坑（改代码前先看）
+
+1. **`vcp-dependencies` 不得声明 `parent` 为聚合根**
+   否则与聚合根的 `dependencyManagement` BOM 导入形成循环，Maven 直接拒绝读取整个工程。
+   pom 里已有注释说明，别"顺手补回去"。
+
+2. **Boot 4 没有 `spring-boot-starter-aop`**
+   已改名为 `spring-boot-starter-aspectj`。旧坐标在 4.x 下没有发布（最后版本停在 3.5.16），
+   且不在 Boot 4 的 BOM 里，不写版本号会报 version missing。
+
+3. **YAML 会把以 0 开头的数字串当八进制整数**
+   `password: 041014` 不加引号会被解析成 `16908`。口令、手机号等一律**加引号**。
+
+4. **`knife4j.enable` 默认为 `false` 且没有 `matchIfMissing`**
+   不显式开启则增强能力静默失效，但 `/doc.html` 仍能打开，极易误判为已接好。
+
+5. **Sa-Token 拦截器覆盖 `/**` 后必须放行文档路径**
+   `/doc.html`、`/webjars/**`、`/v3/api-docs/**`、`/knife4j/**`，否则文档页 401。
+
+6. **Boot 4 的父 pom 不再配置 `annotationProcessorPaths`**
+   现在 Lombok 靠 classpath 自动发现能工作。将来加 MapStruct 时**必须显式配置**
+   `annotationProcessorPaths`（lombok + mapstruct-processor + lombok-mapstruct-binding
+   三者缺一不可），否则 mapper 实现类会静默不生成。
+
+7. **`01_create_database.sql` 必须单独执行**
+   `CREATE DATABASE` 不能在事务块内运行。若与其他语句拼成一批提交（多语句会被放进
+   隐式事务），会报 "cannot run inside a transaction block"。文件里的 `\l`、`\c`
+   都在注释里，不会发给服务器。
+
+8. **`04_demo_data.sql` 是多语句隐式事务**
+   任何一条失败会**整批回滚**（不是"少几条数据"）。改完务必实跑验证。
+
+9. **Flyway 当前是关闭的**（`spring.flyway.enabled: false`）
+   原因：表结构在开发期频繁变动，而已执行脚本受 checksum 保护、不可再改。
+   待表结构稳定后把 `02_schema.sql`/`03_init_data.sql` 复制到
+   `db/migration/` 改名为 `V2__`/`V3__` 再开启。
+
+10. **时间类型用的是 `TIMESTAMP`（无时区）而非 `timestamptz`**
+    沿用原始设计，单时区部署无影响。若将来跨时区需改。
+
+## 当前进度
+
+**已完成**：后端工程可构建可启动；数据库 16 张表已建成并验证
+（`sql/` 脚本在 PostgreSQL 18.6 实跑，20 项一致性自检全为 0）；接口文档可用。
+
+**未完成**：**业务代码尚未开始写**（目前只有启动类和一个 OpenApiConfig）。
+后端是当前项目的瓶颈 —— 前端页面已完成。
+
+**待办**：见 `docs/后端进展与待办.md`（P0 待拍板 7 项 + P1 工程侧 7 项）。
+最卡的是"服务时长如何计算"与"签到签退时间窗口"。
+
+## 重要参考文档
+
+| 文档 | 内容 |
+|---|---|
+| `docs/后端进展与待办.md` | **后端现状、已完成、决策理由、待办、环境信息** |
+| `docs/公益等级与标签规则方案.md` | 公益等级阈值与标签判定规则（**已确认**，含落地效果） |
+| `sql/README.md` | 脚本执行方式、设计约定、7 项待定事项 |
+| `docs/高校志愿服务时长认证与公益画像数据分析系统_开发计划与分工.md` | 原始开发计划 |
+| `docs/知识库已确认项目选题与技术背景.md` | 命名体系、架构、模块职责与表归属 |
+
+> ⚠️ 《开发计划与分工.md》第八阶段的示例统计 SQL **是错的**：
+> 它从 `service_duration` 里 `SELECT college`，但该表没有这个字段（学院在
+> `student_info` 里，需 JOIN），且状态存的是 `APPROVED` 而非中文 `已通过`。
+> 正确写法见 `sql/README.md` 第六节。
+
+## 工作方式约定
+
+- 数据相关改动**必须实跑验证**，不能只看静态检查 —— 曾出现"静态检查全过、
+  真跑就整批回滚"的情况
+- 演示数据用**确定性算法**（取模）而非 `random()`，保证三人执行结果一致；
+  排序打破并列时用 **id** 而非中文名（中文串排序依赖数据库 collation）
+- 修 SQL 后要重新实跑，让"验证过的文件"与"提交的文件"一致
