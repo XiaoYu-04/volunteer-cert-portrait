@@ -34,24 +34,27 @@ onMounted(async () => {
   }
 })
 
-/** 按通知类型给出下一步入口，避免详情页成为死胡同 */
+/**
+ * 按通知类型给出下一步入口，避免详情页成为死胡同。
+ * 三类码值与后端 notification_type 字典一致：SIGNUP 报名结果 / DURATION 时长审核 / SYSTEM 系统公告
+ */
 const actions = computed(() => {
   const type = notice.value?.type
-  if (type === 'AUDIT') {
+  if (type === 'SIGNUP') {
     return {
-      hint: '审核结果类通知与你的报名、服务时长记录相关，可前往以下页面查看明细。',
+      hint: '报名结果通知与你的报名记录相关，可前往以下页面查看明细。',
       links: [
         { to: '/student/signups', label: '查看我的报名' },
-        { to: '/student/durations', label: '查看我的服务时长' },
+        { to: '/student/activities', label: '浏览志愿活动' },
       ],
     }
   }
-  if (type === 'ACTIVITY') {
+  if (type === 'DURATION') {
     return {
-      hint: '活动类通知由志愿组织发布，可浏览活动列表了解活动详情与剩余名额。',
+      hint: '时长审核类通知与你的服务时长记录相关，可前往以下页面查看明细。',
       links: [
-        { to: '/student/activities', label: '浏览志愿活动' },
-        { to: '/student/signups', label: '查看我的报名' },
+        { to: '/student/durations', label: '查看我的服务时长' },
+        { to: '/student/portrait', label: '查看我的公益画像' },
       ],
     }
   }
@@ -75,7 +78,7 @@ const actions = computed(() => {
 
     <header class="page-head">
       <span class="hero-kicker">
-        {{ notice ? dict.label('notice_type', notice.type) : '通知详情' }}
+        {{ notice ? dict.label('notification_type', notice.type) : '通知详情' }}
       </span>
       <h1>{{ notice?.title || '通知详情' }}</h1>
       <p v-if="notice" class="page-head-sub">
@@ -101,7 +104,7 @@ const actions = computed(() => {
           <div class="panel-head">
             <span class="panel-title">通知信息</span>
             <span class="panel-extra">
-              <StatusTag type="notice_type" :value="notice.type" />
+              <StatusTag type="notification_type" :value="notice.type" />
               <span class="ink-status" :class="notice.read ? 'tone-mute' : 'tone-warn'">
                 {{ notice.read ? '已读' : '未读' }}
               </span>
@@ -119,7 +122,7 @@ const actions = computed(() => {
             </div>
             <div class="ink-desc-item">
               <dt class="ink-desc-k">通知类型</dt>
-              <dd class="ink-desc-v">{{ dict.label('notice_type', notice.type) }}</dd>
+              <dd class="ink-desc-v">{{ dict.label('notification_type', notice.type) }}</dd>
             </div>
             <div class="ink-desc-item">
               <dt class="ink-desc-k">是否置顶</dt>

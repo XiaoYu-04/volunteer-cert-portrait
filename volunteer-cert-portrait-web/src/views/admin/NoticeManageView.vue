@@ -25,7 +25,7 @@ const { rows, total, loading, query, search, load } = useTable(listNotifications
 
 onMounted(() => dict.load())
 
-const typeOptions = dict.options('notice_type')
+const typeOptions = dict.options('notification_type')
 
 const readTabs = [
   { value: 'ALL', label: '全部公告' },
@@ -150,7 +150,7 @@ async function remove(row) {
       </template>
 
       <template #type="{ row }">
-        <StatusTag type="notice_type" :value="row.type" />
+        <StatusTag type="notification_type" :value="row.type" />
       </template>
 
       <template #from="{ row }">

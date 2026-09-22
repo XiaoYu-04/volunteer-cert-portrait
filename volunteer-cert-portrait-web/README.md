@@ -97,10 +97,17 @@ src/
 |---|---|
 | `activity_status` | `DRAFT` / `PUBLISHED` / `CLOSED` / `CANCELED` |
 | `signup_status` | `PENDING` / `APPROVED` / `REJECTED` / `CANCELED` / `COMPLETED` |
-| `attendance_status` | `UNSIGNED` / `SIGNED_IN` / `SIGNED_OUT` / `ABNORMAL` / `ABSENT` |
+| `attendance_status` | `NOT_SIGNED` / `SIGNED_IN` / `SIGNED_OUT` / `ABNORMAL` / `ABSENT` |
 | `duration_status` | `PENDING_SUBMIT` / `PENDING_AUDIT` / `APPROVED` / `REJECTED` |
+| `org_status` | `PENDING` / `APPROVED` / `REJECTED` |
+| `audit_action` | `SUBMIT` / `APPROVE` / `REJECT`（注意与状态值的 `APPROVED`/`REJECTED` 不同形） |
+| `notification_type` | `SIGNUP` / `DURATION` / `SYSTEM` |
 
 用 `<StatusTag type="signup_status" :value="row.status" />` 渲染。
+
+> **码值的权威来源是后端**：`sql/02_schema.sql` 的列注释与 `sql/03_init_data.sql` 的
+> `sys_dict` 种子数据。前端这份是同一套码的镜像，改动前请先确认后端。
+> 另有两处前端与后端尚未对齐，见 [docs/前端进展与待办.md](../docs/前端进展与待办.md) 第三节。
 
 ## 模拟数据
 
