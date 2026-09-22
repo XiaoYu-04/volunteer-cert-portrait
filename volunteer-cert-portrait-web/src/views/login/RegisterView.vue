@@ -19,17 +19,30 @@ const form = reactive({
   email: '',
 })
 
-const errors = reactive({ username: '', name: '', password: '', confirm: '' })
+const errors = reactive({
+  username: '',
+  name: '',
+  password: '',
+  confirm: '',
+  phone: '',
+  email: '',
+})
 const loading = ref(false)
 
+const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
+/** 中国大陆手机号：11 位，1 开头，第二位 3-9 */
+const RE_PHONE = /^1[3-9]\d{9}$/
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 function validate() {
-  errors.username = /^[a-zA-Z0-9_]{4,20}$/.test(form.username)
-    ? ''
-    : '用户名为 4-20 位字母、数字或下划线'
+  errors.username = RE_USERNAME.test(form.username) ? '' : '用户名为 4-20 位字母、数字或下划线'
   errors.name = form.name.trim() ? '' : '请输入姓名'
   errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
-  return !errors.username && !errors.name && !errors.password && !errors.confirm
+  errors.phone = RE_PHONE.test(form.phone) ? '' : '请输入 11 位手机号'
+  errors.email = RE_EMAIL.test(form.email) ? '' : '请输入有效的邮箱地址'
+
+  return !Object.values(errors).some(Boolean)
 }
 
 async function onSubmit() {
@@ -44,8 +57,7 @@ async function onSubmit() {
       email: form.email,
     })
     // 注册接口直接返回会话，免去二次登录
-    user.token = data.token
-    user.info = data.user
+    user.applySession(data)
     toast.success('注册成功，欢迎加入')
     router.replace(user.homePath)
   } catch (err) {
@@ -91,12 +103,19 @@ async function onSubmit() {
             <input v-model="form.confirm" class="ink-input" type="password" autocomplete="new-password" />
           </InkField>
 
-          <InkField label="手机号" hint="选填，用于接收活动通知">
-            <input v-model.trim="form.phone" class="ink-input" type="tel" />
+          <InkField label="手机号" required :error="errors.phone" hint="11 位手机号，用于接收活动通知">
+            <input
+              v-model.trim="form.phone"
+              class="ink-input"
+              type="tel"
+              inputmode="numeric"
+              maxlength="11"
+              autocomplete="tel"
+            />
           </InkField>
 
-          <InkField label="邮箱" hint="选填">
-            <input v-model.trim="form.email" class="ink-input" type="email" />
+          <InkField label="邮箱" required :error="errors.email" hint="用于接收审核结果通知">
+            <input v-model.trim="form.email" class="ink-input" type="email" autocomplete="email" />
           </InkField>
 
           <button class="btn btn-primary btn-block" type="submit" :disabled="loading">

@@ -71,12 +71,19 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
+    /**
+     * 写入会话。state 与 localStorage 必须一起写 ——
+     * 只改 state 的话当前会话内看着正常，一刷新 token 就没了。
+     */
+    applySession({ token, user }) {
+      this.token = token
+      this.info = user
+      setToken(token)
+      return user
+    },
+
     async login(payload) {
-      const data = await apiLogin(payload)
-      this.token = data.token
-      this.info = data.user
-      setToken(data.token)
-      return data.user
+      return this.applySession(await apiLogin(payload))
     },
 
     /** 刷新页面后用 token 换回用户信息 */
