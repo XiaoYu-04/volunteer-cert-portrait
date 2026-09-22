@@ -127,6 +127,36 @@ vcp-dependencies  独立 BOM
 10. **时间类型用的是 `TIMESTAMP`（无时区）而非 `timestamptz`**
     沿用原始设计，单时区部署无影响。若将来跨时区需改。
 
+11. **Boot 4 已迁移到 Jackson 3，包名是 `tools.jackson` 而非 `com.fasterxml.jackson`**
+    容器里自动配置的 `ObjectMapper` Bean 是 `tools.jackson.databind.ObjectMapper`；
+    classpath 里那个 `com.fasterxml.jackson` 是 **Knife4j 传递引入的库**，容器不会为它注册 Bean ——
+    注入它会直接启动失败（实测报 "required a bean of type
+    'com.fasterxml.jackson.databind.ObjectMapper' that could not be found"）。
+    异常也变了：`JsonProcessingException` → **非受检**的 `tools.jackson.core.JacksonException`。
+
+12. **`PaginationInnerInterceptor` 的类文件在 `mybatis-plus-jsqlparser` jar 里**
+    包路径却是 `com.baomidou.mybatisplus.extension.plugins.inner` —— 在
+    `mybatis-plus-extension` 里 grep 是找不到它的，别以为没这个类。
+    另外 `DbType` 的常量是 **`POSTGRE_SQL`**（带下划线），不是 `POSTGRESQL`。
+
+13. **跨域 `allowedOrigins("*")` 配 `allowCredentials(true)` 会直接抛异常**
+    Spring 的 `validateAllowCredentials()` 禁止该组合，必须改用 `allowedOriginPatterns`。
+    另外 `allowedHeaders` 要放开 `Content-Type`（前端固定发 JSON），
+    只放 `Authorization` 会让业务请求跨域失败。
+
+14. **Sa-Token 1.46 只有 `SaInterceptor` 一个拦截器类**（没有 `SaTokenInterceptor`）；
+    `StpInterface` 的包路径是 `cn.dev33.satoken.stp.StpInterface`。
+    坑：**在 `StpInterfaceImpl` 里不能调用 `StpUtil.getRoleList()`** —— 它的内部实现就是
+    `SaManager.getStpInterface().getRoleList(...)`，会无限递归，要直接读会话。
+
+15. **Windows 上正在运行的 jar 会锁住文件，`mvn package` 的 repackage 步骤会失败**
+    报 `Unable to rename 'vcp-boot-1.0.0.jar' to '...jar.original'`。
+    打包前先停掉 `java -jar` 起的实例（`jps -l` 找 PID → `taskkill //PID <pid> //F`）。
+
+16. **`R<T>` 只有 `code`/`message`/`data` 三个字段，不要给它加 `isXxx()` 之类的方法**
+    Jackson 会把它当 JavaBean 属性序列化，导致**每个**接口响应都多一个字段
+    （曾出现 `"success":false` 混进所有响应）。判断成功用 `code == R.SUCCESS`。
+
 ### 前端（`volunteer-cert-portrait-web/`）
 
 1. **Vue 3.5 的模板解析器只在属性值含分号时才按「多语句」解析**
