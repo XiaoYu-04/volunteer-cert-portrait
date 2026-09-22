@@ -28,9 +28,9 @@ export const DICT_DEFS = {
     { value: 'CANCELED', label: '已取消', tone: 'mute' },
     { value: 'COMPLETED', label: '已完成', tone: 'info' },
   ],
-  // 签到状态
+  // 签到状态。码值与 sql/02_schema.sql 的 attendance_record.status 注释一致
   attendance_status: [
-    { value: 'UNSIGNED', label: '未签到', tone: 'mute' },
+    { value: 'NOT_SIGNED', label: '未签到', tone: 'mute' },
     { value: 'SIGNED_IN', label: '已签到', tone: 'info' },
     { value: 'SIGNED_OUT', label: '已签退', tone: 'ok' },
     { value: 'ABNORMAL', label: '异常', tone: 'warn' },
@@ -55,16 +55,17 @@ export const DICT_DEFS = {
     { value: 'ACTIVE', label: '正常', tone: 'ok' },
     { value: 'DISABLED', label: '已停用', tone: 'mute' },
   ],
-  // 审核动作
+  // 审核动作。注意与状态值的 APPROVED / REJECTED 不同形
   audit_action: [
+    { value: 'SUBMIT', label: '提交', tone: 'info' },
     { value: 'APPROVE', label: '通过', tone: 'ok' },
     { value: 'REJECT', label: '驳回', tone: 'bad' },
   ],
-  // 通知类型
-  notice_type: [
-    { value: 'SYSTEM', label: '系统通知', tone: 'info' },
-    { value: 'ACTIVITY', label: '活动通知', tone: 'ok' },
-    { value: 'AUDIT', label: '审核结果', tone: 'warn' },
+  // 通知类型。码值取自 sql/03_init_data.sql 的 notification_type 字典种子
+  notification_type: [
+    { value: 'SIGNUP', label: '报名结果', tone: 'ok' },
+    { value: 'DURATION', label: '时长审核', tone: 'warn' },
+    { value: 'SYSTEM', label: '系统公告', tone: 'info' },
   ],
 }
 

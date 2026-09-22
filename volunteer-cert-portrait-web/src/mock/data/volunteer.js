@@ -24,7 +24,7 @@ export default [
       const pending = signups.filter(
         (s) => s.status === 'PENDING' && mine.some((a) => a.id === s.activityId),
       ).length
-      const unsigned = attendance.filter((a) => a.status === 'UNSIGNED' || a.status === 'ABSENT').length
+      const unsigned = attendance.filter((a) => a.status === 'NOT_SIGNED' || a.status === 'ABSENT').length
       return ok({
         org,
         stats: [
@@ -275,7 +275,7 @@ export default [
     handler: ({ body }) => {
       const item = attendance.find((a) => a.id === Number(body.attendanceId))
       if (!item) return fail(30011, '签到记录不存在')
-      if (item.status !== 'UNSIGNED' && item.status !== 'ABSENT') {
+      if (item.status !== 'NOT_SIGNED' && item.status !== 'ABSENT') {
         return fail(30012, '当前状态无法签到')
       }
       item.status = 'SIGNED_IN'

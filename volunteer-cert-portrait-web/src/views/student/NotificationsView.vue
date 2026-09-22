@@ -34,7 +34,7 @@ const columns = [
   { key: 'actions', title: '操作', width: '170px', align: 'right' },
 ]
 
-const typeOptions = dict.options('notice_type')
+const typeOptions = dict.options('notification_type')
 
 watch(
   () => query.unreadOnly,
@@ -113,7 +113,7 @@ async function onMarkRead(row) {
         </template>
 
         <template #type="{ row }">
-          <StatusTag type="notice_type" :value="row.type" />
+          <StatusTag type="notification_type" :value="row.type" />
         </template>
 
         <template #date="{ row }">

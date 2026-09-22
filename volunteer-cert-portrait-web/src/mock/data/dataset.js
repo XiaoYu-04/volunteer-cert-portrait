@@ -750,11 +750,11 @@ export const roles = [
 export const notices = [
   { id: 1, title: '关于 2025 年春季学期志愿服务时长认证工作的通知', date: '2025-03-18', from: '校团委', top: true, type: 'SYSTEM', read: false },
   { id: 2, title: '2025 年优秀志愿者评选结果公示', date: '2025-03-15', from: '学生工作处', top: true, type: 'SYSTEM', read: false },
-  { id: 3, title: '志愿服务时长审核规则调整说明', date: '2025-03-11', from: '校团委', top: false, type: 'AUDIT', read: true },
+  { id: 3, title: '志愿服务时长审核规则调整说明', date: '2025-03-11', from: '校团委', top: false, type: 'DURATION', read: true },
   { id: 4, title: '关于新增「环保行动型」公益画像标签的通知', date: '2025-03-06', from: '系统管理员', top: false, type: 'SYSTEM', read: true },
-  { id: 5, title: '校园志愿服务安全培训安排', date: '2025-03-02', from: '青年志愿者协会', top: false, type: 'ACTIVITY', read: true },
-  { id: 6, title: '您报名的「社区敬老院陪伴服务」已通过审核', date: '2025-03-19', from: '青年志愿者协会', top: false, type: 'AUDIT', read: false },
-  { id: 7, title: '3 月志愿服务时长已提交，等待学校审核', date: '2025-03-21', from: '青年志愿者协会', top: false, type: 'AUDIT', read: false },
+  { id: 5, title: '校园志愿服务安全培训安排', date: '2025-03-02', from: '青年志愿者协会', top: false, type: 'SYSTEM', read: true },
+  { id: 6, title: '您报名的「社区敬老院陪伴服务」已通过审核', date: '2025-03-19', from: '青年志愿者协会', top: false, type: 'SIGNUP', read: false },
+  { id: 7, title: '3 月志愿服务时长已提交，等待学校审核', date: '2025-03-21', from: '青年志愿者协会', top: false, type: 'DURATION', read: false },
   { id: 8, title: '关于 2025 年秋季学期志愿服务项目申报的通知', date: '2025-03-08', from: '校团委', top: false, type: 'SYSTEM', read: true },
 ]
 
@@ -864,7 +864,7 @@ export const attendance = signups
       studentNo: s.studentNo,
       college: s.college,
       status,
-      signInAt: status === 'UNSIGNED' || status === 'ABSENT' ? '' : `${s.activityDate} 08:${String(45 + (i % 12)).padStart(2, '0')}:00`,
+      signInAt: status === 'NOT_SIGNED' || status === 'ABSENT' ? '' : `${s.activityDate} 08:${String(45 + (i % 12)).padStart(2, '0')}:00`,
       signOutAt: status === 'SIGNED_OUT' ? `${s.activityDate} 12:${String(5 + (i % 50)).padStart(2, '0')}:00` : '',
       hours: status === 'SIGNED_OUT' ? activities[0].hours : 0,
     }
