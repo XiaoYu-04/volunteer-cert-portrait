@@ -139,20 +139,23 @@ CONSTRAINT uk_dict_type_key UNIQUE (dict_type, dict_key)
 
 ## 五、⚠️ 文档中未定义、需要团队拍板的事项
 
-以下内容在《开发计划与分工.md》《知识库》《选题对话》**三份文档里都没有定义**，
-我没有自行编造（`04_demo_data.sql` 里用到的标签规则已明确标注为**占位规则**）：
+以下内容在《开发计划与分工.md》《知识库》《选题对话》**三份文档里都没有定义**。
+
+> ✅ **已定 2 项**（2026-09-22）：公益等级的档位阈值与公益标签的判定规则已确认并落地，
+> 依据见 `docs/公益等级与标签规则方案.md`。结论：等级采用**演示尺度阈值**
+> （普通 <3 / 一星 3-6 / 二星 6-10 / 三星 10-20 / 四星 20-40 / 五星 ≥40 小时，实际部署需上调）；
+> 标签**新增**「助老服务型」「文化传播型」；类型标签**不设**参与次数下限，
+> 并已改进演示数据为学生预设偏好分类。
 
 | # | 待定项 | 现状 | 影响 |
 |---|---|---|---|
-| 1 | **公益等级的档位与阈值** | 三份文档均无。唯一出现的取值是种子数据里的 `普通志愿者` | `student_info.public_welfare_level` 无法计算，画像页无法展示等级 |
-| 2 | **公益标签的判定规则** | 只有 6 个标签名（热心志愿者 / 长期坚持型 / 社区服务型 / 环保行动型 / 大型活动型 / 校园服务型），无任何判定条件 | `student_profile.tags` 无法生成。注意：6 个标签名里**没有**「助老服务」「文化传播」对应的标签 |
-| 3 | **服务时长如何计算** | 测试项提到「时长重复提交」但无公式。是否取 `签退时间 - 签到时间`？是否受活动预计时长约束？异常签到的时长怎么算？ | 影响 `service_duration.duration` 的生成逻辑 |
-| 4 | **签到/签退的时间窗口** | 无定义。活动开始前多久可签到？结束后多久必须签退？逾期是否自动记缺勤？ | 影响签到接口校验 |
-| 5 | **报名人数上限的并发控制** | `signed_count` 是冗余计数列，与 `activity_signup` 实际条数可能漂移。测试项提到「活动已满继续报名」，但没说怎么防并发超卖 | 影响报名接口。建议用行锁或 `UPDATE ... WHERE signed_count < max_count` 原子更新 |
-| 6 | **审核驳回后如何重新提交** | 测试项提到该场景，但无状态机定义 | 影响 `service_duration` / `activity_signup` 的状态流转 |
-| 7 | **`total_duration` 有两处** | `student_info.total_duration` 与 `student_profile.total_duration` 含义相同、注释相同 | 需明确以哪个为准。**建议以 `student_info` 为准**，`student_profile` 仅作画像快照 |
-| 8 | **时间类型是否用 `timestamptz`** | 现按原脚本用 `TIMESTAMP`（无时区） | 单时区部署无影响；若将来跨时区或服务器时区不一致，`timestamptz` 更安全 |
-| 9 | **逻辑删除与唯一约束的冲突** | `activity_signup` 有 `uk_activity_student(activity_id, student_id)`，同时又有 `deleted` 软删除 | 若"取消报名"用 `deleted=1` 实现，该学生再次报名会撞唯一约束。需二选一：改成部分唯一索引 `UNIQUE (activity_id, student_id) WHERE deleted = 0`，或明确"取消=改 status、复用同一行"。`service_duration.signup_id` 的 UNIQUE 同理 |
+| 1 | **服务时长如何计算** | 测试项提到「时长重复提交」但无公式。是否取 `签退时间 - 签到时间`？是否受活动预计时长约束？异常签到的时长怎么算？ | 影响 `service_duration.duration` 的生成逻辑 |
+| 2 | **签到/签退的时间窗口** | 无定义。活动开始前多久可签到？结束后多久必须签退？逾期是否自动记缺勤？ | 影响签到接口校验 |
+| 3 | **报名人数上限的并发控制** | `signed_count` 是冗余计数列，与 `activity_signup` 实际条数可能漂移。测试项提到「活动已满继续报名」，但没说怎么防并发超卖 | 影响报名接口。建议用行锁或 `UPDATE ... WHERE signed_count < max_count` 原子更新 |
+| 4 | **审核驳回后如何重新提交** | 测试项提到该场景，但无状态机定义 | 影响 `service_duration` / `activity_signup` 的状态流转 |
+| 5 | **`total_duration` 有两处** | `student_info.total_duration` 与 `student_profile.total_duration` 含义相同、注释相同 | 需明确以哪个为准。**建议以 `student_info` 为准**，`student_profile` 仅作画像快照 |
+| 6 | **时间类型是否用 `timestamptz`** | 现按原脚本用 `TIMESTAMP`（无时区） | 单时区部署无影响；若将来跨时区或服务器时区不一致，`timestamptz` 更安全 |
+| 7 | **逻辑删除与唯一约束的冲突** | `activity_signup` 有 `uk_activity_student(activity_id, student_id)`，同时又有 `deleted` 软删除 | 若"取消报名"用 `deleted=1` 实现，该学生再次报名会撞唯一约束。需二选一：改成部分唯一索引 `UNIQUE (activity_id, student_id) WHERE deleted = 0`，或明确"取消=改 status、复用同一行"。`service_duration.signup_id` 的 UNIQUE 同理 |
 
 ## 六、发现的文档问题
 
