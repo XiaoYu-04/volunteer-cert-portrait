@@ -9,13 +9,15 @@
 
 | 部分 | 状态 |
 |---|---|
-| 前端 `volunteer-cert-portrait-web` | ✅ 28 个页面全部完成，可独立运行（走本地模拟数据）；接口层 62 个调用与后端全部对得上，**正在联调（B12）** |
+| 前端 `volunteer-cert-portrait-web` | ✅ 28 个页面全部完成；接口层 62 个调用与后端全部对得上，**联调已完成（B12，2026-09-23 审计通过）**。dev server 代理可配置（`VITE_API_TARGET`，默认 `http://127.0.0.1:8080`） |
 | 后端 `volunteer-cert-portrait-server` | ✅ 基础设施 + **业务模块 6/6 全部落地**（2026-09-23）：`vcp-system`、`vcp-org`、`vcp-volunteer`、`vcp-certification`、`vcp-portrait`、`vcp-analytics`；`mvn package` 11 个模块全过，三个角色实打 20 个接口全部符合预期、日志零异常 |
-| 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本（`01`~`06`） |
-| 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、开发计划与分工、知识库 |
+| 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 + 演示数据放大（`01`~`07`） |
+| 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、ER 图、开发计划与分工、知识库 |
 
-前端已按真实后端契约写好接口层，**把 `.env` 里的 `VITE_USE_MOCK` 改成 `false`** 即可切到真实后端，
+前端已按真实后端契约写好接口层，`.env.development` 的 `VITE_USE_MOCK` 已设为 `false`，直接走真实后端，
 页面代码一行都不用动（开发环境由 Vite 把 `/api` 代理到后端 8080，不重写路径）。
+代理目标默认 `http://127.0.0.1:8080`；要和别人联调时在 `volunteer-cert-portrait-web/.env.local` 里设
+`VITE_API_TARGET=http://<对方机器>:8080` 覆盖即可（`.env.local` 不入库）。
 详见 [前端 README](volunteer-cert-portrait-web/README.md)。
 
 **后端接口现状**：六个业务模块的接口均已可用并实测通过 ——
@@ -27,18 +29,22 @@
 `/api/v1/portraits/*`（公益画像、等级、标签）、
 `/api/v1/analytics/*`（看板 10 个聚合接口）。
 **接口规模**：OpenAPI 共 52 个路径 / 64 个「方法 + 路径」，前端 `src/api/` 的 62 个调用全部能对上，0 缺失。
-**联调前提**：`sql/06_backend_gap_fix2.sql` 必须在库上执行（已执行）。
+**联调前提**：`sql/06_backend_gap_fix2.sql` 与 `sql/07_demo_scale.sql` 必须在库上执行（均已执行）。
+`07` 含 `activity_category.remark` 补列，执行后需**重启后端**，否则分类接口会查不存在的列报错。
 
 ## 下一步待办
 
-1. **与前端联调（B12）**：把前端 `.env` 的 `VITE_USE_MOCK` 改成 `false`，逐页对接口。
-2. **修集成时发现的 4 个问题（B20）**：画像等级色调（B20-3）与标签分布文案「八类」（B20-4）
-   前端侧已于 2026-09-23 改完；剩 `signed_count` 两处口径不一致（B20-1）、
-   `activity_category` 缺 `remark` 列（B20-2）两项属后端侧，尚未修。
-3. **收尾**：接入密码加密（B15，现在 `sys_user.password` 还是明文）、
+1. **收尾**：接入密码加密（B15，现在 `sys_user.password` 还是明文）、
    表结构稳定后开启 Flyway（B14）。
-4. **A 组剩余待定**：A6（时间类型）、A8（演示数据尺度对齐前端）、
-   A9（`sys_user.status` 用码还是标志位）。A12（活动分类口径）已于 2026-09-23 按后端对齐，不再是待定项。
+2. **修剩余的联调遗留**：`signed_count` 两处口径不一致（B20-1，需在「改实现」与
+   「改 `04` 回填口径并重跑」之间二选一，改实现时 `sql/07` 的自检口径要同步改）；
+   操作日志「操作对象」列恒空（B20-6，已在前端止血，根治要给 `@OperationLog` 加 `target` 属性）。
+3. **A 组剩余待定**：A6（时间类型是否改 `timestamptz`）。
+   A8（演示数据尺度）、A9（`sys_user.status` 码值）、A12（活动分类口径）均已拍板并落地，不再是待定项。
+4. **交付物**：论文与答辩材料（D 组）。
+
+> 另：云数据库口令已轮换，另外两位同学需把新口令更新到自己那份 `application-local.yml`
+> （旧口令已失效）。连不上库时先查这里，不是代码问题。
 
 完整清单见 [docs/待办清单.md](docs/待办清单.md)，后端细节见 [docs/后端进展与待办.md](docs/后端进展与待办.md)。
 
@@ -66,13 +72,17 @@ npm run dev
 # 1) 建库建表：按顺序执行 sql/ 下的脚本
 #    01_create_database.sql → 02_schema.sql → 03_init_data.sql
 #    → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
-#    → 06_backend_gap_fix2.sql（必执行）
+#    → 06_backend_gap_fix2.sql（必执行）→ 07_demo_scale.sql（演示数据放大，可选）
 #    注意：05、06 是后端接口的前置依赖，缺了 05 登录接口会直接报错
+#    07 是增量脚本（不重建库、可重复执行），含 activity_category.remark 补列，
+#    执行后需重启后端；它把演示数据放大到 1500 学生 / 386 活动 / 10719 条报名
 
 # 2) 编译并启动（默认端口 8080）
 cd volunteer-cert-portrait-server
 mvn package -DskipTests
 java -jar vcp-boot/target/vcp-boot-1.0.0.jar
+#    提示：后端正在运行时先停掉再 mvn package —— 运行中的进程会锁住
+#    target/vcp-boot-1.0.0.jar，repackage 会报 Unable to rename ... .jar.original
 ```
 
 启动后接口文档在 <http://localhost:8080/doc.html>，可直接在页面上登录调试。
@@ -97,7 +107,7 @@ volunteer-cert-portrait/
 │   ├── vcp-portrait/                # ✅ 公益画像
 │   ├── vcp-analytics/               # ✅ 看板统计
 │   └── vcp-boot/                    # 启动模块，打包为唯一可执行 jar
-├── sql/                             # 建表 + 初始化 + 演示数据 + 补列脚本
+├── sql/                             # 建表 + 初始化 + 演示数据 + 补列 + 演示数据放大脚本
 ├── docs/                            # 待办清单、进展记录、规则方案、开发计划
 │   └── 知识库已确认项目选题与技术背景.md   # 选题与技术选型依据
 └── bug/                             # 前端同学的缺陷笔记
