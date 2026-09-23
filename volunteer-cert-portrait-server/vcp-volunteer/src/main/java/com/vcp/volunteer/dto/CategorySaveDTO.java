@@ -8,10 +8,10 @@ import java.io.Serializable;
 /**
  * 活动分类新增 / 修改请求（POST、PUT /api/v1/categories）。
  *
- * <p><b>remark 收下但不落库</b>：前端分类管理页有「说明」输入框并会提交，
- * 而 {@code activity_category} 表没有对应列（审计见待办 B16），本轮又不允许改 DDL。
- * 因此该字段仅用于兼容请求体，保存后分类列表里的「说明」列会显示为空（前端渲染为「—」）。
- * 后续补列时应在此处接上，不要只改前端。
+ * <p>{@code remark}（说明）自 {@code sql/07_demo_scale.sql} 补列后**已真正落库**。
+ * 历史坑：此前 {@code activity_category} 没有该列，DTO 收下却丢弃，而前端保存后照旧提示
+ * 「保存成功」，用户重填的说明刷新即消失 —— 假成功 + 静默丢数据（审计见待办 B20-2）。
+ * 改动时务必让 DTO / entity / Mapper XML / toVO 四处同时到位，缺一处就会退回「静默丢数据」。
  */
 @Data
 public class CategorySaveDTO implements Serializable {
@@ -25,6 +25,6 @@ public class CategorySaveDTO implements Serializable {
     /** 排序，升序；为空时排到最后 */
     private Integer sort;
 
-    /** 说明，见类注释：当前不落库 */
+    /** 说明；null 表示不修改，空串表示清空 */
     private String remark;
 }

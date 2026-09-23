@@ -1,6 +1,8 @@
 package com.vcp.volunteer.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -31,6 +33,19 @@ public class ActivityCategory extends BaseEntity {
 
     /** 分类编码，如 COMMUNITY */
     private String code;
+
+    /**
+     * 说明。列由 {@code sql/07_demo_scale.sql} 追加（此前只收不落，见 CategorySaveDTO 的历史注释）。
+     *
+     * <p>声明 {@code ALWAYS} 是为了让「清空说明」能真正写库：MyBatis-Plus 默认 NOT_NULL 策略下
+     * {@code updateById} 会跳过 null 字段，用户清空 textarea 后旧值会留在库里。
+     * 代价是**该字段每次更新都会按传入值覆写**（传 null 即清空），与
+     * {@code ServiceDuration.auditRemark} 等同一种取舍。
+     * 本实体的 {@code updateById} 只有 {@code ActivityCategoryServiceImpl.updateCategory} 一处调用，
+     * 故不存在「别处的更新顺手把说明抹掉」的风险；若将来新增调用点需重新评估。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String remark;
 
     /** 排序，升序 */
     private Integer sort;

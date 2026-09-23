@@ -15,6 +15,7 @@
         SELECT c.id,
                c.category_name,
                c.code,
+               c.remark,
                c.sort,
                c.status,
                COALESCE(t.total, 0) AS activity_count

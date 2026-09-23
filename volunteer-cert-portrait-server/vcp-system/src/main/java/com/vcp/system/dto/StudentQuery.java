@@ -7,9 +7,8 @@ import lombok.EqualsAndHashCode;
 /**
  * 学生档案查询条件（GET /api/v1/system/students）。
  *
- * <p>注意 grade 字段：库里 student_info 没有 grade 列（待办 B16），
- * 因此本参数目前收下但不起筛选作用，等扩列后再接上。
- * 保留它是为了让前端不必改动。
+ * <p>grade 已真正参与筛选：列由 {@code sql/06_backend_gap_fix2.sql} 补齐，
+ * 筛选逻辑见 {@code StudentServiceImpl.listStudents}（此前只收下不生效，见待办 B16）。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -21,6 +20,6 @@ public class StudentQuery extends PageQuery {
     /** 学院，全等匹配 */
     private String college;
 
-    /** 年级；库里暂无该列，当前不参与筛选 */
+    /** 年级，全等匹配，如 2022 */
     private String grade;
 }

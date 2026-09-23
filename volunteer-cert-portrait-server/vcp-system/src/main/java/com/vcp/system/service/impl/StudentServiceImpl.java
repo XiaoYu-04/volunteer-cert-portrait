@@ -57,6 +57,10 @@ public class StudentServiceImpl implements StudentService {
             wrapper.eq(StudentInfo::getCollege, condition.getCollege().trim());
         }
 
+        if (hasText(condition.getGrade())) {
+            wrapper.eq(StudentInfo::getGrade, condition.getGrade().trim());
+        }
+
         if (hasText(condition.getKeyword())) {
             String keyword = condition.getKeyword().trim();
             List<Long> matchedUserIds = findUserIdsByName(keyword);
@@ -153,6 +157,7 @@ public class StudentServiceImpl implements StudentService {
         vo.setCollege(student.getCollege());
         vo.setMajor(student.getMajor());
         vo.setClassName(student.getClassName());
+        vo.setGrade(student.getGrade());
         vo.setPhone(user == null ? null : user.getPhone());
         vo.setTotalDuration(student.getTotalDuration());
         vo.setPublicWelfareLevel(student.getPublicWelfareLevel());

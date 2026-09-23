@@ -35,6 +35,6 @@ public class CategoryVO implements Serializable {
     /** 状态码：ACTIVE / DISABLED */
     private String status;
 
-    /** 说明；库里暂无该列，当前恒为空（见 CategorySaveDTO 的说明） */
+    /** 说明；列由 sql/07_demo_scale.sql 追加，已真正落库 */
     private String remark;
 }

@@ -12,8 +12,8 @@ import java.math.BigDecimal;
  * listStudents / getStudent，但没有视图使用），本类是给后续学生管理页与
  * 画像模块预留的接口，字段按前端 mock 的学生对象命名。
  *
- * <p>前端 mock 里还有 gender / grade 两列，库里没有对应列（待办 B16），
- * 因此本类暂不提供，页面若要用需先扩列。
+ * <p>grade 由 {@code sql/06_backend_gap_fix2.sql} 补列后接上（此前记为缺口，见待办 B16）。
+ * mock 里另有 gender 一列，但暂无页面消费，等真有需求再加。
  *
  * <p>phone 与 name 分别来自 sys_user.phone 与 sys_user.real_name，
  * 由 Service 关联查询后填充，不是 student_info 自己的列。
@@ -34,6 +34,9 @@ public class StudentVO implements Serializable {
     private String major;
 
     private String className;
+
+    /** 年级，如 2022 */
+    private String grade;
 
     /** 手机号，取自 sys_user.phone */
     private String phone;

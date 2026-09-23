@@ -21,6 +21,10 @@ public class NotificationCreateDTO implements Serializable {
     @NotBlank(message = "请输入公告标题")
     private String title;
 
+    /** 公告正文。历史坑：此前本 DTO 没有该字段，管理员发公告只能存标题，
+     *  而学生端详情页要渲染 content —— 学生点进公告看不到正文（审计见待办 B20-5）。 */
+    private String content;
+
     /** 通知类型，缺省按 SYSTEM（系统公告）处理 */
     private String type;
 
