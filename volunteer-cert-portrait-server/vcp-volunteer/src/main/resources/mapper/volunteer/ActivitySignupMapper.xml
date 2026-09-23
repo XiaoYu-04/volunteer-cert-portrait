@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcp.volunteer.mapper.ActivitySignupMapper">
+
+    <!--
+      报名列表。
+
+      【数据范围】scopeStudentId / scopeOrgId 由 Service 按登录态传入，与前端传来的
+      studentId / orgId 是两回事：前端那两个参数一律被 Service 清空（见待办 B19），
+      否则学生改一个 studentId 就能读到别人的报名记录。
+
+      【为什么要 JOIN】报名表只有 activity_id 与 student_id，而列表页要显示活动名称、
+      活动日期、学生姓名与学号；姓名在 sys_user.real_name（student_info 上没有），
+      学号与学院在 student_info。逐行查要 N 次往返，这里一次取回。
+      跨域 JOIN 的取舍说明见 VolunteerActivityMapper.xml 顶部。
+
+      【关于 deleted】XML 是原生 SQL，MyBatis-Plus 的逻辑删除不会自动追加，必须手写。
+    -->
+    <select id="selectSignupPage" resultType="com.vcp.volunteer.mapper.row.SignupRow">
+        SELECT s.id,
+               s.activity_id,
+               a.title AS activity_title,
+               a.start_time AS activity_start_time,
+               a.duration AS activity_duration,
+               s.student_id,
+               u.real_name AS student_name,
+               si.student_no,
+               si.college,
+               s.status,
+               s.signup_time,
+               s.reason,
+               s.audit_remark
+        FROM activity_signup s
+        JOIN volunteer_activity a ON a.id = s.activity_id
+        JOIN student_info si ON si.id = s.student_id
+        LEFT JOIN sys_user u ON u.id = si.user_id
+        WHERE s.deleted = 0
+          AND a.deleted = 0
+        <if test="scopeStudentId != null">
+            AND s.student_id = #{scopeStudentId}
+        </if>
+        <if test="scopeOrgId != null">
+            AND a.org_id = #{scopeOrgId}
+        </if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}, '%')
+                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}, '%')
+                 OR a.title ILIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="q.status != null and q.status != ''">
+            AND s.status = #{q.status}
+        </if>
+        <if test="q.activityId != null">
+            AND s.activity_id = #{q.activityId}
+        </if>
+        <if test="q.studentId != null">
+            AND s.student_id = #{q.studentId}
+        </if>
+        <if test="q.college != null and q.college != ''">
+            AND si.college = #{q.college}
+        </if>
+        ORDER BY s.id DESC
+    </select>
+
+    <!--
+      审核上下文：一次取回报名状态、学生账号 id（通知收件人）、活动名称与所属组织。
+      学生账号 id 只能从 student_info.user_id 取 —— 报名表存的是学生档案 id。
+    -->
+    <select id="selectAuditRow" resultType="com.vcp.volunteer.mapper.row.SignupAuditRow">
+        SELECT s.id            AS signup_id,
+               s.status        AS status,
+               s.student_id    AS student_id,
+               si.user_id      AS student_user_id,
+               u.real_name     AS student_name,
+               a.id            AS activity_id,
+               a.title         AS activity_title,
+               a.org_id        AS activity_org_id,
+               o.org_name      AS activity_org_name,
+               a.duration      AS activity_duration
+        FROM activity_signup s
+        JOIN volunteer_activity a ON a.id = s.activity_id
+        JOIN student_info si ON si.id = s.student_id
+        LEFT JOIN sys_user u ON u.id = si.user_id
+        LEFT JOIN org_info o ON o.id = a.org_id
+        WHERE s.deleted = 0
+          AND a.deleted = 0
+          AND s.id = #{signupId}
+    </select>
+</mapper>
