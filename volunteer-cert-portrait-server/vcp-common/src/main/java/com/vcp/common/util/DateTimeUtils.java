@@ -1,5 +1,6 @@
 package com.vcp.common.util;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -39,6 +40,16 @@ public final class DateTimeUtils {
      * @return 格式化结果；入参为 null 时返回 null
      */
     public static String formatDate(LocalDateTime value) {
+        return value == null ? null : DATE.format(value);
+    }
+
+    /**
+     * 格式化纯日期字段，如组织的成立时间。
+     *
+     * @param value 日期，允许为 null
+     * @return 格式化结果；入参为 null 时返回 null
+     */
+    public static String formatDate(LocalDate value) {
         return value == null ? null : DATE.format(value);
     }
 

@@ -57,6 +57,21 @@ public interface NotificationService {
     void create(NotificationCreateDTO dto);
 
     /**
+     * 给单个用户发送系统通知。
+     *
+     * <p>组织资质审核等业务只需要通知一个负责人，不适合复用“群发公告”的接口；
+     * 该方法只负责落一行通知，不进入 Controller。
+     *
+     * @param userId  收件人 id
+     * @param title   通知标题
+     * @param content 通知正文，允许为空
+     * @param type    通知类型，空值按 SYSTEM 处理
+     * @param source  通知来源，空值按「系统管理员」处理
+     * @throws com.vcp.common.exception.BusinessException userId 为空或标题为空（10001）
+     */
+    void createForUser(Long userId, String title, String content, String type, String source);
+
+    /**
      * 删除公告：按批次号整批删除，没有批次号时只删这一行。
      *
      * @param id 通知 id

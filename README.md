@@ -10,17 +10,28 @@
 | 部分 | 状态 |
 |---|---|
 | 前端 `volunteer-cert-portrait-web` | ✅ 已完成，28 个页面，可独立运行（走本地模拟数据） |
-| 后端 `volunteer-cert-portrait-server` | 🟡 基础设施已完成；业务模块完成 **1/6**（`vcp-system` 已端到端跑通） |
+| 后端 `volunteer-cert-portrait-server` | 🟡 基础设施已完成；业务模块完成 **2/6**（`vcp-system`、`vcp-org` 已端到端跑通） |
 | 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 |
 | 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、开发计划与分工 |
 
 前端已按真实后端契约写好接口层，**把 `.env` 里的 `VITE_USE_MOCK` 改成 `false`** 即可切到真实后端，
 页面代码一行都不用动。详见 [前端 README](volunteer-cert-portrait-web/README.md)。
 
-**后端接口现状**：`/api/v1/auth/*`（登录、注册、退出、查改本人资料）与
-`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）已可用，实测通过 42 项端到端断言；
-`vcp-org` / `vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`
-五个模块尚未开始，对应页面还连不上真实数据。进度以 [待办清单](docs/待办清单.md) 为准。
+**后端接口现状**：`/api/v1/auth/*`（登录、注册、退出、查改本人资料）、
+`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）与
+`/api/v1/orgs/*`（组织列表、详情、资料维护、资质审核、启停）已可用并实测通过；
+`vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`
+四个模块尚未开始，对应页面还连不上真实数据。进度以 [待办清单](docs/待办清单.md) 为准。
+
+## 下一步待办（后端优先）
+
+1. **拍板 A1 服务时长计算规则**：签退减签到、是否受活动预计时长约束、异常签到如何折算；阻塞 `vcp-certification`。
+2. **拍板 A2 签到签退时间窗口**：开始前多久可签到、结束后多久必须签退、逾期是否记缺勤；阻塞 `vcp-volunteer` 签到接口。
+3. **拍板 A3 报名并发控制**：用数据库行锁或 `UPDATE ... WHERE signed_count < max_count` 原子更新，防止名额超卖；阻塞 `vcp-volunteer` 报名接口。
+4. **实现 B8 `vcp-volunteer`**：活动分类、活动发布、报名审核、签到签退；前置依赖 A2、A3。
+5. **实现 B9 `vcp-certification`**：时长提交与学校审核；前置依赖 A1。
+
+完整清单见 [docs/待办清单.md](docs/待办清单.md)，后端细节见 [docs/后端进展与待办.md](docs/后端进展与待办.md)。
 
 ## 快速开始（前端）
 
@@ -66,7 +77,7 @@ volunteer-cert-portrait/
 │   ├── vcp-common/                  # 统一返回、分页、枚举、异常、工具
 │   ├── vcp-framework/               # Sa-Token、全局异常、MyBatis-Plus、操作日志切面
 │   ├── vcp-system/                  # ✅ 用户 / 角色 / 字典 / 学生档案 / 通知 / 操作日志
-│   ├── vcp-org/                     # ⬜ 组织信息 + 资质审核
+│   ├── vcp-org/                     # ✅ 组织信息 + 资质审核
 │   ├── vcp-volunteer/               # ⬜ 活动 / 报名 / 签到签退
 │   ├── vcp-certification/           # ⬜ 服务时长提交与审核
 │   ├── vcp-portrait/                # ⬜ 公益画像

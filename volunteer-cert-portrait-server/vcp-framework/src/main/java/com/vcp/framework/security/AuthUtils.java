@@ -77,6 +77,17 @@ public final class AuthUtils {
     }
 
     /**
+     * 取当前组织管理员所属的组织 id。
+     *
+     * @return 组织 id；学生、学校管理员或会话缺失时为 null
+     * @throws BusinessException 未登录时抛出，错误码 {@link ErrorCodeEnum#AUTH_FAILED}
+     */
+    public static Long getOrgId() {
+        Object orgId = getSessionAttribute(SESSION_KEY_ORG_ID);
+        return orgId == null ? null : Long.valueOf(orgId.toString());
+    }
+
+    /**
      * 当前登录用户是否为学生。
      *
      * @return 角色码为 STUDENT 时返回 true

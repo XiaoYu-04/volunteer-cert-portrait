@@ -158,7 +158,29 @@ CREATE INDEX IF NOT EXISTS idx_operation_log_module ON operation_log (module);
 CREATE INDEX IF NOT EXISTS idx_operation_log_create_time ON operation_log (create_time DESC);
 
 -- -------------------------------------------------------------
--- 六、回填已有数据
+-- 六、org_info 补组织档案字段（B16）
+-- -------------------------------------------------------------
+-- 组织管理页与组织档案页需要编码、挂靠学院、成员人数、成立时间；
+-- 审核驳回理由前端会提交，但原表无处保存。
+ALTER TABLE org_info ADD COLUMN IF NOT EXISTS code         VARCHAR(50);
+ALTER TABLE org_info ADD COLUMN IF NOT EXISTS college      VARCHAR(100);
+ALTER TABLE org_info ADD COLUMN IF NOT EXISTS member_count INTEGER DEFAULT 0;
+ALTER TABLE org_info ADD COLUMN IF NOT EXISTS founded_at   DATE;
+ALTER TABLE org_info ADD COLUMN IF NOT EXISTS audit_remark TEXT;
+
+COMMENT ON COLUMN org_info.code         IS '组织编码，前端组织管理页展示';
+COMMENT ON COLUMN org_info.college      IS '挂靠学院';
+COMMENT ON COLUMN org_info.member_count IS '成员人数';
+COMMENT ON COLUMN org_info.founded_at   IS '成立时间';
+COMMENT ON COLUMN org_info.audit_remark IS '资质审核备注；驳回时必填';
+
+CREATE INDEX IF NOT EXISTS idx_org_info_status_deleted ON org_info (status, deleted);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_org_info_contact_user
+    ON org_info (contact_user_id)
+    WHERE contact_user_id IS NOT NULL AND deleted = 0;
+
+-- -------------------------------------------------------------
+-- 七、回填已有数据
 -- -------------------------------------------------------------
 UPDATE operation_log
    SET module = '认证', action = '初始化数据', result = 'SUCCESS'
@@ -168,7 +190,7 @@ UPDATE notification SET source = '系统管理员' WHERE source IS NULL;
 UPDATE notification SET is_top = FALSE      WHERE is_top IS NULL;
 
 -- -------------------------------------------------------------
--- 七、自检：确认所有列都已就位
+-- 八、自检：确认所有列都已就位
 -- -------------------------------------------------------------
 SELECT 'sys_dict.tone' AS item, COUNT(*) AS ok FROM information_schema.columns WHERE table_name = 'sys_dict' AND column_name = 'tone'
 UNION ALL
@@ -184,6 +206,16 @@ SELECT 'operation_log.module', COUNT(*) FROM information_schema.columns WHERE ta
 UNION ALL
 SELECT 'operation_log.result', COUNT(*) FROM information_schema.columns WHERE table_name = 'operation_log' AND column_name = 'result'
 UNION ALL
+SELECT 'org_info.code', COUNT(*) FROM information_schema.columns WHERE table_name = 'org_info' AND column_name = 'code'
+UNION ALL
+SELECT 'org_info.college', COUNT(*) FROM information_schema.columns WHERE table_name = 'org_info' AND column_name = 'college'
+UNION ALL
+SELECT 'org_info.member_count', COUNT(*) FROM information_schema.columns WHERE table_name = 'org_info' AND column_name = 'member_count'
+UNION ALL
+SELECT 'org_info.founded_at', COUNT(*) FROM information_schema.columns WHERE table_name = 'org_info' AND column_name = 'founded_at'
+UNION ALL
+SELECT 'org_info.audit_remark', COUNT(*) FROM information_schema.columns WHERE table_name = 'org_info' AND column_name = 'audit_remark'
+UNION ALL
 SELECT 'sys_dict.user_status 种子', COUNT(*) FROM sys_dict WHERE dict_type = 'user_status';
 
--- 期望：前 7 行 ok = 1，最后一行 ok = 2
+-- 期望：前 12 行 ok = 1，最后一行 ok = 2
