@@ -53,7 +53,9 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_d
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
 ```
 
-数据库连接信息见 `vcp-boot/src/main/resources/application.yml`。
+数据库连接信息见 `vcp-boot/src/main/resources/application.yml`；口令等本地覆盖放在
+`volunteer-cert-portrait-server/vcp-boot/src/main/resources/application-local.yml`
+（已 gitignore，模板见同目录 `application-local.yml.example`），仓库内文件不含任何密钥。
 默认账号：`admin` / `org_admin` / `student`（密码均为 `123456`，明文，接入加密后须替换）。
 
 ## 后端模块结构
@@ -209,17 +211,25 @@ vcp-dependencies  独立 BOM
 
 ## 当前进度
 
-**已完成**：后端工程可构建可启动；数据库 16 张表已建成并验证
-（`sql/` 脚本在 PostgreSQL 18.6 实跑，20 项一致性自检全为 0）；接口文档可用。
-`vcp-system` 与 `vcp-org` 已落地并端到端跑通。
+**已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
+（`sql/` 脚本在 PostgreSQL 18.6 实跑，**20 项一致性自检全部为 0**）；
+接口文档可用。**6 个业务模块全部落地**（2026-09-23）：`vcp-system` / `vcp-org` /
+`vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`，三个角色实打
+20 个接口全部符合预期、日志零异常。OpenAPI 共 52 个路径 / 64 个「方法 + 路径」，
+前端 28 个页面与 `src/api/` 的 62 个调用已与后端契约对齐，0 缺失。
 
-**未完成**：`vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`
-尚未开始。后端仍是当前项目的瓶颈 —— 前端页面已完成。
+**未完成 / 下一步**：主线是**与前端联调（B12）** —— 前端 `.env` 的 `VITE_USE_MOCK` 置为
+`false` 后逐页对接口（开发环境由 Vite 把 `/api` 代理到 8080，不重写路径）。收尾项：
+密码加密（B15）、Flyway（B14）、文件上传（C9）。集成时发现的 4 个问题里，前端侧 2 项
+（B20-3 画像等级色调、B20-4 标签「八类」）已改完，剩后端侧 2 项（B20-1 `signed_count` 口径、
+B20-2 `activity_category` 缺 `remark` 列）。
 
-**待办**：总入口见 `docs/待办清单.md`。A 组最卡的是"服务时长如何计算"（A1）与
-"签到签退时间窗口"（A2）；下一步按 B8 落地 `vcp-volunteer`，但需先定 A2、A3。
+**待办**：总入口见 `docs/待办清单.md`。A1–A5、A7 已拍板并写进代码；仍未拍板的是
+A6（时间类型）、A8（演示数据尺度）、A9（`sys_user.status` 类型）。
 
-> ⚠️ 另有**公开仓库含明文数据库凭证**的问题，见 `docs/待办清单.md` 开头的警示块，需尽快处理。
+> ✅ 2026-09-23 **公开仓库凭证事件已闭环**：云数据库口令已轮换（旧口令实测被服务端拒绝），
+> 含明文口令的会话存档已从仓库删除并推送（提交 `f556683`）。只剩「通知另外两位同学
+> 更新本地 `application-local.yml`」；清理 git 历史建议推迟到答辩之后。
 
 ## 重要参考文档
 
