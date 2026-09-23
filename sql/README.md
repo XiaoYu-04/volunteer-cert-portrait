@@ -16,12 +16,35 @@
 | 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | 可选（开发与答辩演示用） |
 | 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖） |
 | 6 | `06_backend_gap_fix2.sql` | 后端联调补列（第二批）：活动报名截止/联系方式、报名理由、分类编码、学生性别年级、时长证明与所属组织，并补齐签到聚合与外键列索引 | 必需（后端接口依赖） |
+| 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选 |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
-先跑 `02`，再依次跑 `03`、`04`。
+先跑 `02`，再依次跑 `03`、`04`；想要放大到答辩规模，在 `04` 之后再跑 `07`。
 
 `05`、`06` 是**纯增量、可重复执行**的补列脚本：已有库（含已导入演示数据的库）直接按序号接着执行即可，
 不必重跑 `02`；重跑也不会改坏数据（只建缺失的列/索引，回填只填 NULL 行）。
+
+`07_demo_scale.sql` 是**演示数据放大**脚本（增量，可选，仅供开发调试与答辩演示），性质与 `05`、`06` 相同：
+**纯增量、可重复执行**，**前置条件是先跑完 `01` → `06`**。
+
+- **不重建库，`04` 的规模参数保持不动**：`04` 仍是「干净起步」的基线（8 组织 / 20 活动 / 31 学生 / 149 条报名），
+  `07` 只在其之上做增量放大，已在联调的后端不需要重建数据库。
+- **可重复执行**：整体包在一个事务里，各节都带「还不够才补」的守卫；活动数已 ≥ 386 即视为放大过、整体跳过，
+  中途失败则整批回滚，不会留下半套数据。
+- **含一处补列**：`ALTER TABLE activity_category ADD COLUMN IF NOT EXISTS remark VARCHAR(255)` ——
+  所以跑完 `07` **必须重启后端**，否则分类接口会查这个不存在的列而报错。
+- **执行后应达到的规模**：组织 8 个（不变）、活动 386 场、学生约 1500 人、报名约 1 万条。
+  实测（2026-09-24 实跑，脚本末尾 6 项自检全部通过）：学生 **1500** 人、活动 **386** 场、报名 **10719** 条、
+  累计时长 **19319.3** 小时；六档等级齐全（普通 118 / 一星 168 / 二星 299 / 三星 687 / 四星 207 / 五星 21）；
+  演示账号 `student`（学生档案 id=1）22.6 小时、四星志愿者、9 场活动、3 个画像标签。
+- **顺带回填了一直为空的字段**：`org_info` 的 `code` / `college` / `founded_at` / `member_count`、
+  `activity_signup.reason`、`activity_category.remark`；新增学生账号自 `stu100001` 起（6 位序号，与 `04` 的 `stu0001`~`stu0030` 不冲突）。
+
+> ⚠️ 这个脚本**不是「一次跑通」的**：首次实跑暴露了 3 个缺陷并已修复 ——
+> ① 第 108 行 `date + bigint` 缺 `::int`（PostgreSQL 没有这个运算符）；
+> ② 每场报名上限 8..39 会让「五星志愿者（≥40 小时）」一档恒为空、末尾自检失败，已改为 16..45；
+> ③ 新增「十之二」节定向给高活跃学生补记录，否则 40 小时以上无人能达到。
+> 另外第十节与第十之二节原先缺 `should_scale` 幂等守卫，已补。（脚本由 `0a668d7` 新增，缺陷修复与实跑见 `1138eaa`。）
 
 ## 二、执行方式
 
@@ -33,12 +56,13 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_d
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backend_gap_fix2.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
 ```
 
 ```bash
 # 方式二：一次跑完
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
-cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql \
+cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql 07_demo_scale.sql \
   | psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait
 ```
 
