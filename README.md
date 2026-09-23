@@ -10,26 +10,32 @@
 | 部分 | 状态 |
 |---|---|
 | 前端 `volunteer-cert-portrait-web` | ✅ 已完成，28 个页面，可独立运行（走本地模拟数据） |
-| 后端 `volunteer-cert-portrait-server` | 🟡 基础设施已完成；业务模块完成 **2/6**（`vcp-system`、`vcp-org` 已端到端跑通） |
+| 后端 `volunteer-cert-portrait-server` | ✅ 基础设施 + **业务模块 6/6 全部落地**（2026-09-23）：`vcp-system`、`vcp-org`、`vcp-volunteer`、`vcp-certification`、`vcp-portrait`、`vcp-analytics`；`mvn package` 11 个模块全过，实打 20 个接口 19 个通过 |
 | 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 |
 | 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、开发计划与分工 |
 
 前端已按真实后端契约写好接口层，**把 `.env` 里的 `VITE_USE_MOCK` 改成 `false`** 即可切到真实后端，
 页面代码一行都不用动。详见 [前端 README](volunteer-cert-portrait-web/README.md)。
 
-**后端接口现状**：`/api/v1/auth/*`（登录、注册、退出、查改本人资料）、
-`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）与
-`/api/v1/orgs/*`（组织列表、详情、资料维护、资质审核、启停）已可用并实测通过；
-`vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`
-四个模块尚未开始，对应页面还连不上真实数据。进度以 [待办清单](docs/待办清单.md) 为准。
+**后端接口现状**：六个业务模块的接口均已可用并实测通过 ——
+`/api/v1/auth/*`（登录、注册、退出、查改本人资料）、
+`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）、
+`/api/v1/orgs/*`（组织列表、详情、资料维护、资质审核、启停）、
+`/api/v1/activities|categories|signups|attendance`（活动、分类、报名、签到签退）、
+`/api/v1/durations|duration-audits`（时长提交与审核）、
+`/api/v1/portraits/*`（公益画像、等级、标签）、
+`/api/v1/analytics/*`（看板 10 个聚合接口）。
+**联调前提**：`sql/06_backend_gap_fix2.sql` 必须在库上执行（已执行）。
 
-## 下一步待办（后端优先）
+## 下一步待办
 
-1. **拍板 A1 服务时长计算规则**：签退减签到、是否受活动预计时长约束、异常签到如何折算；阻塞 `vcp-certification`。
-2. **拍板 A2 签到签退时间窗口**：开始前多久可签到、结束后多久必须签退、逾期是否记缺勤；阻塞 `vcp-volunteer` 签到接口。
-3. **拍板 A3 报名并发控制**：用数据库行锁或 `UPDATE ... WHERE signed_count < max_count` 原子更新，防止名额超卖；阻塞 `vcp-volunteer` 报名接口。
-4. **实现 B8 `vcp-volunteer`**：活动分类、活动发布、报名审核、签到签退；前置依赖 A2、A3。
-5. **实现 B9 `vcp-certification`**：时长提交与学校审核；前置依赖 A1。
+1. **与前端联调（B12）**：把前端 `.env` 的 `VITE_USE_MOCK` 改成 `false`，逐页对接口。
+2. **修集成时发现的 4 个问题（B20）**：`signed_count` 两处口径不一致、
+   `activity_category` 缺 `remark` 列、画像等级色调键不匹配、标签分布文案写死「六类」。
+3. **收尾**：接入密码加密（B15，现在 `sys_user.password` 还是明文）、
+   表结构稳定后开启 Flyway（B14）。
+4. **A 组剩余待定**：A6（时间类型）、A8（演示数据尺度对齐前端）、
+   A9（`sys_user.status` 用码还是标志位）、A12（活动分类前后端名称与顺序不一致）。
 
 完整清单见 [docs/待办清单.md](docs/待办清单.md)，后端细节见 [docs/后端进展与待办.md](docs/后端进展与待办.md)。
 
@@ -78,10 +84,10 @@ volunteer-cert-portrait/
 │   ├── vcp-framework/               # Sa-Token、全局异常、MyBatis-Plus、操作日志切面
 │   ├── vcp-system/                  # ✅ 用户 / 角色 / 字典 / 学生档案 / 通知 / 操作日志
 │   ├── vcp-org/                     # ✅ 组织信息 + 资质审核
-│   ├── vcp-volunteer/               # ⬜ 活动 / 报名 / 签到签退
-│   ├── vcp-certification/           # ⬜ 服务时长提交与审核
-│   ├── vcp-portrait/                # ⬜ 公益画像
-│   ├── vcp-analytics/               # ⬜ 看板统计
+│   ├── vcp-volunteer/               # ✅ 活动 / 报名 / 签到签退
+│   ├── vcp-certification/           # ✅ 服务时长提交与审核
+│   ├── vcp-portrait/                # ✅ 公益画像
+│   ├── vcp-analytics/               # ✅ 看板统计
 │   └── vcp-boot/                    # 启动模块，打包为唯一可执行 jar
 ├── sql/                             # 建表 + 初始化 + 演示数据 + 补列脚本
 ├── docs/                            # 待办清单、进展记录、规则方案、开发计划
