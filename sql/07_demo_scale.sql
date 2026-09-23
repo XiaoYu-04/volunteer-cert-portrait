@@ -105,7 +105,7 @@ SET code = COALESCE(NULLIF(code, ''), 'ORG' || lpad(id::text, 3, '0')),
                        (ARRAY['计算机学院','电子信息学院','经济管理学院',
                               '外国语学院','机械工程学院'])[1 + ((id - 1) % 5)]),
     -- 成立时间落在 2015-01-01 起 8 年内，按 id 确定性取值
-    founded_at = COALESCE(founded_at, DATE '2015-01-01' + ((id * 137) % 2920)),
+    founded_at = COALESCE(founded_at, DATE '2015-01-01' + (((id * 137) % 2920)::int)),
     member_count = CASE
                      WHEN member_count IS NULL OR member_count = 0
                        THEN 60 + ((id * 37) % 240)
@@ -374,8 +374,11 @@ CROSS JOIN LATERAL (
     FROM student_info si
     WHERE si.deleted = 0
     ORDER BY md5(si.id::text || ':' || a.id::text)
-    -- 每场 8..39 人（上限 39 与名额下限 40 配合，见第四节的说明）
-    LIMIT 8 + ((a.id * 7919) % 32)
+    -- 每场 16..45 人。上限 45 的来历：已结束活动约 85% 的报名会变成 COMPLETED，
+    -- 45 × 0.85 = 38.25 < 名额下限 40，仍满足末尾自检第 4 项。
+    -- 原为 8..39：人均只参与 5.5 场、最高 9 场 ≈ 37 小时，六档等级里
+    -- 「五星志愿者（≥40 小时）」一档恒为空，末尾自检第 3 项直接失败。
+    LIMIT 16 + ((a.id * 7919) % 30)
 ) s
 WHERE a.status IN ('CLOSED', 'PUBLISHED');
 
@@ -529,6 +532,8 @@ WHERE a.status = 'CLOSED'
   -- 04 给演示学生留了 3 条报名（1 条 REJECTED 在已结束活动上），必须避开。
   AND NOT EXISTS (SELECT 1 FROM activity_signup sg
                   WHERE sg.activity_id = a.id AND sg.student_id = 1)
+  -- 与全脚本同一个开关：已放大过就不再补，保证重复执行幂等
+  AND (SELECT should_scale FROM _run_guard)
 ORDER BY md5('demo-student-1:' || a.id::text)
 LIMIT 6;
 
@@ -586,6 +591,107 @@ WHERE sd.student_id = 1 AND sd.status = 'APPROVED'
   AND NOT EXISTS (SELECT 1 FROM duration_audit da
                   WHERE da.duration_id = sd.id AND da.action = 'APPROVE');
 
+-- =============================================================
+-- 十之二、把「高活跃学生」定向补进五星档（≥40 小时）
+--
+-- 为什么必须定向补，而不能靠调大每场报名人数：
+--   一次报名要过三层折算才会变成一条有效时长 ——
+--     85%（已结束活动的 COMPLETED）× 90%（非缺勤）× 75%（时长审核通过）≈ 57%，
+--   每条有效时长约 4 小时。于是人均 7 次报名 ≈ 12.6 小时；
+--   而 40 小时需要约 10 条有效时长 ≈ 18 次报名。
+--   若把每场报名人数上调到人均 18 次，总报名数会冲到 3 万条
+--   （前端原型只有 12,480），得不偿失。
+--
+-- 所以这里对「已攒到 32..40 小时」的学生定向补 4 场已结束活动，
+-- 使其稳定跨过 40 小时。做法与第十节给演示账号补记录完全一致。
+--
+-- 两条护栏：
+--   1) 补的活动必须有剩余名额 —— 已报名数 ≤ 28 才选（28 + 4 = 32 条报名，
+--      按 85% 折算约 27 条 COMPLETED，仍远低于名额下限 40，自检第 4 项安全）。
+--   2) 避开该学生已有报名的活动 —— activity_signup 上有 uk_activity_student，
+--      同一学生对同一活动只能有一行，撞上会整批回滚。
+-- =============================================================
+CREATE TEMP TABLE _star_boost ON COMMIT DROP AS
+SELECT c.student_id, a.id AS activity_id, a.org_id, a.start_time, a.end_time, a.duration
+FROM (
+    SELECT si.id AS student_id
+    FROM student_info si
+    CROSS JOIN _run_guard rg
+    WHERE rg.should_scale
+      AND si.deleted = 0
+      AND COALESCE((SELECT SUM(sd.duration) FROM service_duration sd
+                    WHERE sd.student_id = si.id AND sd.status = 'APPROVED'), 0)
+          >= 32
+      AND COALESCE((SELECT SUM(sd.duration) FROM service_duration sd
+                    WHERE sd.student_id = si.id AND sd.status = 'APPROVED'), 0)
+          < 40
+    ORDER BY md5('star-boost:' || si.id::text)
+    LIMIT 50
+) c
+CROSS JOIN LATERAL (
+    SELECT va.id, va.org_id, va.start_time, va.end_time, va.duration
+    FROM volunteer_activity va
+    WHERE va.status = 'CLOSED'
+      -- 只挑时长 >= 4 小时的活动：4 场至少 +15 小时，保证 32..40 的人必然跨过 40
+      AND va.duration >= 4
+      AND (SELECT COUNT(*) FROM activity_signup sg3
+           WHERE sg3.activity_id = va.id AND sg3.deleted = 0) <= 28
+      AND NOT EXISTS (SELECT 1 FROM activity_signup sg
+                      WHERE sg.activity_id = va.id AND sg.student_id = c.student_id)
+    ORDER BY md5('star-boost:' || c.student_id::text || ':' || va.id::text)
+    LIMIT 4
+) a;
+
+INSERT INTO activity_signup (activity_id, student_id, signup_time, status,
+                            audit_user_id, audit_time, reason)
+SELECT b.activity_id, b.student_id,
+       b.start_time - INTERVAL '3 days',
+       'COMPLETED',
+       o.contact_user_id,
+       LEAST(b.start_time - INTERVAL '12 hours', CURRENT_TIMESTAMP),
+       '希望通过志愿服务积累社会实践经验，也为社区出一份力。'
+FROM _star_boost b
+JOIN org_info o ON o.id = b.org_id
+WHERE NOT EXISTS (SELECT 1 FROM activity_signup sg
+                  WHERE sg.activity_id = b.activity_id AND sg.student_id = b.student_id);
+
+INSERT INTO attendance_record (signup_id, sign_in_time, sign_out_time, status, remark)
+SELECT sg.id, b.start_time + INTERVAL '10 minutes', b.end_time, 'SIGNED_OUT', '正常签到签退'
+FROM activity_signup sg
+JOIN _star_boost b ON b.activity_id = sg.activity_id AND b.student_id = sg.student_id
+WHERE NOT EXISTS (SELECT 1 FROM attendance_record ar WHERE ar.signup_id = sg.id);
+
+INSERT INTO service_duration (signup_id, activity_id, student_id, duration, status,
+                              submit_time, audit_user_id, audit_time, org_id, activity_type)
+SELECT sg.id, b.activity_id, b.student_id,
+       ROUND((b.duration - (10.0 / 60.0))::numeric, 1),
+       'APPROVED',
+       b.end_time + INTERVAL '1 day',
+       (SELECT id FROM sys_user WHERE username = 'admin'),
+       b.end_time + INTERVAL '2 days',
+       b.org_id,
+       (SELECT ac.category_name FROM activity_category ac
+        JOIN volunteer_activity va ON va.category_id = ac.id WHERE va.id = b.activity_id)
+FROM activity_signup sg
+JOIN _star_boost b ON b.activity_id = sg.activity_id AND b.student_id = sg.student_id
+WHERE NOT EXISTS (SELECT 1 FROM service_duration sd WHERE sd.signup_id = sg.id);
+
+INSERT INTO duration_audit (duration_id, auditor_id, action, remark)
+SELECT sd.id, o.contact_user_id, 'SUBMIT', '活动已结束，提交本活动服务时长'
+FROM service_duration sd
+JOIN volunteer_activity a ON a.id = sd.activity_id
+JOIN org_info o ON o.id = a.org_id
+JOIN _star_boost b ON b.activity_id = sd.activity_id AND b.student_id = sd.student_id
+WHERE NOT EXISTS (SELECT 1 FROM duration_audit da
+                  WHERE da.duration_id = sd.id AND da.action = 'SUBMIT');
+
+INSERT INTO duration_audit (duration_id, auditor_id, action, remark)
+SELECT sd.id, (SELECT id FROM sys_user WHERE username = 'admin'), 'APPROVE', NULL
+FROM service_duration sd
+JOIN _star_boost b ON b.activity_id = sd.activity_id AND b.student_id = sd.student_id
+WHERE sd.status = 'APPROVED'
+  AND NOT EXISTS (SELECT 1 FROM duration_audit da
+                  WHERE da.duration_id = sd.id AND da.action = 'APPROVE');
 -- =============================================================
 -- 十一、重跑聚合回填
 --
