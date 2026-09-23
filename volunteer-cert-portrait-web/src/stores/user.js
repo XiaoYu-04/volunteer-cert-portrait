@@ -57,7 +57,7 @@ export const ROLE_HOME = {
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: getToken(),
-    /** { id, username, name, role, roleLabel, orgId, studentId, college, avatarText } */
+    /** { id, username, name, role, roleLabel, orgId, studentId, college, studentNo, phone, email, avatarText } */
     info: null,
   }),
 

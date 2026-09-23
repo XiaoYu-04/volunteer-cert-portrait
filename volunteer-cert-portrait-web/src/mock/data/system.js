@@ -155,6 +155,8 @@ export default [
       notices.unshift({
         id: nextId(notices),
         title: body.title,
+        // 正文：与后端 NotificationCreateDTO.content 对应，学生端详情页会渲染它
+        content: body.content || '',
         date: now().slice(0, 10),
         from: body.from || '系统管理员',
         top: !!body.top,

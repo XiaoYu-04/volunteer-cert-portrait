@@ -20,6 +20,9 @@ function toSession(user) {
     studentId: user.studentId || null,
     college: student ? student.college : null,
     studentNo: student ? student.studentNo : null,
+    // 联系方式：与后端 SessionVO 一致，个人资料页要用它回显
+    phone: user.phone || '',
+    email: user.email || '',
     avatarText: user.name.slice(-2),
   }
 }

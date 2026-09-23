@@ -784,16 +784,22 @@ export const roles = [
   },
 ]
 
-/** 通知公告（前 5 条为原型原数据） */
+/**
+ * 通知公告（前 5 条为原型原数据）。
+ *
+ * content 是公告正文，与后端 notification.content / NotificationCreateDTO.content 对应，
+ * 学生端 NotificationDetailView 会渲染它。审核结果类通知（SIGNUP / DURATION）的正文
+ * 由后端按模板拼，这里给种子数据也补上，免得 mock 模式下详情页比真实后端少一块。
+ */
 export const notices = [
-  { id: 1, title: '关于 2025 年春季学期志愿服务时长认证工作的通知', date: '2025-03-18', from: '校团委', top: true, type: 'SYSTEM', read: false },
-  { id: 2, title: '2025 年优秀志愿者评选结果公示', date: '2025-03-15', from: '学生工作处', top: true, type: 'SYSTEM', read: false },
-  { id: 3, title: '志愿服务时长审核规则调整说明', date: '2025-03-11', from: '校团委', top: false, type: 'DURATION', read: true },
-  { id: 4, title: '关于新增「环保行动型」公益画像标签的通知', date: '2025-03-06', from: '系统管理员', top: false, type: 'SYSTEM', read: true },
-  { id: 5, title: '校园志愿服务安全培训安排', date: '2025-03-02', from: '青年志愿者协会', top: false, type: 'SYSTEM', read: true },
-  { id: 6, title: '您报名的「社区敬老院陪伴服务」已通过审核', date: '2025-03-19', from: '青年志愿者协会', top: false, type: 'SIGNUP', read: false },
-  { id: 7, title: '3 月志愿服务时长已提交，等待学校审核', date: '2025-03-21', from: '青年志愿者协会', top: false, type: 'DURATION', read: false },
-  { id: 8, title: '关于 2025 年秋季学期志愿服务项目申报的通知', date: '2025-03-08', from: '校团委', top: false, type: 'SYSTEM', read: true },
+  { id: 1, title: '关于本学期志愿服务时长认证工作的通知', content: '各位同学：\n本学期志愿服务时长认证工作现已启动，请于 3 月 31 日前在「我的时长」中核对本人记录。如有遗漏，请联系所属志愿组织补录。', date: '2025-03-18', from: '校团委', top: true, type: 'SYSTEM', read: false },
+  { id: 2, title: '优秀志愿者评选结果公示', content: '经各组织推荐与学校审核，本学年优秀志愿者评选结果已产生，公示期 5 个工作日。如有异议，请向学生工作处反映。', date: '2025-03-15', from: '学生工作处', top: true, type: 'SYSTEM', read: false },
+  { id: 3, title: '志愿服务时长审核规则调整说明', content: '自本学期起，服务时长以签到签退时间差为准；缺签退或签到状态异常时按活动预计时长计，且不超过预计时长的 1.5 倍。', date: '2025-03-11', from: '校团委', top: false, type: 'DURATION', read: true },
+  { id: 4, title: '关于新增「环保行动型」公益画像标签的通知', content: '公益画像标签体系新增「环保行动型」等类别，已参与环保类活动的同学将自动获得对应标签。', date: '2025-03-06', from: '系统管理员', top: false, type: 'SYSTEM', read: true },
+  { id: 5, title: '校园志愿服务安全培训安排', content: '请本学期参与校外志愿服务的同学于 3 月 10 日前完成线上安全培训并提交回执。', date: '2025-03-02', from: '青年志愿者协会', top: false, type: 'SYSTEM', read: true },
+  { id: 6, title: '您报名的「社区敬老院陪伴服务」已通过审核', content: '您报名的活动已通过组织管理员审核，请按活动时间地点准时参加，并在开始前 30 分钟内完成签到。', date: '2025-03-19', from: '青年志愿者协会', top: false, type: 'SIGNUP', read: false },
+  { id: 7, title: '志愿服务时长已提交，等待学校审核', content: '您参与活动的服务时长已由组织管理员提交，等待学校管理员审核，通过后将计入累计时长。', date: '2025-03-21', from: '青年志愿者协会', top: false, type: 'DURATION', read: false },
+  { id: 8, title: '关于秋季学期志愿服务项目申报的通知', content: '秋季学期志愿服务项目申报通道已开放，请各志愿组织于 3 月 20 日前提交项目计划书。', date: '2025-03-08', from: '校团委', top: false, type: 'SYSTEM', read: true },
 ]
 
 /** 操作日志 */

@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { getDashboard } from '@/api/analytics'
 import { useToast } from '@/composables/useToast'
+import { useDashboardText } from '@/composables/useDashboardText'
+import { formatNumber } from '@/utils/format'
 
 import InkSection from '@/components/common/InkSection.vue'
 import InkStat from '@/components/common/InkStat.vue'
@@ -37,6 +39,23 @@ const signOption = computed(() => (data.value ? charts.sign(data.value.signin) :
 
 const topActivities = computed(() => (data.value?.activities || []).slice(0, 6))
 const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
+
+/* 图注与无障碍描述一律从接口数据现算，见 composables/useDashboardText.js 的说明 */
+const {
+  profiles,
+  signin,
+  trendRange,
+  trendTotal,
+  trendDesc,
+  trendLabel,
+  typeLabel,
+  typeCaption,
+  collegeLabel,
+  collegeDesc,
+  auditLabel,
+  signinLabel,
+  portraitDesc,
+} = useDashboardText(data)
 </script>
 
 <template>
@@ -44,7 +63,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
   <section class="hero">
     <div class="wrap hero-in">
       <div class="hero-main">
-        <p class="hero-kicker">2025 · 春季学期</p>
+        <p class="hero-kicker">{{ trendRange || '志愿服务数据' }}</p>
         <h1>以微光聚炬，<br />让每一次<em>服务</em>都被记住</h1>
         <p class="hero-sub">
           活动发布、报名审核、签到签退、服务时长记录、多角色时长审核、学生公益画像——六个环节环环相扣，构成全校志愿服务的完整闭环。
@@ -80,7 +99,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
     <InkSection
       no="01 / 数据"
       title="全年志愿服务概览"
-      desc="春季学期与秋季开学季是志愿服务高峰，3 月与 9 月单月活动量均超过 50 场。"
+      :desc="trendDesc"
     >
       <div class="grid-2">
         <figure class="fig-frame" style="margin: 0">
@@ -88,9 +107,11 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
             :option="trendOption"
             :loading="loading"
             height="280px"
-            label="2025 年逐月活动数量折线图，3 月 52 场、9 月 56 场为高峰，7 月 12 场最低"
+            :label="trendLabel"
           />
-          <figcaption class="fig-cap"><b>图一</b>2025 年逐月活动数量（场），全年合计 386 场。</figcaption>
+          <figcaption class="fig-cap">
+            <b>图一</b>逐月活动数量（场），近 12 个月合计 {{ formatNumber(trendTotal) }} 场。
+          </figcaption>
         </figure>
 
         <figure class="fig-frame" style="margin: 0">
@@ -98,9 +119,11 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
             :option="typePieOption"
             :loading="loading"
             height="280px"
-            label="活动类型占比环形图：社区服务 96 场、环保公益 74 场、文化传播 62 场、大型赛事 58 场、校园服务 54 场、助老服务 42 场"
+            :label="typeLabel"
           />
-          <figcaption class="fig-cap"><b>图二</b>活动类型结构（场），社区服务占比最高。</figcaption>
+          <figcaption class="fig-cap">
+            <b>图二</b>活动类型结构（场），{{ typeCaption }}。
+          </figcaption>
         </figure>
       </div>
     </InkSection>
@@ -128,7 +151,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
     <InkSection
       no="03 / 画像"
       title="学生公益画像"
-      desc="系统依据参与活动的类型、频次与时长自动归类，全校 12,480 名学生已生成画像标签。"
+      :desc="portraitDesc"
     >
       <PortraitSeal :items="data?.profiles || []" />
     </InkSection>
@@ -152,7 +175,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
     <InkSection
       no="05 / 排行"
       title="学院志愿时长排行"
-      desc="按累计认证时长排序，计算机学院以 15,240 小时居首。"
+      :desc="collegeDesc"
     >
       <div class="grid-2">
         <div>
@@ -161,7 +184,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
               :option="collegeOption"
               :loading="loading"
               height="240px"
-              label="各学院志愿时长排名横向条形图，计算机学院 15240 小时居首，体育学院 7980 小时最少"
+              :label="collegeLabel"
             />
             <figcaption class="fig-cap"><b>图三</b>各学院累计认证志愿时长（小时）。</figcaption>
           </figure>
@@ -190,7 +213,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
             :option="auditOption"
             :loading="loading"
             height="240px"
-            label="时长审核三态环形图：已通过 2142 条、待审核 186 条、已驳回 90 条，通过率 88.6%"
+            :label="auditLabel"
           />
           <figcaption class="fig-cap"><b>图四</b>志愿服务时长审核三态分布（条）。</figcaption>
         </figure>
@@ -200,10 +223,11 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
             :option="signOption"
             :loading="loading"
             height="240px"
-            label="签到率仪表盘：92.3%，应签到 2480 人次，实签到 2290 人次"
+            :label="signinLabel"
           />
           <figcaption class="fig-cap">
-            <b>图五</b>活动签到率，应签到 2,480 人次、实签到 2,290 人次。
+            <b>图五</b>活动签到率，应签到 {{ formatNumber(signin.total) }} 人次、实签到
+            {{ formatNumber(signin.signed) }} 人次。
           </figcaption>
         </figure>
       </div>

@@ -131,6 +131,16 @@ const actions = computed(() => {
           </dl>
         </div>
 
+        <!-- 正文：此前这一页只渲染标题与元信息，后端 content 从没显示过。
+             管理员发的公告现在会带正文（NotificationCreateDTO.content），
+             留空时整块不渲染，避免出现一个空标题的空面板。 -->
+        <div v-if="notice.content" class="panel">
+          <div class="panel-head">
+            <span class="panel-title">通知正文</span>
+          </div>
+          <p class="panel-text notice-content">{{ notice.content }}</p>
+        </div>
+
         <div class="panel">
           <div class="panel-head">
             <span class="panel-title">相关操作</span>
@@ -170,6 +180,12 @@ const actions = computed(() => {
   font-size: 14px;
   line-height: 1.9;
   color: var(--c-ink-2);
+}
+
+/* 正文按管理员输入的换行原样显示，否则多段公告会被压成一行 */
+.notice-content {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .panel-actions {

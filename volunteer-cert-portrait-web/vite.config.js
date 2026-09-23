@@ -21,7 +21,7 @@ export default defineConfig({
       // 后端 volunteer-cert-portrait-server 就绪后，把 .env 的
       // VITE_USE_MOCK 改成 false，请求就会经这里代理到 8080
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: 'http://10.0.20.91:8080',
         changeOrigin: true,
       },
     },
