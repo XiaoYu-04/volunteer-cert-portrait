@@ -51,6 +51,8 @@ public interface NotificationService {
      * <p>为每个启用中的账号插入一行，并用同一个批次号串起来。批次号是删除的依据：
      * 管理员手里只有自己那一行的 id，按 id 删只会删掉自己的一份，学生端照样看得到。
      *
+     * <p>{@code dto.content}（正文）可留空，留空即只发标题；学生端详情页会渲染该字段。
+     *
      * @param dto 公告内容
      * @throws com.vcp.common.exception.BusinessException 标题为空（10001）
      */

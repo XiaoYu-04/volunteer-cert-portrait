@@ -53,6 +53,7 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         category.setCode(resolveCodeForCreate(dto.getCode()));
         category.setSort(dto.getSort() == null ? nextSort() : dto.getSort());
         category.setStatus(VolunteerConstants.CATEGORY_STATUS_ACTIVE);
+        category.setRemark(trimToNull(dto.getRemark()));
         categoryMapper.insert(category);
 
         log.info("[活动分类] 新增分类。id={}, name={}, code={}",
@@ -83,6 +84,11 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         if (dto.getSort() != null) {
             patch.setSort(dto.getSort());
         }
+        // remark 在实体上是 FieldStrategy.ALWAYS，这里**必须**每次都显式赋值：
+        // 不赋就会把 null 写进库、把已有的说明抹掉。语义为「按传入值覆写」——
+        // 空串即清空（前端清空 textarea 后正是发空串），与 code 分支的
+        // 「null = 不修改」不同，因为 MyBatis-Plus 默认策略写不了 null。
+        patch.setRemark(trimToNull(dto.getRemark()));
         categoryMapper.updateById(patch);
 
         log.info("[活动分类] 修改分类。id={}, name={}", category.getId(), name);
@@ -228,8 +234,7 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
         vo.setStatus(row.getStatus() != null && row.getStatus() == VolunteerConstants.CATEGORY_STATUS_ACTIVE
                 ? VolunteerConstants.CATEGORY_STATUS_ACTIVE_CODE
                 : VolunteerConstants.CATEGORY_STATUS_DISABLED_CODE);
-        // activity_category 没有 remark 列（待办 B16），前端对空值渲染为「—」
-        vo.setRemark(null);
+        vo.setRemark(row.getRemark());
         return vo;
     }
 

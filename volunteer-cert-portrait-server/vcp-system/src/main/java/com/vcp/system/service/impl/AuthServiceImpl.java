@@ -41,8 +41,10 @@ import java.util.regex.Pattern;
  *       不会报错、只会表现为「能登录但查不到自己的数据」。</li>
  *   <li><b>密码当前是明文比对</b>（待办 B15）。接入加密时只需改本类的
  *       校验与写入两处，其它代码不用动。</li>
- *   <li><b>会话里不存密码、手机号、邮箱</b>。会话对象会被前端存进 localStorage，
- *       只放页面渲染必需的字段。</li>
+ *   <li><b>Sa-Token 会话里只写 roleCode / orgId / studentId / username 四个键</b>，
+ *       不放联系方式。返回给前端的 {@link com.vcp.system.vo.SessionVO} 另含
+ *       phone / email，仅供个人资料页回显本人数据 —— 前端只把 token 写进
+ *       localStorage，info 仅存内存（详见 SessionVO 的类注释）。</li>
  * </ol>
  */
 @Slf4j
@@ -291,6 +293,10 @@ public class AuthServiceImpl implements AuthService {
         vo.setStudentId(student == null ? null : student.getId());
         vo.setCollege(student == null ? null : student.getCollege());
         vo.setStudentNo(student == null ? null : student.getStudentNo());
+        // 联系方式：四个入口（login/register/currentUser/updateProfile）手里都已有 SysUser，
+        // 直接取即可，不需要额外查库
+        vo.setPhone(user.getPhone());
+        vo.setEmail(user.getEmail());
         vo.setAvatarText(sealText(user.getRealName()));
         return vo;
     }

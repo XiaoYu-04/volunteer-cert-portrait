@@ -146,6 +146,8 @@ public class NotificationServiceImpl implements NotificationService {
         String type = resolveType(dto.getType());
         String source = hasText(dto.getFrom()) ? dto.getFrom().trim() : DEFAULT_SOURCE;
         boolean top = Boolean.TRUE.equals(dto.getTop());
+        // 正文可留空：与 createForUser 同一处理，空串统一存 null 而不是 ''
+        String content = hasText(dto.getContent()) ? dto.getContent().trim() : null;
         String batchNo = UUID.randomUUID().toString().replace("-", "");
 
         List<Long> recipients = enabledUserIds();
@@ -160,6 +162,7 @@ public class NotificationServiceImpl implements NotificationService {
             Notification notification = new Notification();
             notification.setUserId(userId);
             notification.setTitle(dto.getTitle().trim());
+            notification.setContent(content);
             notification.setType(type);
             notification.setSource(source);
             notification.setTop(top);

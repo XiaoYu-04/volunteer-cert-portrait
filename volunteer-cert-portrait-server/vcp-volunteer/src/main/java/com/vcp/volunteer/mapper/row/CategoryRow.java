@@ -18,6 +18,9 @@ public class CategoryRow implements Serializable {
 
     private String code;
 
+    /** 分类说明（库列由 sql/07_demo_scale.sql 补齐） */
+    private String remark;
+
     private Integer sort;
 
     private Integer status;
