@@ -37,6 +37,13 @@ const roseOption = computed(() =>
 const portraitTotal = computed(() => distribution.value.reduce((sum, item) => sum + item.count, 0))
 const topTag = computed(() => distribution.value[0] || null)
 
+/** 玫瑰图的无障碍描述：标签与人数都从接口数据拼，避免写死的数字随数据变化而失真 */
+const distributionLabel = computed(() =>
+  distribution.value.length
+    ? `公益画像标签分布玫瑰图：${distribution.value.map((d) => `${d.tag} ${d.count} 人`).join('、')}`
+    : '公益画像标签分布玫瑰图',
+)
+
 const columns = [
   { key: 'studentName', title: '学生', width: '110px' },
   { key: 'studentNo', title: '学号', width: '120px' },
@@ -49,8 +56,22 @@ const columns = [
   { key: 'environmentRatio', title: '环保类占比', width: '110px', align: 'right' },
 ]
 
-/** 等级色调，星数越高色调越重 */
-const levelTone = { 五星: 'ok', 四星: 'info', 三星: 'warn', 二星: 'mute' }
+/**
+ * 等级色调，星数越高色调越重。
+ *
+ * 键是接口返回的 `levelCode`（FIVE_STAR 等），**不要用等级中文名做键**：
+ * 接口返回的是完整等级名（「五星志愿者」），用「五星」当键会全部落到 tone-mute 灰色，
+ * 而 mock 里恰好是短名，于是这个 bug 只在接上真实接口后才看得见（待办 B20-3）。
+ * 一星与普通志愿者沿用最轻的灰色 —— 低档位没有更淡的色调可用。
+ */
+const levelTone = {
+  FIVE_STAR: 'ok',
+  FOUR_STAR: 'info',
+  THREE_STAR: 'warn',
+  TWO_STAR: 'mute',
+  ONE_STAR: 'mute',
+  NORMAL: 'mute',
+}
 
 function resetQuery() {
   query.keyword = ''
@@ -80,7 +101,7 @@ function resetQuery() {
 
   <section class="panel panel-gap">
     <div class="panel-head">
-      <span class="panel-title">六类画像标签分布</span>
+      <span class="panel-title">八类画像标签分布</span>
       <span class="panel-extra panel-note">画像合计 {{ formatNumber(portraitTotal) }} 人</span>
     </div>
 
@@ -97,7 +118,7 @@ function resetQuery() {
         :option="roseOption"
         :loading="!distribution.length"
         height="340px"
-        label="公益画像标签分布玫瑰图：热心志愿者 3180 人、长期坚持型 2460 人、社区服务型 2240 人、环保行动型 1860 人、大型活动型 1540 人、校园服务型 1200 人"
+        :label="distributionLabel"
       />
       <figcaption class="fig-cap">
         <b>图一</b>各标签学生人数（人），玫瑰半径与该标签人数成正比。
@@ -159,7 +180,7 @@ function resetQuery() {
       </template>
 
       <template #level="{ row }">
-        <span class="ink-status" :class="`tone-${levelTone[row.level] || 'mute'}`">
+        <span class="ink-status" :class="`tone-${levelTone[row.levelCode] || 'mute'}`">
           {{ row.level }}
         </span>
       </template>

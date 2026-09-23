@@ -94,7 +94,9 @@
 .ink-act-count-num{color:var(--c-ink); font-weight:700}
 
 /* ---------- 印章式画像标签 ---------- */
-.tags{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:20px}
+/* 4 列而不是原型的 6 列：标签由 6 类改为 8 类后（对齐后端 PortraitTagEnum），
+   6 列会排成「6 + 2」并在第二行留 4 个空位。8 项正好两行各 4 项。 */
+.tags{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px}
 .ink-tag{border:1px solid var(--c-a2); padding:18px 14px; text-align:center; background:#fff}
 .ink-tag-name{display:block; font-family:var(--font-display); font-size:15px; letter-spacing:.06em; color:var(--c-a2)}
 .ink-tag-count{display:block; margin-top:12px; font-family:var(--font-mono); font-size:15px; color:var(--c-ink)}
@@ -457,7 +459,7 @@
   .ink-stat-card:nth-child(3n){border-right:1px solid var(--c-line)}
   .ink-stat-card:nth-child(2n){border-right:0}
   .grid-2, .grid-3{grid-template-columns:1fr; gap:44px}
-  .tags{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tags{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ink-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
   .foot-name, .foot-meta{grid-column:span 12}
   .ink-form-grid{grid-template-columns:1fr}

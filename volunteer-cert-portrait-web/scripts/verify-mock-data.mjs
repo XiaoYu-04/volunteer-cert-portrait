@@ -68,6 +68,30 @@ check(
   `${durationPairs.length} 条`,
 )
 
+/* ---------- 分类与标签（A12 / B20-4 按后端对齐后新增的约束）---------- */
+const mismatched = D.activities.filter(
+  (a) => (D.categories.find((c) => c.id === a.categoryId) || {}).name !== a.type,
+)
+check(
+  '每场活动的分类 id 与类型名一致',
+  mismatched.length === 0,
+  mismatched.length ? `不一致：活动 ${mismatched.map((a) => a.id)}` : `${D.activities.length} 场`,
+)
+
+const typeNames = D.types.map((t) => t.name)
+check(
+  '分类名唯一，且活动用到的类型都在分类表里',
+  new Set(typeNames).size === typeNames.length && D.activities.every((a) => typeNames.includes(a.type)),
+)
+
+const tagCounts = D.profiles.map((p) => p.count)
+check(
+  '画像标签为后端那 8 类，且按人数降序（页面取 distribution[0] 当「最大标签」）',
+  D.profiles.length === 8 &&
+    new Set(D.profiles.map((p) => p.tag)).size === 8 &&
+    tagCounts.every((c, i) => i === 0 || tagCounts[i - 1] >= c),
+)
+
 /* ---------- 演示账号（登录名 student）----------
    这名学生是演示时第一个被点开的账号，它的「我的时长」汇总与
    「我的公益画像」累计时长必须一致，否则一眼就能看出对不上。 */
