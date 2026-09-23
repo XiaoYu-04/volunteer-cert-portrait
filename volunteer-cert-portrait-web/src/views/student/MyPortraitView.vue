@@ -78,7 +78,9 @@ const dimLabel = computed(() =>
             </div>
 
             <div class="ink-tag portrait-tag">
-              <span class="ink-tag-name">{{ portrait.tag }}</span>
+              <!-- 后端 tag 是「主标签」（印章一枚只放得下一个），无标签时为 null，
+                   被 non_null 策略整键省略 —— 必须兜底，否则印章里是空的 -->
+              <span class="ink-tag-name">{{ portrait.tag || '暂无标签' }}</span>
               <span class="seal-level">{{ portrait.level }}</span>
               <span class="ink-tag-desc">按活动类型与参与频次自动归类</span>
             </div>

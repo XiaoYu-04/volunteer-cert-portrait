@@ -56,11 +56,11 @@ const columns = [
 
 /* ---------- 发布公告 ---------- */
 const dialog = ref(false)
-const form = ref({ title: '', type: 'SYSTEM', from: '系统管理员', top: false })
+const form = ref({ title: '', content: '', type: 'SYSTEM', from: '系统管理员', top: false })
 const error = ref('')
 
 function openCreate() {
-  form.value = { title: '', type: 'SYSTEM', from: '系统管理员', top: false }
+  form.value = { title: '', content: '', type: 'SYSTEM', from: '系统管理员', top: false }
   error.value = ''
   dialog.value = true
 }
@@ -75,6 +75,7 @@ async function submit() {
   try {
     await createNotification({
       title: form.value.title.trim(),
+      content: form.value.content.trim(),
       type: form.value.type,
       from: form.value.from.trim() || '系统管理员',
       top: form.value.top,
@@ -182,8 +183,17 @@ async function remove(row) {
           v-model.trim="form.title"
           class="ink-input"
           type="text"
-          placeholder="如 关于 2025 年春季学期志愿服务时长认证工作的通知"
+          placeholder="如 关于本学期志愿服务时长认证工作的通知"
         />
+      </InkField>
+
+      <InkField label="公告正文" hint="学生端公告详情页会显示正文；留空则只发标题">
+        <textarea
+          v-model="form.content"
+          class="ink-textarea"
+          rows="4"
+          placeholder="请填写公告正文…"
+        ></textarea>
       </InkField>
 
       <InkField label="通知类型" hint="审核结果类通知会与时长审核流程联动">

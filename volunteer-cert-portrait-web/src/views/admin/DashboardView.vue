@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { getDashboard } from '@/api/analytics'
 import { useToast } from '@/composables/useToast'
+import { useDashboardText } from '@/composables/useDashboardText'
 import { formatNumber, formatPercent } from '@/utils/format'
 
 import InkStat from '@/components/common/InkStat.vue'
@@ -40,6 +41,23 @@ const heatMonth = computed(() => {
   const month = data.value?.heatmap?.month
   return month ? `${month.slice(0, 4)} 年 ${Number(month.slice(5))} 月` : ''
 })
+
+/* 图注与无障碍描述一律从接口数据现算，见 composables/useDashboardText.js 的说明 */
+const {
+  trendTotal,
+  trendHours,
+  trendDesc,
+  trendLabel,
+  hoursLabel,
+  typeLabel,
+  typeCaption,
+  collegeLabel,
+  auditLabel,
+  auditDesc,
+  signinLabel,
+  structureNote,
+  heatLabel,
+} = useDashboardText(data)
 </script>
 
 <template>
@@ -66,7 +84,9 @@ const heatMonth = computed(() => {
   <section class="panel panel-gap">
     <div class="panel-head">
       <span class="panel-title">活动与服务时长趋势</span>
-      <span class="panel-extra panel-note">全年 386 场 · 86,420 小时</span>
+      <span class="panel-extra panel-note">
+        近 12 个月 {{ formatNumber(trendTotal) }} 场 · {{ formatNumber(trendHours) }} 小时
+      </span>
     </div>
 
     <div class="grid-2">
@@ -75,10 +95,10 @@ const heatMonth = computed(() => {
           :option="trendOption"
           :loading="loading"
           height="260px"
-          label="2025 年逐月活动数量折线图，3 月 52 场、9 月 56 场为高峰，7 月 12 场最低"
+          :label="trendLabel"
         />
         <figcaption class="fig-cap">
-          <b>图一</b>逐月活动数量（场），全年合计 386 场，春季学期与秋季开学季为两个高峰。
+          <b>图一</b>逐月活动数量（场），近 12 个月合计 {{ formatNumber(trendTotal) }} 场。{{ trendDesc }}
         </figcaption>
       </figure>
 
@@ -87,10 +107,10 @@ const heatMonth = computed(() => {
           :option="hoursOption"
           :loading="loading"
           height="260px"
-          label="2025 年逐月服务时长折线图，9 月 12540 小时最高，7 月 2690 小时最低"
+          :label="hoursLabel"
         />
         <figcaption class="fig-cap">
-          <b>图二</b>逐月服务时长（小时），全年合计 86,420 小时，与活动量走势一致。
+          <b>图二</b>逐月服务时长（小时），近 12 个月合计 {{ formatNumber(trendHours) }} 小时，与活动量走势一致。
         </figcaption>
       </figure>
     </div>
@@ -100,7 +120,7 @@ const heatMonth = computed(() => {
   <section class="panel">
     <div class="panel-head">
       <span class="panel-title">活动结构与学院分布</span>
-      <span class="panel-extra panel-note">六类活动 · 八个学院</span>
+      <span class="panel-extra panel-note">{{ structureNote }}</span>
     </div>
 
     <div class="grid-2">
@@ -109,10 +129,10 @@ const heatMonth = computed(() => {
           :option="typePieOption"
           :loading="loading"
           height="280px"
-          label="活动类型占比环形图：社区服务 96 场、环保公益 74 场、文化传播 62 场、大型赛事 58 场、校园服务 54 场、助老服务 42 场"
+          :label="typeLabel"
         />
         <figcaption class="fig-cap">
-          <b>图三</b>活动类型结构（场），社区服务 96 场占比最高，助老服务 42 场最少。
+          <b>图三</b>活动类型结构（场），{{ typeCaption }}。
         </figcaption>
       </figure>
 
@@ -121,10 +141,10 @@ const heatMonth = computed(() => {
           :option="collegeOption"
           :loading="loading"
           height="280px"
-          label="各学院志愿时长横向条形图，计算机学院 15240 小时居首，体育学院 7980 小时最少"
+          :label="collegeLabel"
         />
         <figcaption class="fig-cap">
-          <b>图四</b>各学院累计认证志愿时长（小时），计算机学院 15,240 小时居首。
+          <b>图四</b>各学院累计认证志愿时长（小时）。
         </figcaption>
       </figure>
     </div>
@@ -143,10 +163,10 @@ const heatMonth = computed(() => {
           :option="auditOption"
           :loading="loading"
           height="240px"
-          label="时长审核三态环形图：已通过 2142 条、待审核 186 条、已驳回 90 条，通过率 88.6%"
+          :label="auditLabel"
         />
         <figcaption class="fig-cap">
-          <b>图五</b>服务时长审核三态分布（条），已通过 2,142 条、待审核 186 条、已驳回 90 条。
+          <b>图五</b>{{ auditDesc }}
         </figcaption>
       </figure>
 
@@ -155,7 +175,7 @@ const heatMonth = computed(() => {
           :option="signOption"
           :loading="loading"
           height="240px"
-          label="签到率仪表盘：92.3%，应签到 2480 人次，实签到 2290 人次"
+          :label="signinLabel"
         />
         <figcaption class="fig-cap">
           <b>图六</b>活动签到率，是衡量活动执行质量的核心指标。
@@ -195,7 +215,7 @@ const heatMonth = computed(() => {
         :option="heatOption"
         :loading="loading"
         height="240px"
-        label="2025 年 3 月逐日签到人次热力日历，周末与中下旬人次明显更高"
+        :label="heatLabel"
       />
       <figcaption class="fig-cap">
         <b>图七</b>逐日签到人次，颜色越深代表当日参与服务的人次越多。

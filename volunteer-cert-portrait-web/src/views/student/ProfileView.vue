@@ -10,10 +10,13 @@ import InkButton from '@/components/common/InkButton.vue'
 const toast = useToast()
 const user = useUserStore()
 
+// phone / email 由 /auth/me 返回（后端 SessionVO 已带这两个字段）。
+// 此前后端刻意不返回、这里又写死空串，两个输入框永远空白，
+// 学生无法确认库里存的联系方式是什么。
 const form = reactive({
   name: user.info?.name || '',
-  phone: '',
-  email: '',
+  phone: user.info?.phone || '',
+  email: user.info?.email || '',
 })
 
 const errors = reactive({ name: '', phone: '', email: '' })
@@ -44,8 +47,8 @@ async function onSubmit() {
 
 function resetForm() {
   form.name = user.info?.name || ''
-  form.phone = ''
-  form.email = ''
+  form.phone = user.info?.phone || ''
+  form.email = user.info?.email || ''
   errors.name = ''
   errors.phone = ''
   errors.email = ''

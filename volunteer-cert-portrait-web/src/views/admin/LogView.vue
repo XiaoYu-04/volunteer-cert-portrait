@@ -18,13 +18,21 @@ const { rows, total, loading, query, search } = useTable(listLogs, {
   defaultQuery: { keyword: '', module: '' },
 })
 
+/*
+ * 列清单。
+ *
+ * 这里**刻意没有「操作对象」列**：后端 operation_log.target 这一列虽然存在，
+ * 但写入侧从来不填（OperationLogEvent 的注释写明「留空，待 @OperationLog 增加
+ * target 属性后再填」），实测 56 条日志 0 条有该键。留着这一列就是永远空白，
+ * 所以先撤掉；根治要给 @OperationLog 加 target 属性并让各 Controller 传入业务对象名，
+ * 已记入待办（B20-6），做完了再把这一列加回来。
+ */
 const columns = [
   { key: 'time', title: '操作时间', width: '160px' },
   { key: 'operator', title: '操作人', width: '100px' },
   { key: 'role', title: '角色', width: '110px' },
   { key: 'action', title: '动作', width: '110px' },
   { key: 'module', title: '模块', width: '110px' },
-  { key: 'target', title: '操作对象' },
   { key: 'ip', title: 'IP 地址', width: '130px' },
   { key: 'result', title: '结果', width: '90px' },
 ]
@@ -54,7 +62,7 @@ function resetQuery() {
           v-model.trim="query.keyword"
           class="ink-input"
           type="search"
-          placeholder="操作人或操作对象"
+          placeholder="操作人"
         />
       </InkField>
 
@@ -87,10 +95,6 @@ function resetQuery() {
 
       <template #module="{ row }">
         <span class="module-chip">{{ row.module }}</span>
-      </template>
-
-      <template #target="{ row }">
-        <span class="log-target">{{ row.target }}</span>
       </template>
 
       <template #ip="{ row }">
@@ -134,10 +138,6 @@ function resetQuery() {
   border: 1px solid var(--c-line);
   background: #fff;
   white-space: nowrap;
-}
-
-.log-target {
-  color: var(--c-ink-2);
 }
 
 .ink-filter-actions {

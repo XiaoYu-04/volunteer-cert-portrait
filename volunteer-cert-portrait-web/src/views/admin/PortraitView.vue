@@ -176,7 +176,10 @@ function resetQuery() {
       </template>
 
       <template #tag="{ row }">
-        <span class="tag-chip">{{ row.tag }}</span>
+        <!-- 后端 tag 是「主标签」，无标签时为 null，被 non_null 策略整键省略 →
+             这里必须兜底，否则渲染出一个空的朱砂边框方块 -->
+        <span v-if="row.tag" class="tag-chip">{{ row.tag }}</span>
+        <span v-else class="cell-mute">—</span>
       </template>
 
       <template #level="{ row }">
