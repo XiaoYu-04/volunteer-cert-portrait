@@ -98,7 +98,7 @@ vcp-dependencies  独立 BOM
    且不在 Boot 4 的 BOM 里，不写版本号会报 version missing。
 
 3. **YAML 会把以 0 开头的数字串当八进制整数**
-   `password: 041014` 不加引号会被解析成 `16908`。口令、手机号等一律**加引号**。
+   `password: 012345` 不加引号会被解析成 `5349`。口令、手机号等一律**加引号**。
 
 4. **`knife4j.enable` 默认为 `false` 且没有 `matchIfMissing`**
    不显式开启则增强能力静默失效，但 `/doc.html` 仍能打开，极易误判为已接好。
@@ -156,6 +156,26 @@ vcp-dependencies  独立 BOM
 16. **`R<T>` 只有 `code`/`message`/`data` 三个字段，不要给它加 `isXxx()` 之类的方法**
     Jackson 会把它当 JavaBean 属性序列化，导致**每个**接口响应都多一个字段
     （曾出现 `"success":false` 混进所有响应）。判断成功用 `code == R.SUCCESS`。
+
+17. **数据库凭证一律外置，不得写回 `application.yml`**
+    仓库是**公开仓库**，明文口令进过 git 历史（提交 `161e16c`），删掉文件也删不掉历史 ——
+    只有轮换口令才能让旧口令失效。凭证放 `vcp-boot/src/main/resources/application-local.yml`
+    （已 gitignore，模板见同目录 `application-local.yml.example`），或环境变量
+    `VCP_DB_USERNAME` / `VCP_DB_PASSWORD`。
+    **注意缺凭证不会启动失败**（实测：`@ConfigurationProperties` 绑定对解析不了的占位符不报错，
+    会把它当普通字符串用），要到第一次访问数据库才报认证失败 —— 排查连不上库时先看这里。
+    另外本地构建会把 `application-local.yml` 打进 jar，别把本地构建的 jar 发给别人。
+
+18. **MyBatis 的 `returnInstanceForEmptyRow` 默认为 false：一行所有映射列都是 NULL 时，
+    这一行不返回对象，而是往 `List` 里塞一个 `null`**
+    踩坑现场：`vcp-portrait` 的标签分布用 `lambdaQuery().select(StudentProfile::getTags)`
+    只投影一列，而 `student_profile` 有 2 行 `tags` 为 NULL（31 行里），
+    于是 `selectList` 返回 31 个元素、其中 2 个是 `null`，for 循环直接 NPE（`code=10000`）。
+    **不报 SQL 错、只在数据恰好有空值时炸**，很容易漏。
+    规矩：**任何投影查询（`.select(...)` / 自定义 `@Select`）至少要带一个恒非空列**
+    ——主键、外键或 `COUNT(*)`。聚合能下推就下推（`GROUP BY` + `COUNT(*)`），
+    既避开这个坑又少传行。别去开全局的 `return-instance-for-empty-row`：
+    那是全局开关，会改变所有模块的行为。
 
 ### 前端（`volunteer-cert-portrait-web/`）
 
