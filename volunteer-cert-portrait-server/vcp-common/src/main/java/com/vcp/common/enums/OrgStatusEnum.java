@@ -9,7 +9,7 @@ import lombok.Getter;
  * {@code dict_type = 'org_status'} 的字典项。库中存英文码，中文标签由前端查字典展示。
  *
  * <p>由学校管理员审核：只有 {@code APPROVED} 的组织才能发布活动。
- * 本枚举只表达「资质审核」这一维度，不含「停用/启用」（该功能是否保留见待办项 A10）。
+ * {@code DISABLED} 是管理端的停用态，用于保留数据但暂停其发布活动与提交时长。
  */
 @Getter
 public enum OrgStatusEnum {
@@ -19,7 +19,9 @@ public enum OrgStatusEnum {
     /** 已通过：资质审核通过，可发布活动 */
     APPROVED("APPROVED", "已通过"),
     /** 已驳回：资质审核未通过 */
-    REJECTED("REJECTED", "已驳回");
+    REJECTED("REJECTED", "已驳回"),
+    /** 已停用：资质仍为通过，但管理端暂停其业务操作 */
+    DISABLED("DISABLED", "已停用");
 
     /** 英文码，入库值 */
     private final String code;

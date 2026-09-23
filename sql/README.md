@@ -14,6 +14,7 @@
 | 2 | `02_schema.sql` | 建表脚本：16 张表 + 表/字段注释 + 索引 | 必需 |
 | 3 | `03_init_data.sql` | 基础初始化数据：角色、账号、学生档案、组织、活动分类、数据字典 | 必需 |
 | 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | 可选（开发与答辩演示用） |
+| 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖） |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
 先跑 `02`，再依次跑 `03`、`04`。
@@ -26,12 +27,13 @@ psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
 ```
 
 ```bash
 # 方式二：一次跑完
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
-cat 02_schema.sql 03_init_data.sql 04_demo_data.sql \
+cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql \
   | psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait
 ```
 

@@ -172,6 +172,34 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     /**
+     * 给单个用户落一行通知。
+     *
+     * <p>这里不复用群发方法：群发会按“所有启用账号”取收件人，
+     * 而资质审核只该通知该组织的负责人。
+     *
+     * @param userId  收件人 id
+     * @param title   通知标题
+     * @param content 通知正文
+     * @param type    通知类型
+     * @param source  通知来源
+     */
+    @Override
+    public void createForUser(Long userId, String title, String content, String type, String source) {
+        if (userId == null || !hasText(title)) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "通知收件人与标题不能为空");
+        }
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setTitle(title.trim());
+        notification.setContent(hasText(content) ? content.trim() : null);
+        notification.setType(resolveType(type));
+        notification.setSource(hasText(source) ? source.trim() : DEFAULT_SOURCE);
+        notification.setIsRead(false);
+        notificationMapper.insert(notification);
+    }
+
+    /**
      * 删除公告：按批次号整批删除。
      *
      * @param id 通知 id
