@@ -98,7 +98,7 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
             :option="typePieOption"
             :loading="loading"
             height="280px"
-            label="活动类型占比环形图：社区服务 96 场、环保行动 74 场、支教助学 62 场、大型赛会 58 场、校园服务 54 场、敬老助残 42 场"
+            label="活动类型占比环形图：社区服务 96 场、环保公益 74 场、文化传播 62 场、大型赛事 58 场、校园服务 54 场、助老服务 42 场"
           />
           <figcaption class="fig-cap"><b>图二</b>活动类型结构（场），社区服务占比最高。</figcaption>
         </figure>

@@ -14,6 +14,11 @@
  *
  * 原型只给了 6 场活动、5 条公告。列表页需要分页，因此下面按同一风格把活动
  * 扩充到 24 场；扩充部分不参与上面的聚合校验，聚合数字仍以冻结值为准。
+ *
+ * 有两处**没有照搬原型、已按后端口径修正**（都在下面的分段注释里写明了理由）：
+ *   1. 活动分类（types / categories）改用库里 activity_category 的名称与顺序（待办 A12）；
+ *   2. 画像标签（profiles）由 6 类补齐到 8 类（对齐后端 PortraitTagEnum，待办 B20-4），
+ *      合计仍为 12,480 —— 新增两类时**类型标签合计 6,840 保持不变**，只是重新分摊。
  */
 
 // 带 .js 后缀：本文件会被 scripts/verify-mock-data.mjs 用 Node 直接加载，
@@ -48,13 +53,25 @@ export const trend = [
   { month: '2025-12', count: 17, hours: 3750 },
 ]
 
+/**
+ * 活动分类与活动数（冻结值，合计 386）。
+ *
+ * 名称与顺序**以后端 `activity_category` 为准**（待办 A12）：库里是
+ * 校园服务 / 社区服务 / 环保公益 / 大型赛事 / 助老服务 / 文化传播，id 即 1~6。
+ * 原型用的是另一套名字与顺序（社区服务 / 环保行动 / 支教助学 / 大型赛会 /
+ * 校园服务 / 敬老助残），接上真实接口后分类筛选器与分类管理页会整体换文案，
+ * 因此这里直接改成库里的那套，顺序也按 sort 排。
+ *
+ * code 与 `sql/06_backend_gap_fix2.sql` 回填的编码一致，写在每项里而不是另起一个
+ * 按下标对齐的数组 —— 下标对齐的数组在分类改名或调整顺序时会静默错位（B18 的脆弱点）。
+ */
 export const types = [
-  { name: '社区服务', value: 96 },
-  { name: '环保行动', value: 74 },
-  { name: '支教助学', value: 62 },
-  { name: '大型赛会', value: 58 },
-  { name: '校园服务', value: 54 },
-  { name: '敬老助残', value: 42 },
+  { name: '校园服务', code: 'CAMPUS', value: 54 },
+  { name: '社区服务', code: 'COMMUNITY', value: 96 },
+  { name: '环保公益', code: 'ENVIRONMENT', value: 74 },
+  { name: '大型赛事', code: 'EVENT', value: 58 },
+  { name: '助老服务', code: 'ELDERLY', value: 42 },
+  { name: '文化传播', code: 'CULTURE', value: 62 },
 ]
 
 export const colleges = [
@@ -77,13 +94,28 @@ export const orgs = [
   { org: '校园文明督导队', activities: 15, signRate: 0.93, passRate: 0.91 },
 ]
 
+/**
+ * 公益画像标签分布（8 类）。
+ *
+ * 原型只有 6 类，缺「助老服务型」「文化传播型」；而后端的标签体系是 8 类
+ * （`PortraitTagEnum`，待办 B20-4 点名过），`/portraits/distribution` 返回的也是 8 类。
+ * 这里补齐成 8 类，desc 逐字取自 `PortraitTagEnum.getDescription()`，
+ * 保证 mock 与真实接口返回的内容完全一致。
+ *
+ * 人数仍是冻结值，**合计 12,480 = 报名总人数**（校验脚本会断言）。
+ * 补两类时保持**类型标签合计 6,840 不变**，只是把它按各分类的活动数（types 的 value）
+ * 分摊到 6 个类型标签上，因此「热心志愿者」「长期坚持型」这两个行为标签的人数没动。
+ * 按人数降序排（前端取 distribution[0] 当「最大标签」）。
+ */
 export const profiles = [
-  { tag: '热心志愿者', count: 3180, desc: '参与活动 10 场以上' },
-  { tag: '长期坚持型', count: 2460, desc: '连续 3 个学期参与' },
-  { tag: '社区服务型', count: 2240, desc: '社区类活动占比 60%+' },
-  { tag: '环保行动型', count: 1860, desc: '环保类活动占比 50%+' },
-  { tag: '大型活动型', count: 1540, desc: '参与赛会保障 3 场以上' },
-  { tag: '校园服务型', count: 1200, desc: '校内岗位服务 40 小时+' },
+  { tag: '热心志愿者', count: 3180, desc: '累计有效志愿时长大于 0 小时' },
+  { tag: '长期坚持型', count: 2460, desc: '已完成志愿活动 ≥ 3 场' },
+  { tag: '社区服务型', count: 1700, desc: '参与最多的活动分类为社区服务' },
+  { tag: '环保行动型', count: 1310, desc: '参与最多的活动分类为环保公益' },
+  { tag: '文化传播型', count: 1100, desc: '参与最多的活动分类为文化传播' },
+  { tag: '大型活动型', count: 1030, desc: '参与最多的活动分类为大型赛事' },
+  { tag: '校园服务型', count: 960, desc: '参与最多的活动分类为校园服务' },
+  { tag: '助老服务型', count: 740, desc: '参与最多的活动分类为助老服务' },
 ]
 
 export const audit = {
@@ -120,11 +152,11 @@ export const heatmap = {
    二、实体列表
    ============================================================ */
 
-/** 活动分类，与 types 的六个类型一一对应 */
+/** 活动分类，与 types 一一对应（id 与库里的 activity_category.id 一致） */
 export const categories = types.map((t, i) => ({
   id: i + 1,
   name: t.name,
-  code: ['COMMUNITY', 'ENVIRONMENT', 'TEACHING', 'EVENT', 'CAMPUS', 'ELDERLY'][i],
+  code: t.code,
   activityCount: t.value,
   sort: i + 1,
   status: 'ACTIVE',
@@ -132,14 +164,20 @@ export const categories = types.map((t, i) => ({
 }))
 
 /**
- * 志愿活动。前 6 条为原型原数据（顺序与字段完全一致），
+ * 志愿活动。前 6 条为原型原数据（顺序与字段一致），
  * 其后为按同一风格扩充的条目，用于支撑列表分页与筛选演示。
+ *
+ * 与原型的两点差异（都是待办 A12 的分类改名带出来的）：
+ *   · `type` 用的是库里那套分类名，`categoryId` 与 `categories` 的 id 一一对应；
+ *   · 原型里的「支教助学」在后端的 6 个分类里**没有对应项**（库里有「文化传播」而没有
+ *     支教助学），三条支教类活动（id 3/10/15）按「文化/教育类」归到「文化传播」，
+ *     标题与描述保留原样。若要更贴切，可把这三条改成非遗、讲解、文化展一类的内容。
  */
 export const activities = [
   {
     id: 1,
     title: '社区敬老院陪伴服务',
-    type: '敬老助残',
+    type: '助老服务',
     date: '2025-03-22',
     time: '09:00',
     place: '幸福里社区敬老院',
@@ -148,7 +186,7 @@ export const activities = [
     org: '青年志愿者协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 6,
+    categoryId: 5,
     orgId: 1,
     deadline: '2025-03-20',
     contact: '李同学 138****2201',
@@ -158,7 +196,7 @@ export const activities = [
   {
     id: 2,
     title: '校园植树节绿化行动',
-    type: '环保行动',
+    type: '环保公益',
     date: '2025-03-12',
     time: '08:30',
     place: '东校区生态园',
@@ -167,7 +205,7 @@ export const activities = [
     org: '环保志愿者协会',
     hours: 5,
     status: 'PUBLISHED',
-    categoryId: 2,
+    categoryId: 3,
     orgId: 3,
     deadline: '2025-03-10',
     contact: '王同学 138****3312',
@@ -177,7 +215,7 @@ export const activities = [
   {
     id: 3,
     title: '春季支教助学计划',
-    type: '支教助学',
+    type: '文化传播',
     date: '2025-03-25',
     time: '14:00',
     place: '附属实验小学',
@@ -186,7 +224,7 @@ export const activities = [
     org: '支教团',
     hours: 6,
     status: 'PUBLISHED',
-    categoryId: 3,
+    categoryId: 6,
     orgId: 4,
     deadline: '2025-03-23',
     contact: '张同学 138****4423',
@@ -196,7 +234,7 @@ export const activities = [
   {
     id: 4,
     title: '校运动会志愿服务',
-    type: '大型赛会',
+    type: '大型赛事',
     date: '2025-04-18',
     time: '07:30',
     place: '主体育场',
@@ -224,7 +262,7 @@ export const activities = [
     org: '红十字协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 1,
+    categoryId: 2,
     orgId: 2,
     deadline: '2025-03-17',
     contact: '刘同学 138****6645',
@@ -243,7 +281,7 @@ export const activities = [
     org: '青年志愿者协会',
     hours: 3,
     status: 'PUBLISHED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 1,
     deadline: '2025-03-14',
     contact: '赵同学 138****7756',
@@ -253,7 +291,7 @@ export const activities = [
   {
     id: 7,
     title: '社区垃圾分类宣传',
-    type: '环保行动',
+    type: '环保公益',
     date: '2025-03-29',
     time: '09:30',
     place: '和平路社区广场',
@@ -262,7 +300,7 @@ export const activities = [
     org: '环保志愿者协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 2,
+    categoryId: 3,
     orgId: 3,
     deadline: '2025-03-27',
     contact: '孙同学 138****8867',
@@ -271,7 +309,7 @@ export const activities = [
   {
     id: 8,
     title: '敬老院健康监测协助',
-    type: '敬老助残',
+    type: '助老服务',
     date: '2025-04-02',
     time: '08:00',
     place: '夕阳红养老服务中心',
@@ -280,7 +318,7 @@ export const activities = [
     org: '医学院志愿服务队',
     hours: 5,
     status: 'PUBLISHED',
-    categoryId: 6,
+    categoryId: 5,
     orgId: 7,
     deadline: '2025-03-31',
     contact: '周同学 138****9978',
@@ -298,7 +336,7 @@ export const activities = [
     org: '校园文明督导队',
     hours: 6,
     status: 'PUBLISHED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 6,
     deadline: '2025-04-10',
     contact: '吴同学 139****1023',
@@ -307,7 +345,7 @@ export const activities = [
   {
     id: 10,
     title: '山区小学图书捐赠募集',
-    type: '支教助学',
+    type: '文化传播',
     date: '2025-04-08',
     time: '11:00',
     place: '学生活动中心一层',
@@ -316,7 +354,7 @@ export const activities = [
     org: '支教团',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 3,
+    categoryId: 6,
     orgId: 4,
     deadline: '2025-04-06',
     contact: '郑同学 139****2134',
@@ -334,7 +372,7 @@ export const activities = [
     org: '红十字协会',
     hours: 5,
     status: 'PUBLISHED',
-    categoryId: 1,
+    categoryId: 2,
     orgId: 2,
     deadline: '2025-04-13',
     contact: '冯同学 139****3245',
@@ -352,7 +390,7 @@ export const activities = [
     org: '机械工程学院志愿队',
     hours: 3,
     status: 'PUBLISHED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 8,
     deadline: '2025-04-18',
     contact: '蒋同学 139****4356',
@@ -361,7 +399,7 @@ export const activities = [
   {
     id: 13,
     title: '河道清理环保行动',
-    type: '环保行动',
+    type: '环保公益',
     date: '2025-04-26',
     time: '07:30',
     place: '北护城河沿线',
@@ -370,7 +408,7 @@ export const activities = [
     org: '环保志愿者协会',
     hours: 6,
     status: 'PUBLISHED',
-    categoryId: 2,
+    categoryId: 3,
     orgId: 3,
     deadline: '2025-04-24',
     contact: '韩同学 139****5467',
@@ -379,7 +417,7 @@ export const activities = [
   {
     id: 14,
     title: '校庆晚会会务保障',
-    type: '大型赛会',
+    type: '大型赛事',
     date: '2025-05-08',
     time: '13:00',
     place: '大学生礼堂',
@@ -397,7 +435,7 @@ export const activities = [
   {
     id: 15,
     title: '留守儿童暑期陪伴招募',
-    type: '支教助学',
+    type: '文化传播',
     date: '2025-05-15',
     time: '10:00',
     place: '线上报名 · 暑期实地',
@@ -406,7 +444,7 @@ export const activities = [
     org: '支教团',
     hours: 8,
     status: 'PUBLISHED',
-    categoryId: 3,
+    categoryId: 6,
     orgId: 4,
     deadline: '2025-05-12',
     contact: '沈同学 139****7689',
@@ -415,7 +453,7 @@ export const activities = [
   {
     id: 16,
     title: '社区老年人智能手机课堂',
-    type: '敬老助残',
+    type: '助老服务',
     date: '2025-05-20',
     time: '15:00',
     place: '幸福里社区活动室',
@@ -424,7 +462,7 @@ export const activities = [
     org: '青年志愿者协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 6,
+    categoryId: 5,
     orgId: 1,
     deadline: '2025-05-18',
     contact: '许同学 139****8790',
@@ -442,7 +480,7 @@ export const activities = [
     org: '校园文明督导队',
     hours: 5,
     status: 'PUBLISHED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 6,
     deadline: '2025-06-18',
     contact: '何同学 139****9801',
@@ -451,7 +489,7 @@ export const activities = [
   {
     id: 18,
     title: '世界环境日主题宣传',
-    type: '环保行动',
+    type: '环保公益',
     date: '2025-06-05',
     time: '09:00',
     place: '校园中心广场',
@@ -460,7 +498,7 @@ export const activities = [
     org: '环保志愿者协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 2,
+    categoryId: 3,
     orgId: 3,
     deadline: '2025-06-03',
     contact: '吕同学 139****0912',
@@ -469,7 +507,7 @@ export const activities = [
   {
     id: 19,
     title: '新生报到接站服务',
-    type: '大型赛会',
+    type: '大型赛事',
     date: '2025-09-01',
     time: '07:00',
     place: '火车站南广场',
@@ -496,7 +534,7 @@ export const activities = [
     org: '医学院志愿服务队',
     hours: 6,
     status: 'PUBLISHED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 7,
     deadline: '2025-09-08',
     contact: '孔同学 139****2134',
@@ -514,7 +552,7 @@ export const activities = [
     org: '医学院志愿服务队',
     hours: 5,
     status: 'PUBLISHED',
-    categoryId: 1,
+    categoryId: 2,
     orgId: 7,
     deadline: '2025-09-18',
     contact: '杨同学 139****3245',
@@ -523,7 +561,7 @@ export const activities = [
   {
     id: 22,
     title: '冬季送温暖物资募集',
-    type: '敬老助残',
+    type: '助老服务',
     date: '2025-11-12',
     time: '10:00',
     place: '学生活动中心',
@@ -532,7 +570,7 @@ export const activities = [
     org: '红十字协会',
     hours: 4,
     status: 'PUBLISHED',
-    categoryId: 6,
+    categoryId: 5,
     orgId: 2,
     deadline: '2025-11-10',
     contact: '朱同学 139****4356',
@@ -550,7 +588,7 @@ export const activities = [
     org: '青年志愿者协会',
     hours: 6,
     status: 'DRAFT',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 1,
     deadline: '2025-12-25',
     contact: '秦同学 139****5467',
@@ -568,7 +606,7 @@ export const activities = [
     org: '校园文明督导队',
     hours: 3,
     status: 'CANCELED',
-    categoryId: 5,
+    categoryId: 1,
     orgId: 6,
     deadline: '2025-12-14',
     contact: '尤同学 139****6578',
@@ -949,17 +987,45 @@ demoStudent.totalHours = durations
   .filter((d) => d.studentId === demoStudent.id && d.status === 'APPROVED')
   .reduce((total, d) => total + d.hours, 0)
 
+/**
+ * 等级取值（8 条循环，分布 1/2/3/2 —— 与原型的短名版本一一对应）。
+ *
+ * 等级名与码值逐字取自后端 `PublicWelfareLevelEnum`：库里 `student_info.public_welfare_level`
+ * 存的是**完整等级名**（「五星志愿者」），接口原样返回，所以 mock 也用完整名 ——
+ * 原型用的短名（「五星」）只在 mock 下能命中色调映射，接上真实接口就退化成灰色
+ * （待办 B20-3 就是这么暴露的）。色调改由 `levelCode` 驱动，与文案无关。
+ *
+ * ⚠️ 已知差异：这里的等级是按 i 循环取的，**与 totalHours 不挂钩**（原型如此），
+ * 而后端是按 `student_info.total_duration` 定档（阈值 3 / 6 / 10 / 20 / 40 小时，见该枚举）。
+ * 要让 mock 与后端算法一致就得按 totalHours 定档，但那会把演示账号（12 小时）从五星降到三星，
+ * 是否要改由团队定；在改之前，画像页的「等级」列与「累计时长」列可能对不上。
+ */
+const LEVEL_CYCLE = [
+  { level: '五星志愿者', levelCode: 'FIVE_STAR' },
+  { level: '四星志愿者', levelCode: 'FOUR_STAR' },
+  { level: '四星志愿者', levelCode: 'FOUR_STAR' },
+  { level: '三星志愿者', levelCode: 'THREE_STAR' },
+  { level: '三星志愿者', levelCode: 'THREE_STAR' },
+  { level: '三星志愿者', levelCode: 'THREE_STAR' },
+  { level: '二星志愿者', levelCode: 'TWO_STAR' },
+  { level: '二星志愿者', levelCode: 'TWO_STAR' },
+]
+
 /** 学生公益画像明细 */
-export const portraits = students.map((s, i) => ({
-  studentId: s.id,
-  studentName: s.name,
-  studentNo: s.studentNo,
-  college: s.college,
-  tag: profiles[i % profiles.length].tag,
-  totalHours: s.totalHours,
-  activityCount: [12, 11, 10, 9, 8, 7, 6, 5][i % 8],
-  communityRatio: [0.68, 0.42, 0.55, 0.31, 0.62, 0.28, 0.47, 0.39][i % 8],
-  environmentRatio: [0.21, 0.58, 0.18, 0.52, 0.24, 0.19, 0.56, 0.22][i % 8],
-  level: ['五星', '四星', '四星', '三星', '三星', '三星', '二星', '二星'][i % 8],
-  generatedAt: '2025-03-21 02:00:00',
-}))
+export const portraits = students.map((s, i) => {
+  const level = LEVEL_CYCLE[i % LEVEL_CYCLE.length]
+  return {
+    studentId: s.id,
+    studentName: s.name,
+    studentNo: s.studentNo,
+    college: s.college,
+    tag: profiles[i % profiles.length].tag,
+    totalHours: s.totalHours,
+    activityCount: [12, 11, 10, 9, 8, 7, 6, 5][i % 8],
+    communityRatio: [0.68, 0.42, 0.55, 0.31, 0.62, 0.28, 0.47, 0.39][i % 8],
+    environmentRatio: [0.21, 0.58, 0.18, 0.52, 0.24, 0.19, 0.56, 0.22][i % 8],
+    level: level.level,
+    levelCode: level.levelCode,
+    generatedAt: '2025-03-21 02:00:00',
+  }
+})
