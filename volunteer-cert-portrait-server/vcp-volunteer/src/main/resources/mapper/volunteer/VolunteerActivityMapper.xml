@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcp.volunteer.mapper.VolunteerActivityMapper">
+
+    <!--
+      活动列表 / 详情 / 组织概览。
+
+      【关于跨域字段】活动列表要显示分类名（activity_category.category_name）与发布组织名
+      （org_info.org_name），详情与概览同理。项目约定「跨模块只调对方 Service 接口，禁止直接
+      访问对方 Mapper/表」，但这两项在 vcp-org 侧只有带数据范围校验的 OrgService.getOrg
+      （学生角色会被拒 20003），拿不到「按一批 id 批量取组织名」的只读入口，
+      而活动列表是学生也要看的公开数据。因此这里用 JOIN 直接取名字，
+      与 VCP 其余模块的差别是刻意的：
+        · 只读，且只取展示用的名称，不读组织/学生的业务字段；
+        · 只出现在这一个 XML 文件里，将来 vcp-org / vcp-system 提供只读端口后，
+          把这几个 JOIN 换成端口调用即可，Java 侧无需改动（查出来的是 mapper.row 的行对象）。
+
+      【关于 deleted】XML 是原生 SQL，MyBatis-Plus 的逻辑删除不会自动追加，必须手写 deleted = 0。
+    -->
+
+    <sql id="activityColumns">
+        a.id,
+        a.title,
+        c.category_name AS type,
+        a.start_time,
+        a.location,
+        a.max_count,
+        a.signed_count,
+        a.duration,
+        a.status,
+        a.category_id,
+        a.org_id,
+        o.org_name,
+        a.deadline,
+        a.contact,
+        a.description
+    </sql>
+
+    <sql id="activityFrom">
+        FROM volunteer_activity a
+        LEFT JOIN activity_category c ON c.id = a.category_id
+        LEFT JOIN org_info o ON o.id = a.org_id
+    </sql>
+
+    <select id="selectActivityPage" resultType="com.vcp.volunteer.mapper.row.ActivityRow">
+        SELECT <include refid="activityColumns"/>
+        <include refid="activityFrom"/>
+        WHERE a.deleted = 0
+        <if test="scopeOrgId != null">
+            AND a.org_id = #{scopeOrgId}
+        </if>
+        <if test="excludeDraft">
+            AND a.status &lt;&gt; 'DRAFT'
+        </if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND a.title ILIKE CONCAT('%', #{q.keyword}, '%')
+        </if>
+        <if test="q.type != null and q.type != ''">
+            AND c.category_name = #{q.type}
+        </if>
+        <if test="q.status != null and q.status != ''">
+            AND a.status = #{q.status}
+        </if>
+        <if test="q.orgId != null">
+            AND a.org_id = #{q.orgId}
+        </if>
+        <if test="q.onlyOpen != null and q.onlyOpen">
+            AND a.status = 'PUBLISHED'
+            AND (a.max_count &lt;= 0 OR a.signed_count &lt; a.max_count)
+        </if>
+        ORDER BY a.id DESC
+    </select>
+
+    <select id="selectActivityDetail" resultType="com.vcp.volunteer.mapper.row.ActivityRow">
+        SELECT <include refid="activityColumns"/>
+        <include refid="activityFrom"/>
+        WHERE a.deleted = 0
+          AND a.id = #{id}
+    </select>
+
+    <!--
+      组织端概览的聚合计数，一条 SQL 取回（详见 OrgOverviewRow 的字段说明）。
+      标量子查询在没有任何数据时返回 0 而不是空行，因此不需要 COALESCE。
+    -->
+    <select id="selectOrgOverview" resultType="com.vcp.volunteer.mapper.row.OrgOverviewRow">
+        SELECT
+            (SELECT COUNT(*)
+             FROM volunteer_activity a
+             WHERE a.deleted = 0 AND a.org_id = #{orgId}) AS activity_total,
+            (SELECT COUNT(*)
+             FROM volunteer_activity a
+             WHERE a.deleted = 0 AND a.org_id = #{orgId} AND a.status = 'PUBLISHED') AS ongoing_total,
+            (SELECT COUNT(*)
+             FROM activity_signup s
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND a.org_id = #{orgId}
+               AND s.status = 'PENDING') AS pending_signup_total,
+            (SELECT COUNT(*)
+             FROM activity_signup s
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND a.org_id = #{orgId}
+               AND s.status IN ('APPROVED', 'COMPLETED')) AS approved_signup_total,
+            (SELECT COUNT(*)
+             FROM activity_signup s
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND a.org_id = #{orgId}
+               AND s.status = 'REJECTED') AS rejected_signup_total,
+            (SELECT COUNT(*)
+             FROM attendance_record r
+             JOIN activity_signup s ON s.id = r.signup_id
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND r.deleted = 0
+               AND a.org_id = #{orgId}) AS attendance_total,
+            (SELECT COUNT(*)
+             FROM attendance_record r
+             JOIN activity_signup s ON s.id = r.signup_id
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND r.deleted = 0
+               AND a.org_id = #{orgId}
+               AND r.status IN ('SIGNED_IN', 'SIGNED_OUT', 'ABNORMAL')) AS signed_attendance_total,
+            (SELECT COUNT(*)
+             FROM attendance_record r
+             JOIN activity_signup s ON s.id = r.signup_id
+             JOIN volunteer_activity a ON a.id = s.activity_id
+             WHERE a.deleted = 0 AND s.deleted = 0 AND r.deleted = 0
+               AND a.org_id = #{orgId}
+               AND r.status IN ('NOT_SIGNED', 'ABSENT')) AS unsigned_total
+    </select>
+</mapper>

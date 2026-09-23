@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcp.volunteer.mapper.AttendanceRecordMapper">
+
+    <!--
+      签到记录列表。
+
+      【为什么 JOIN 三次】attendance_record 只有 signup_id，而页面要显示活动名称、学生姓名、
+      学号、学院，以及时长计算所需的「活动结束时间 / 预计时长」：
+      attendance_record → activity_signup → volunteer_activity / student_info → sys_user。
+      待办清单 B16 里记的就是这条链路（「需经 signup_id 两次 JOIN 才能拼出前端表格要的字段」）。
+
+      【状态筛选为什么带 CASE 分支】未签到且已过签退窗口的记录，展示时按 ABSENT（惰性判定，
+      见 com.vcp.volunteer.support.AttendancePolicy）。若筛选只按库里的原值比，
+      用户筛「缺勤」会一条都看不到、筛「未签到」又会看到实际显示为缺勤的行。
+      这里的窗口口径必须与 VolunteerConstants.SIGN_OUT_DEADLINE_MINUTES 保持一致（30 分钟）；
+      MyBatis 的 XML 读不到 Java 常量，改常量时务必同步改这里。
+      #{now} 由应用传入而不是用数据库的 NOW()：库与应用可能不在同一时区。
+
+      【关于 deleted】XML 是原生 SQL，MyBatis-Plus 的逻辑删除不会自动追加，必须手写。
+    -->
+    <!-- 列与表来源抽成片段：列表与单条详情必须取同一组字段，复制两份迟早会漂移 -->
+    <sql id="attendanceColumns">
+        r.id,
+        r.signup_id,
+        s.activity_id,
+        a.title AS activity_title,
+        a.start_time AS activity_start_time,
+        a.end_time AS activity_end_time,
+        a.duration AS activity_duration,
+        a.org_id AS activity_org_id,
+        s.student_id,
+        u.real_name AS student_name,
+        si.student_no,
+        si.college,
+        r.status,
+        r.sign_in_time,
+        r.sign_out_time
+    </sql>
+
+    <sql id="attendanceFrom">
+        FROM attendance_record r
+        JOIN activity_signup s ON s.id = r.signup_id
+        JOIN volunteer_activity a ON a.id = s.activity_id
+        JOIN student_info si ON si.id = s.student_id
+        LEFT JOIN sys_user u ON u.id = si.user_id
+    </sql>
+
+    <select id="selectAttendancePage" resultType="com.vcp.volunteer.mapper.row.AttendanceRow">
+        SELECT <include refid="attendanceColumns"/>
+        <include refid="attendanceFrom"/>
+        WHERE r.deleted = 0
+          AND s.deleted = 0
+          AND a.deleted = 0
+        <if test="scopeOrgId != null">
+            AND a.org_id = #{scopeOrgId}
+        </if>
+        <if test="q.keyword != null and q.keyword != ''">
+            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}, '%')
+                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}, '%')
+                 OR a.title ILIKE CONCAT('%', #{q.keyword}, '%'))
+        </if>
+        <if test="q.activityId != null">
+            AND s.activity_id = #{q.activityId}
+        </if>
+        <if test="q.studentId != null">
+            AND s.student_id = #{q.studentId}
+        </if>
+        <if test="q.status != null and q.status != ''">
+            <choose>
+                <when test="q.status == 'ABSENT'">
+                    AND (r.status = 'ABSENT'
+                         OR (r.status = 'NOT_SIGNED'
+                             AND a.end_time IS NOT NULL
+                             AND a.end_time + INTERVAL '30 minutes' &lt; #{now}))
+                </when>
+                <when test="q.status == 'NOT_SIGNED'">
+                    AND r.status = 'NOT_SIGNED'
+                    AND (a.end_time IS NULL
+                         OR a.end_time + INTERVAL '30 minutes' &gt;= #{now})
+                </when>
+                <otherwise>
+                    AND r.status = #{q.status}
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY r.id DESC
+    </select>
+
+    <!--
+      单条签到记录：签到 / 签退 / 人工修正前都要先取它做归属与时间窗口校验。
+      窗口判定需要活动的开始与结束时间，归属判定需要报名上的 student_id，
+      所以这里必须与列表用同一组 JOIN，不能只查 attendance_record。
+    -->
+    <select id="selectAttendanceDetail" resultType="com.vcp.volunteer.mapper.row.AttendanceRow">
+        SELECT <include refid="attendanceColumns"/>
+        <include refid="attendanceFrom"/>
+        WHERE r.deleted = 0
+          AND s.deleted = 0
+          AND a.deleted = 0
+          AND r.id = #{id}
+    </select>
+</mapper>

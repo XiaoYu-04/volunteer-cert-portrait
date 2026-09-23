@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.vcp.volunteer.mapper.ActivityCategoryMapper">
+
+    <!--
+      分类列表。
+
+      为什么要子查询聚合活动场次：前端分类管理页每行都要显示「活动数量」并画进度条，
+      还要用它算「覆盖活动」总数（全部分类相加），所以必须一次把 6 个分类连同场次取回。
+      逐行 count 就是 6 次往返，而这里一次即可。
+
+      注意子查询里的 deleted = 0：这是原生 SQL，MyBatis-Plus 的逻辑删除不会自动追加。
+    -->
+    <select id="selectCategoryList" resultType="com.vcp.volunteer.mapper.row.CategoryRow">
+        SELECT c.id,
+               c.category_name,
+               c.code,
+               c.sort,
+               c.status,
+               COALESCE(t.total, 0) AS activity_count
+        FROM activity_category c
+        LEFT JOIN (
+            SELECT category_id, COUNT(*) AS total
+            FROM volunteer_activity
+            WHERE deleted = 0
+              AND category_id IS NOT NULL
+            GROUP BY category_id
+        ) t ON t.category_id = c.id
+        WHERE c.deleted = 0
+        ORDER BY c.sort ASC, c.id ASC
+    </select>
+</mapper>
