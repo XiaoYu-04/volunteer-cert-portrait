@@ -45,8 +45,52 @@
 
 > 另：云数据库口令已轮换，另外两位同学需把新口令更新到自己那份 `application-local.yml`
 > （旧口令已失效）。连不上库时先查这里，不是代码问题。
+>
+> **口令从哪拿**：口令不在仓库里，只存在于执行轮换那台机器的 `application-local.yml`
+> （该文件已 gitignore）；需要的人找轮换执行者线下索取（群聊 / 私聊），拿到后写进自己的
+> `application-local.yml` 或设环境变量 `VCP_DB_PASSWORD`，**不要回写进任何被跟踪的文件**。
+> 新同学的完整上手流程见下文「[新同学四步上手](#新同学四步上手)」一节。
 
 完整清单见 [docs/待办清单.md](docs/待办清单.md)，后端细节见 [docs/后端进展与待办.md](docs/后端进展与待办.md)。
+
+## 新同学四步上手
+
+新加入的同学按这四步走，本地就能把整个系统跑起来。
+
+1. **克隆仓库**：
+
+   ```bash
+   git clone https://github.com/XiaoYu-04/volunteer-cert-portrait.git
+   cd volunteer-cert-portrait
+   ```
+
+2. **建库建表**：按顺序执行 `sql/01_create_database.sql` ~ `sql/07_demo_scale.sql`
+   （`05`、`06` 是后端接口的前置依赖，**必执行**；`04`、`07` 是演示数据脚本，可选）：
+
+   ```text
+   sql/01_create_database.sql → 02_schema.sql → 03_init_data.sql
+   → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
+   → 06_backend_gap_fix2.sql（必执行）→ 07_demo_scale.sql（演示数据放大，可选）
+   ```
+
+3. **配置数据库口令**：复制
+   `volunteer-cert-portrait-server/vcp-boot/src/main/resources/application-local.yml.example`
+   为同目录下的 `application-local.yml`，并填入数据库口令（口令不在仓库里，
+   获取渠道见上文「下一步待办」一节末尾的说明）。
+
+4. **起前后端**：
+
+   ```bash
+   # 后端（默认端口 8080）
+   cd volunteer-cert-portrait-server
+   mvn package -DskipTests
+   java -jar vcp-boot/target/vcp-boot-1.0.0.jar
+
+   # 前端（另开一个终端窗口）
+   cd volunteer-cert-portrait-web
+   npm install
+   npm run dev
+   ```
 
 ## 快速开始（前端）
 
@@ -133,7 +177,9 @@ UI 组件全部手写，视觉风格为**新中式水墨风**（纸白底 + 墨�
 
 ## 开发规范
 
-- 分支：`main` / `develop` / `feature/*` / `fix/*`
+- 分支：本项目至今只有 `main` 一条分支、无 PR 历史，所以小改动直接推 `main`；
+  多人并行的较大改动开 `feature/*` 分支再合回 `main`；
+  涉及 force push 的操作（例如日后清理 git 历史）动手前先在群里打招呼
 - 提交前缀：`feat` / `fix` / `docs` / `test` / `style` / `refactor`
 - 接口前缀统一 `/api/v1/`，响应外壳 `{ code, message, data }`，成功 `code = 0`
 - 分页统一 `{ total, list }`

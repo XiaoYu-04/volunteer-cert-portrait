@@ -34,4 +34,3 @@ Thumbs.db
 # 并行开发时子代理留下的临时产物（javac 的 classpath 目录、编译输出、探针脚本等）。
 # 它们不是工程的一部分，但很容易被 git add -A 误提交，所以在根目录统一忽略。
 .tmp-*
-Userslsy04AppDataLocalTemp*/
