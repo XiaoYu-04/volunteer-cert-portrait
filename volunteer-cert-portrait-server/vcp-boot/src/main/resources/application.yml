@@ -13,8 +13,10 @@ spring:
   # 三条 import 按序尝试，文件不存在不报错（optional:）；模板见同目录 application-local.yml.example。
   config:
     import:
+      # 前三条是本地开发的候选位置（文件不存在不报错）；最后一条是部署用。
       - optional:classpath:application-local.yml        # IDE 内运行：放 vcp-boot/src/main/resources/
-      - optional:file:./application-local.yml           # java -jar 与源码根目录运行
+      - optional:file:./vcp-boot/src/main/resources/application-local.yml   # 在 volunteer-cert-portrait-server/ 下 java -jar 时，读源码树里那份（该文件已被 pom 排除、不会进 jar）
+      - optional:file:./application-local.yml           # 启动目录下（java -jar 与源码根目录运行）
       - optional:file:./config/application-local.yml    # 部署时放 jar 同级的 config/ 下
   datasource:
     driver-class-name: org.postgresql.Driver
@@ -29,8 +31,9 @@ spring:
     # （实测 012345 → 5349），口令就错了。
     username: ${VCP_DB_USERNAME:${vcp.db.username}}
     password: ${VCP_DB_PASSWORD:${vcp.db.password}}
-    # 另注：本地构建会把 application-local.yml 打进 jar（已实测），别把本地构建的 jar 分发出去；
-    # 部署时用 jar 同级 config/application-local.yml 或环境变量，见上面 spring.config.import。
+    # 另注：2026-09-24 起 vcp-boot/pom.xml 的 <resources> 已把 application-local.yml 排除出打包，
+    # jar 里不再有它（clean 重打后实测确认，见 docs/下一步待办.md 第 12 项）；
+    # 本地开发按上面 spring.config.import 的 file 路径读取，部署时用 jar 同级 config/application-local.yml 或环境变量。
     hikari:
       pool-name: VcpHikariPool
       # 云数据库的并发连接配额通常远小于本地实例，池子刻意调小
@@ -106,10 +109,20 @@ sa-token:
 knife4j:
   # 必开项：该属性默认 false 且没有 matchIfMissing，不开则增强能力（接口过滤、调试、/knife4j/config）
   # 全部静默失效 —— 但 /doc.html 仍能打开，极易误判为已接好
+  # 该开关同时决定 SaTokenConfig 是否放行文档路径（见 SaTokenConfig.DOC_EXCLUDE_PATHS）：
+  # true 时四个文档路径照旧免登录；application-prod.yml 设为 false，文档页与 /v3/api-docs 随之要求登录态。
   enable: true
+
+# 跨域允许的来源模式：逗号分隔可填多个，如 https://a.example.edu.cn,https://b.example.edu.cn
+# 开发期保持 *（与 WebMvcConfig 改动前的硬编码取值一致）；正式部署由 application-prod.yml 收紧为实际前端域名。
+# 读取方见 WebMvcConfig：本项缺失时同样回退为 *。
+vcp:
+  cors:
+    allowed-origin-patterns: "*"
 
 logging:
   level:
     root: info
-    # debug 级别下 MyBatis 会输出执行的 SQL，生产环境请调回 info
+    # debug 级别下 MyBatis 会输出执行的 SQL
+    # 开发期保持 debug；application-prod.yml 已设为 info，生产不再全量打印 SQL
     com.vcp: debug

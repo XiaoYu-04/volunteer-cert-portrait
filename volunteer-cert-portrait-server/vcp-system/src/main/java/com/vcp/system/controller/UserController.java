@@ -30,6 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>所有写操作都标了 {@code @OperationLog}，module 固定为「用户与权限」。
  * <b>这个中文串必须与日志页筛选项逐字一致</b>，写错不报错但永远筛不出来。
+ *
+ * <p><b>新增 / 修改用户的 {@code @OperationLog} 必须写 {@code params = false}</b>：
+ * 这两个接口的请求体 {@code UserSaveDTO} 带 password 字段，采集参数会把明文口令
+ * 序列化进 {@code operation_log.params} 永久留存。日志里保留「谁、什么时候、调了什么、
+ * 成功还是失败」已经够用。
  */
 @RestController
 @RequestMapping("/api/v1/system/users")
@@ -58,7 +63,7 @@ public class UserController {
      */
     @PostMapping
     @SaCheckPermission("system:user:create")
-    @OperationLog(module = "用户与权限", action = "新增用户")
+    @OperationLog(module = "用户与权限", action = "新增用户", params = false)
     public R<Void> create(@RequestBody UserSaveDTO dto) {
         userService.createUser(dto);
         return R.ok();
@@ -73,7 +78,7 @@ public class UserController {
      */
     @PutMapping("/{id}")
     @SaCheckPermission("system:user:update")
-    @OperationLog(module = "用户与权限", action = "修改用户")
+    @OperationLog(module = "用户与权限", action = "修改用户", params = false)
     public R<Void> update(@PathVariable Long id, @RequestBody UserSaveDTO dto) {
         userService.updateUser(id, dto);
         return R.ok();

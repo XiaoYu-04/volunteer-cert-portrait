@@ -4,7 +4,12 @@
 # 也可以用环境变量覆盖（优先级高于本文件），二者取其一即可：
 #   VCP_DB_USERNAME / VCP_DB_PASSWORD
 #
-# 加载方式见 application.yml 的 spring.config.import 与 datasource 注释。
+# 加载方式见 application.yml 的 spring.config.import 与 datasource 注释。放在本目录
+# （vcp-boot/src/main/resources/）时，下面两种启动方式都能读到它：
+#   - IDE 内运行                                        → optional:classpath:application-local.yml
+#   - 在 volunteer-cert-portrait-server/ 下 java -jar   → optional:file:./vcp-boot/src/main/resources/application-local.yml
+# 部署时改为放 jar 同级 config/application-local.yml，或直接用环境变量。
+# 本文件（application-local.yml）不会被 Maven 打进 jar，可放心留在源码树里。
 vcp:
   db:
     username: postgres

@@ -66,6 +66,31 @@
     </dependencies>
 
     <build>
+        <resources>
+            <!-- 第一段：application* 配置参与占位符过滤（@..@）；显式排除本机凭证文件 application-local.yml。
+                 它的模板 application-local.yml.example 文件名结尾不同，不受此排除影响，仍随第二段原样打入 jar -->
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/application*.yml</include>
+                    <include>**/application*.yaml</include>
+                    <include>**/application*.properties</include>
+                </includes>
+                <excludes>
+                    <exclude>application-local.yml</exclude>
+                </excludes>
+            </resource>
+            <!-- 第二段：其余全部资源原样复制（mapper XML、db/migration 脚本、application-local.yml.example 等） -->
+            <resource>
+                <directory>${basedir}/src/main/resources</directory>
+                <excludes>
+                    <exclude>**/application*.yml</exclude>
+                    <exclude>**/application*.yaml</exclude>
+                    <exclude>**/application*.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <!-- 只有启动模块打可执行 jar；其余模块是普通内部 jar -->
             <plugin>

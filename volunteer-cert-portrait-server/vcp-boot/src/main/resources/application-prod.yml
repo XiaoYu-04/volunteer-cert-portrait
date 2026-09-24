@@ -1,0 +1,30 @@
+# 生产环境配置。激活方式（本文件不激活就完全不生效）：
+#   java -jar vcp-boot.jar --spring.profiles.active=prod
+#   或环境变量 SPRING_PROFILES_ACTIVE=prod
+# 不激活 prod 时，下面三项收紧一律不生效，开发/演示行为与改动前逐项一致。
+#
+# 本文件只做「上线前必须收紧」的三处收口，其余配置全部继承 application.yml：
+#   1) 跨域来源：由 * 收紧为实际前端域名白名单（vcp.cors.allowed-origin-patterns）。
+#      计划中的部署是 Nginx 同源反代 /api，同源请求不发预检、不需要 CORS 响应头，收紧不影响访问。
+#   2) 接口文档：knife4j.enable=false，SaTokenConfig 随之不再放行 /doc.html、/webjars/**、
+#      /v3/api-docs/**、/knife4j/**，文档页与 OpenAPI JSON 一律要求登录态。
+#   3) SQL 日志：logging.level.com.vcp 由 debug 调回 info，不再把 SQL 全量打进日志。
+#
+# 数据库凭证不写在本文件：仍走环境变量 VCP_DB_USERNAME / VCP_DB_PASSWORD，
+# 或 jar 同级 config/application-local.yml（见 application.yml 的 spring.config.import 注释）。
+
+vcp:
+  cors:
+    # 【部署前必改】占位值，改成实际前端域名；多个域名用逗号分隔。
+    # 前端经 Nginx 同源反代访问后端时浏览器不会发跨域请求，本项实际不会命中；
+    # 仅在前后端分域部署（前端独立域名直连后端）时才真正生效。
+    allowed-origin-patterns: "https://vcp.example.edu.cn"
+
+# 关闭 Knife4j 增强能力；SaTokenConfig 与该开关共用同一判断，四个文档路径因此不再免登录
+knife4j:
+  enable: false
+
+logging:
+  level:
+    # 覆盖 application.yml 的 debug：生产不再输出全量 SQL
+    com.vcp: info
