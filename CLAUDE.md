@@ -17,7 +17,7 @@
 volunteer-cert-portrait/
 ├── volunteer-cert-portrait-server/   # 后端（Spring Boot 多模块 Maven）
 ├── volunteer-cert-portrait-web/      # 前端（Vue 3 + Vite）
-├── sql/                              # 建表 + 初始化 + 演示数据脚本（附 README）
+├── sql/                              # 建表 + 初始化 + 演示数据 + 一致性自检脚本（附 README）
 ├── docs/                             # 待办清单、下一步待办、会话记录、进展与待办、规则方案、开发计划、知识库
 └── bug/                              # 前端同学的缺陷笔记
 ```
@@ -51,12 +51,16 @@ cd sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
+
+# 一致性自检（只读、可重复执行，前置条件 01~06；20 项违规数全 0 即通过）
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
 ```
 
 数据库连接信息见 `vcp-boot/src/main/resources/application.yml`；口令等本地覆盖放在
 `volunteer-cert-portrait-server/vcp-boot/src/main/resources/application-local.yml`
 （已 gitignore，模板见同目录 `application-local.yml.example`），仓库内文件不含任何密钥。
-默认账号：`admin` / `org_admin` / `student`（密码均为 `123456`，明文，接入加密后须替换）。
+默认账号：`admin` / `org_admin` / `student`（密码均为 `123456`，**库内存 BCrypt 密文、明文不落库**；
+老库需跑 `sql/08_password_bcrypt.sql` 刷密文，新库不用）。
 
 ## 后端模块结构
 
@@ -219,7 +223,8 @@ vcp-dependencies  独立 BOM
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
-（`sql/` 脚本在 PostgreSQL 18.6 实跑，**20 项一致性自检全部为 0**）；
+（`sql/` 脚本在 PostgreSQL 18.6 实跑，**20 项一致性自检全部为 0**；已固化为
+`sql/09_consistency_check.sql`，2026-09-24 云库实跑违规合计 0）；
 接口文档可用。**6 个业务模块全部落地**（2026-09-23）：`vcp-system` / `vcp-org` /
 `vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`，三个角色实打
 20 个接口全部符合预期、日志零异常。OpenAPI 共 54 个路径 / 66 个「方法 + 路径」，
@@ -266,7 +271,7 @@ A9（`sys_user.status` 类型）已拍板并落地（A9 三层天然对齐、实
 | `docs/下一步待办.md` | **下一次开工从哪开始**：P0/P1/P2 排序清单，每条带验收方式与「已销账」证据 |
 | `docs/会话记录.md` | **会话过程与证据**：每段时间做了什么、为什么这么选、环境怎么搭、踩过的坑 |
 | `docs/公益等级与标签规则方案.md` | 公益等级阈值与标签判定规则（**已确认**，含落地效果） |
-| `sql/README.md` | 脚本执行方式、设计约定、7 项待定事项 |
+| `sql/README.md` | 脚本执行方式、设计约定、待拍板事项（原 9 项已全部拍板，留档备查） |
 | `docs/高校志愿服务时长认证与公益画像数据分析系统_开发计划与分工.md` | 原始开发计划 |
 | `docs/知识库已确认项目选题与技术背景.md` | 命名体系、架构、模块职责与表归属 |
 
