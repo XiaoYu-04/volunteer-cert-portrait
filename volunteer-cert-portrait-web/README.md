@@ -19,8 +19,11 @@ npm run dev
 | 组织管理员 | `org_admin` | `123456` | `/org` |
 | 学校管理员 | `admin` | `123456` | `/admin` |
 
-> **Node 版本**：`package.json` 要求 `^22.18.0 || >=24.12.0`。当前环境为 v22.14.0，
-> 安装时会有 `EBADENGINE` 警告，实测可正常构建与运行。若遇到 Vite 报错，升级 Node 即可。
+> **Node 版本**：`package.json` 要求 `^22.18.0 || >=24.12.0`。
+> ⚠️ **本机当前是 v22.14.0，低于该下限**，所以 `npm install` 会报 `EBADENGINE` 警告 ——
+> 实测（2026-09-24）`build` / `lint` / `verify:mock` 在这个版本上都能跑通，
+> 但那是「碰巧能跑」，不是受支持的组合。
+> 根目录的 `.nvmrc` 声明 `24.20.0`（满足 `>=24.12.0`），装了 nvm 的话 `nvm use` 即可切过去。
 
 ## 命令
 
@@ -35,17 +38,26 @@ npm run verify:mock # 校验模拟数据的自洽关系（见下文「模拟数�
 
 ## 后端对接：改一个环境变量即可
 
-**后端尚未开发**，因此当前走本地模拟数据。但接口层是按真实后端契约书写的，
-后端就绪后**不需要改任何页面代码**：
+后端（`volunteer-cert-portrait-server/`）已就绪。开发环境**当前已切到真实后端**
+（`.env.development` 的 `VITE_USE_MOCK=false`，请求经 Vite 代理打到 8080）；
+纯前端独立演示仍走本地模拟数据（`.env.production` 的 `VITE_USE_MOCK=true`）。
+接口层是按真实后端契约书写的，**两种跑法都不需要改任何页面代码**：
 
 ```bash
-# .env.development / .env.production
-VITE_USE_MOCK=true    # true = 走 src/mock 本地模拟；false = 走真实 axios
+# .env.development —— 联调（当前值）
+VITE_USE_MOCK=false   # false = 走真实 axios，请求经 Vite 代理打到后端
+VITE_API_BASE_URL=/api
+
+# .env.production —— 纯前端演示（当前值）
+VITE_USE_MOCK=true    # true = 走 src/mock 本地模拟，不依赖后端
 VITE_API_BASE_URL=/api
 ```
 
-置为 `false` 后，`utils/request.js` 会改用 axios 请求 `${VITE_API_BASE_URL}/v1/...`，
-开发环境下 Vite 需配合 `server.proxy` 把 `/api` 代理到后端 8080 端口。
+置为 `false` 后，`utils/request.js` 会改用 axios 请求 `${VITE_API_BASE_URL}/v1/...`。
+开发环境下由 `vite.config.js` 的 `server.proxy` 把 `/api` 代理到后端 ——
+**默认 `http://127.0.0.1:8080`**（各人跑各自的本机后端）；要和队友联调时，
+在 `.env.local` 里设 `VITE_API_TARGET` 覆盖，**不要把某个人的内网 IP 写进入库文件**。
+注意改完 `.env*` 或 `vite.config.js` 必须**重启 dev server** 才生效。
 
 **响应契约**（与架构文档一致）：
 
@@ -99,7 +111,7 @@ src/
 | `signup_status` | `PENDING` / `APPROVED` / `REJECTED` / `CANCELED` / `COMPLETED` |
 | `attendance_status` | `NOT_SIGNED` / `SIGNED_IN` / `SIGNED_OUT` / `ABNORMAL` / `ABSENT` |
 | `duration_status` | `PENDING_SUBMIT` / `PENDING_AUDIT` / `APPROVED` / `REJECTED` |
-| `org_status` | `PENDING` / `APPROVED` / `REJECTED` |
+| `org_status` | `PENDING` / `APPROVED` / `REJECTED` / `DISABLED` |
 | `audit_action` | `SUBMIT` / `APPROVE` / `REJECT`（注意与状态值的 `APPROVED`/`REJECTED` 不同形） |
 | `notification_type` | `SIGNUP` / `DURATION` / `SYSTEM` |
 
@@ -107,7 +119,9 @@ src/
 
 > **码值的权威来源是后端**：`sql/02_schema.sql` 的列注释与 `sql/03_init_data.sql` 的
 > `sys_dict` 种子数据。前端这份是同一套码的镜像，改动前请先确认后端。
-> 另有两处前端与后端尚未对齐，见 [docs/前端进展与待办.md](../docs/前端进展与待办.md) 第三节。
+> 本节码值已于 2026-09-24 与后端逐条核对，**全部对齐**（`attendance_status` 用 `NOT_SIGNED`、
+> `notification_type` 三档为 `SIGNUP`/`DURATION`/`SYSTEM`、`audit_action` 含 `SUBMIT`）；
+> 核对过程见 [docs/前端进展与待办.md](../docs/前端进展与待办.md) 第三节第 6 条。
 
 ## 模拟数据
 

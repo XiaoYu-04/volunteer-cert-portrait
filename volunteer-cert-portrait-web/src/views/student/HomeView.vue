@@ -42,7 +42,6 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
 
 /* 图注与无障碍描述一律从接口数据现算，见 composables/useDashboardText.js 的说明 */
 const {
-  profiles,
   signin,
   trendRange,
   trendTotal,
