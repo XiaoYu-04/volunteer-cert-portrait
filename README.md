@@ -39,7 +39,9 @@
 2. **修剩余的联调遗留**：`signed_count` 两处口径不一致（B20-1，需在「改实现」与
    「改 `04` 回填口径并重跑」之间二选一，改实现时 `sql/07` 的自检口径要同步改）；
    操作日志「操作对象」列恒空（B20-6，已在前端止血，根治要给 `@OperationLog` 加 `target` 属性）。
-3. **A 组剩余待定**：A6（时间类型是否改 `timestamptz`）。
+3. **A 组已无剩余待定**：A6（时间类型是否改 `timestamptz`）已于 2026-09-24 拍板，结论「**不改** —— 继续用
+   `TIMESTAMP` + `LocalDateTime`」。理由：单一部署、无跨时区需求；改成 `timestamptz` 要动 16 张表 + 全部实体 +
+   前端渲染 + 演示数据重跑，收益与代价不匹配。
    A8（演示数据尺度）、A9（`sys_user.status` 码值）、A12（活动分类口径）均已拍板并落地，不再是待定项。
 4. **交付物**：论文与答辩材料（D 组）。
 
@@ -76,7 +78,8 @@
 3. **配置数据库口令**：复制
    `volunteer-cert-portrait-server/vcp-boot/src/main/resources/application-local.yml.example`
    为同目录下的 `application-local.yml`，并填入数据库口令（口令不在仓库里，
-   获取渠道见上文「下一步待办」一节末尾的说明）。
+   获取渠道见上文「下一步待办」一节末尾的说明）。这份文件已 gitignore、也**不会**被打进 jar；
+   放在这个位置时，IDE 内运行与下一步「在 `volunteer-cert-portrait-server/` 下 `java -jar`」都能读到它。
 
 4. **起前后端**：
 

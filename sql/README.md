@@ -185,7 +185,7 @@ CONSTRAINT uk_dict_type_key UNIQUE (dict_type, dict_key)
 | 3 | **报名人数上限的并发控制** | `signed_count` 是冗余计数列，与 `activity_signup` 实际条数可能漂移。测试项提到「活动已满继续报名」，但没说怎么防并发超卖 | 影响报名接口。建议用行锁或 `UPDATE ... WHERE signed_count < max_count` 原子更新 |
 | 4 | **审核驳回后如何重新提交** | 测试项提到该场景，但无状态机定义 | 影响 `service_duration` / `activity_signup` 的状态流转 |
 | 5 | **`total_duration` 有两处** | `student_info.total_duration` 与 `student_profile.total_duration` 含义相同、注释相同 | 需明确以哪个为准。**建议以 `student_info` 为准**，`student_profile` 仅作画像快照 |
-| 6 | **时间类型是否用 `timestamptz`** | 现按原脚本用 `TIMESTAMP`（无时区） | 单时区部署无影响；若将来跨时区或服务器时区不一致，`timestamptz` 更安全 |
+| 6 | **时间类型是否用 `timestamptz`** | 现按原脚本用 `TIMESTAMP`（无时区）。✅ 2026-09-24 已拍板：不改（单一部署、无跨时区需求） | 单时区部署无影响；若将来跨时区或服务器时区不一致，`timestamptz` 更安全 |
 | 7 | **逻辑删除与唯一约束的冲突** | `activity_signup` 有 `uk_activity_student(activity_id, student_id)`，同时又有 `deleted` 软删除 | 若"取消报名"用 `deleted=1` 实现，该学生再次报名会撞唯一约束。需二选一：改成部分唯一索引 `UNIQUE (activity_id, student_id) WHERE deleted = 0`，或明确"取消=改 status、复用同一行"。`service_duration.signup_id` 的 UNIQUE 同理 |
 
 ## 六、发现的文档问题
