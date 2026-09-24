@@ -156,8 +156,11 @@ public class DurationServiceImpl implements DurationService {
         // signup_id 是 NOT NULL UNIQUE，前端只给 studentId + activityId，必须自己反查
         Long signupId = refMapper.selectSignupId(activityId, studentId);
         if (signupId == null) {
+            // 反查同时过滤了报名状态：未报名、待审核、已驳回、已取消都会走到这里。
+            // 文案必须点明是报名状态的问题，否则组织管理员会把它当成「学生没报名」而去重发报名
             throw new BusinessException(ErrorCodeEnum.SIGNUP_NOT_FOUND,
-                    "未找到该学生在此活动下的有效报名记录（学生ID " + studentId + "，活动ID " + activityId + "），无法提交服务时长");
+                    "该学生在此活动下的报名未通过审核（可能为待审核、已驳回、已取消，或该学生未报名），无法提交服务时长（学生ID "
+                            + studentId + "，活动ID " + activityId + "）");
         }
 
         ServiceDuration existing = serviceDurationMapper.selectOne(Wrappers.<ServiceDuration>lambdaQuery()

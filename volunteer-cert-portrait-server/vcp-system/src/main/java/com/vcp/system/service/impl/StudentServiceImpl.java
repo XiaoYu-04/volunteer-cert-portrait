@@ -33,6 +33,9 @@ import java.util.Objects;
  * <p><b>按姓名筛选也只能两步</b>：姓名字段不在本表，没法在同一个 wrapper 里
  * 直接写 {@code like(realName)}。实现是先按姓名反查一批 user_id，
  * 再与学号条件一起 OR 进档案查询。
+ *
+ * <p><b>写路径不在本类</b>：建档（账号创建时补一行档案）在 {@link StudentArchiveRegistrar}，
+ * 本类只做查询；管理员补录/修改学号等仍未做。
  */
 @Service
 @RequiredArgsConstructor
