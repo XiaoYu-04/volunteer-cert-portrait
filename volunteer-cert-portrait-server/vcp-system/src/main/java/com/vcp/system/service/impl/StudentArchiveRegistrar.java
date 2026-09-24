@@ -29,7 +29,7 @@ import java.math.BigDecimal;
  * 两个调用点各写一遍只会多两处漏写的可能。
  *
  * <p><b>刻意不做的两件事</b>：不写 {@code student_profile}（画像快照由 vcp-portrait
- * 的重算任务生成），不写 {@code public_welfare_level}（理由见 {@link #ensureArchive(Long)}）。
+ * 的重算任务生成），不写 {@code public_welfare_level}（理由见 {@link #ensureArchive(Long, String)}）。
  */
 @Slf4j
 @Component
@@ -51,7 +51,7 @@ public class StudentArchiveRegistrar {
      * 建档失败要连账号一起回滚。若各自独立提交，库里会留下「有账号、无档案」的孤儿 ——
      * 那种账号能登录，但学生端每个页面都报 10003，只能人工补数据。
      *
-     * <p><b>三个字段的口径</b>：
+     * <p><b>四个字段的口径</b>：
      * <ul>
      *   <li>{@code student_no} 写占位学号 {@code S + 六位零填充的 userId}（userId=42 → S000042）。
      *       注册表单不收集学号，而该列 NOT NULL UNIQUE 必须给值；由主键派生可保证唯一、
@@ -64,14 +64,19 @@ public class StudentArchiveRegistrar {
      *       （B18 已把散落的硬编码阈值记为技术债）。等级由 vcp-portrait 的每日重算任务
      *       按 {@code PublicWelfareLevelEnum.of(0)} 的口径补写，重算前该列为 null，
      *       画像侧读取时会按累计时长兜底算一次等级，不会显示成空白。</li>
+     *   <li>{@code college} 写注册表单提交的学院（{@code AuthServiceImpl} 已校验过它命中
+     *       字典里的启用项）。这是该列目前唯一的写入入口：学院是「按学院统计」的分组键，
+     *       缺了就落进空分组。管理员新增用户那条路径的表单里没有学院下拉框，因此传 null 留空，
+     *       等管理员补录（补录页面还没做，B30 只修注册链路）。</li>
      * </ul>
      *
-     * @param userId 用户 id（{@code sys_user.id}）
+     * @param userId  用户 id（{@code sys_user.id}）
+     * @param college 学院名，来自注册表单；不收集学院的入口传 null
      * @return 该用户的档案实体（含 id 与占位学号，调用方拿去写会话）；已有档案时返回库里那一行
      * @throws BusinessException 用户 id 为空（10001）、或该账号已有档案（10000）
      */
     @Transactional(rollbackFor = Exception.class)
-    public StudentInfo ensureArchive(Long userId) {
+    public StudentInfo ensureArchive(Long userId, String college) {
         if (userId == null) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "建档缺少用户 id");
         }
@@ -87,6 +92,7 @@ public class StudentArchiveRegistrar {
         StudentInfo archive = new StudentInfo();
         archive.setUserId(userId);
         archive.setStudentNo(placeholderStudentNo(userId));
+        archive.setCollege(college);
         archive.setTotalDuration(BigDecimal.ZERO);
         try {
             studentInfoMapper.insert(archive);
@@ -100,6 +106,21 @@ public class StudentArchiveRegistrar {
             throw new BusinessException(ErrorCodeEnum.SYSTEM_ERROR, "该账号已有学生档案，请联系学校管理员核对数据");
         }
         return archive;
+    }
+
+    /**
+     * 不收集学院的入口（管理员新增用户）用这个重载，等价于 {@code ensureArchive(userId, null)}。
+     *
+     * <p>事务注解与双参重载重复是必须的：类内自调用不走 Spring 代理，只在双参方法上标注的话，
+     * 这条路径会静默地跑在没有事务的连接上 —— 建档失败时账号已经提交，留下孤儿账号。
+     *
+     * @param userId 用户 id（{@code sys_user.id}）
+     * @return 该用户的档案实体（含 id 与占位学号）；已有档案时返回库里那一行
+     * @throws BusinessException 用户 id 为空（10001）、或该账号已有档案（10000）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public StudentInfo ensureArchive(Long userId) {
+        return ensureArchive(userId, null);
     }
 
     /**

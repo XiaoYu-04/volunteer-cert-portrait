@@ -163,6 +163,8 @@ public class UserServiceImpl implements UserService {
         // 顺手建了会让档案列表与画像重算把他们也算成学生。
         // 与上面的插入同处一个事务，建档失败会连账号一起回滚。
         if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
+            // 刻意只传 userId（学院为 null）：管理员新增用户的表单里没有学院下拉框，
+            // B30 只修了注册链路，这条路径保持原样，等管理员补录。
             studentArchiveRegistrar.ensureArchive(user.getId());
         }
     }

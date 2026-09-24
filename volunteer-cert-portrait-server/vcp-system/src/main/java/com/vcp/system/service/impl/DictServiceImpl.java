@@ -38,18 +38,61 @@ public class DictServiceImpl implements DictService {
      */
     @Override
     public Map<String, List<DictItemVO>> listDicts() {
-        List<SysDict> items = dictMapper.selectList(Wrappers.<SysDict>lambdaQuery()
-                .eq(SysDict::getStatus, STATUS_ENABLED)
-                .orderByAsc(SysDict::getDictType)
-                .orderByAsc(SysDict::getSort)
-                .orderByAsc(SysDict::getId));
-
         Map<String, List<DictItemVO>> result = new LinkedHashMap<>();
-        for (SysDict item : items) {
+        for (SysDict item : selectEnabled(null)) {
             if (item.getDictType() == null) {
                 continue;
             }
             result.computeIfAbsent(item.getDictType(), key -> new ArrayList<>()).add(toVO(item));
+        }
+        return result;
+    }
+
+    /**
+     * 取指定类型的启用中字典项，按 sort 升序。
+     *
+     * @param dictType 字典类型，如 "college"
+     * @return 条目列表；类型不存在时返回空列表（不抛异常）
+     */
+    @Override
+    public List<DictItemVO> listByType(String dictType) {
+        // 空类型不能下推给 SQL：下面那个 eq 条件是「不限类型」的意思，
+        // 传空值会退化成把全部字典项当成这一个类型返回。
+        if (dictType == null || dictType.isBlank()) {
+            return List.of();
+        }
+        return toVOList(selectEnabled(dictType));
+    }
+
+    /**
+     * 查启用中的字典项。
+     *
+     * <p>「只取 status = 1、按 sort 升序」这条口径只写在这里，两个查询入口都走它，
+     * 免得两处各写一遍之后慢慢漂移。按类型排序是给 {@link #listDicts} 用的：
+     * 它靠结果顺序决定分组顺序，不限类型时也得先按类型排好。
+     *
+     * @param dictType 字典类型；{@code null} 表示不限类型
+     * @return 字典实体列表
+     */
+    private List<SysDict> selectEnabled(String dictType) {
+        return dictMapper.selectList(Wrappers.<SysDict>lambdaQuery()
+                .eq(SysDict::getStatus, STATUS_ENABLED)
+                .eq(dictType != null, SysDict::getDictType, dictType)
+                .orderByAsc(SysDict::getDictType)
+                .orderByAsc(SysDict::getSort)
+                .orderByAsc(SysDict::getId));
+    }
+
+    /**
+     * 字典实体列表转条目列表。
+     *
+     * @param items 字典实体列表
+     * @return 条目列表
+     */
+    private List<DictItemVO> toVOList(List<SysDict> items) {
+        List<DictItemVO> result = new ArrayList<>(items.size());
+        for (SysDict item : items) {
+            result.add(toVO(item));
         }
         return result;
     }

@@ -53,10 +53,16 @@ public class SaTokenConfig implements WebMvcConfigurer {
      * 免登录放行清单：认证入口，任何 profile 下都放行。
      *
      * <p>登录与注册本身不能要求先登录，否则永远拿不到第一个 token。
+     *
+     * <p>学院下拉同样放行：它是注册页的学院选项，而注册页打开时还没有登录态，
+     * 走不了被拦截的 {@code /api/v1/system/dicts}。放行后能拿到的只有 sys_dict 里
+     * college 类型的中文标签，不含用户数据；注册时对学院的校验仍在后端做，
+     * 不受这里放行影响。
      */
     private static final String[] EXCLUDE_PATHS = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
+            "/api/v1/auth/colleges",
     };
 
     /** 接口文档开关，对应配置项 {@code knife4j.enable}；缺省 false，与 Knife4j 约定一致 */

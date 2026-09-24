@@ -7,6 +7,18 @@ const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
 const RE_PHONE = /^1[3-9]\d{9}$/
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/* 学院字典项。形状与字典接口的 {value,label,tone} 一致：注册页只取 value/label，
+   tone 是给状态标签用的色调，学院没有状态语义，统一中性色。
+   这 5 条是 mock 侧的字典种子（顺序按契约固定），不是给前端兜底的副本 ——
+   接口挂掉时前端就该是空下拉，而不是拿这份列表顶上。 */
+const COLLEGE_OPTIONS = [
+  { value: '计算机学院', label: '计算机学院', tone: 'mute' },
+  { value: '电子信息学院', label: '电子信息学院', tone: 'mute' },
+  { value: '经济管理学院', label: '经济管理学院', tone: 'mute' },
+  { value: '外国语学院', label: '外国语学院', tone: 'mute' },
+  { value: '机械工程学院', label: '机械工程学院', tone: 'mute' },
+]
+
 /** 把用户记录转成前端会话对象（不含密码） */
 function toSession(user) {
   const student = user.studentId ? students.find((s) => s.id === user.studentId) : null
@@ -28,6 +40,13 @@ function toSession(user) {
 }
 
 export default [
+  /* 注册页的学院下拉数据源。免登录 —— 注册页本身在登录之前，这个接口不能要 token */
+  {
+    method: 'get',
+    path: '/v1/auth/colleges',
+    handler: () => ok(COLLEGE_OPTIONS),
+  },
+
   {
     method: 'post',
     path: '/v1/auth/login',
@@ -57,6 +76,9 @@ export default [
       if (!String(body.name || '').trim()) {
         return fail(10001, '姓名不能为空')
       }
+      if (!String(body.college || '').trim()) {
+        return fail(10001, '请选择学院')
+      }
       if (!body.password || String(body.password).length < 6) {
         return fail(10001, '密码至少 6 位')
       }
@@ -73,6 +95,30 @@ export default [
         return fail(10001, '该手机号已被注册')
       }
       const id = nextId(users)
+
+      /* 建档：会话里的 college / studentNo 都从 students 里取，漏建就会出现
+         「注册成功、个人资料页却没有学院」。顺序也照后端 register 来 —— 先建档再建会话。
+         学号写占位值「S + 六位零填充的用户 id」：注册表单不收学号，而档案里这一项必填，
+         由主键派生既保证唯一，也和后端 StudentArchiveRegistrar 的口径一致。
+         注意 students 不落盘（_helpers 只持久化账号），刷新后这份档案随 mock 重置，
+         与「注册后刷新仍能登录」的既有取舍保持一致。 */
+      const student = {
+        id: nextId(students),
+        name: body.name,
+        studentNo: `S${String(id).padStart(6, '0')}`,
+        // 注册表单未采集的档案字段留空，等管理员在用户管理里补全
+        gender: '',
+        college: body.college,
+        major: '',
+        grade: '',
+        className: '',
+        phone: body.phone || '',
+        // 新账号还没有审核通过的时长，累计时长与画像标签都从零起步
+        totalHours: 0,
+        profileTag: '',
+      }
+      students.push(student)
+
       const user = {
         id,
         username: body.username,
@@ -81,7 +127,7 @@ export default [
         role: 'STUDENT',
         roleLabel: '学生',
         status: 'ACTIVE',
-        studentId: null,
+        studentId: student.id,
         phone: body.phone || '',
         email: body.email || '',
         createdAt: now(),

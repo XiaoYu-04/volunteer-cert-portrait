@@ -1,7 +1,7 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { register } from '@/api/auth'
+import { getColleges, register } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import InkField from '@/components/common/InkField.vue'
@@ -13,6 +13,7 @@ const toast = useToast()
 const form = reactive({
   username: '',
   name: '',
+  college: '',
   password: '',
   confirm: '',
   phone: '',
@@ -22,12 +23,17 @@ const form = reactive({
 const errors = reactive({
   username: '',
   name: '',
+  college: '',
   password: '',
   confirm: '',
   phone: '',
   email: '',
 })
 const loading = ref(false)
+
+/* 学院选项来自免登录接口。刻意不做前端兜底列表：学院是管理员可增删的字典数据，
+   写死在代码里就等于造出第二份真相；接口挂了宁可下拉为空、提示加载失败。 */
+const colleges = ref([])
 
 const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
 /** 中国大陆手机号：11 位，1 开头，第二位 3-9 */
@@ -37,6 +43,7 @@ const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function validate() {
   errors.username = RE_USERNAME.test(form.username) ? '' : '用户名为 4-20 位字母、数字或下划线'
   errors.name = form.name.trim() ? '' : '请输入姓名'
+  errors.college = form.college ? '' : '请选择学院'
   errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
   errors.phone = RE_PHONE.test(form.phone) ? '' : '请输入 11 位手机号'
@@ -45,6 +52,16 @@ function validate() {
   return !Object.values(errors).some(Boolean)
 }
 
+async function loadColleges() {
+  try {
+    colleges.value = await getColleges()
+  } catch (err) {
+    toast.error(err.message || '学院列表加载失败')
+  }
+}
+
+onMounted(loadColleges)
+
 async function onSubmit() {
   if (!validate() || loading.value) return
   loading.value = true
@@ -52,6 +69,7 @@ async function onSubmit() {
     const data = await register({
       username: form.username,
       name: form.name,
+      college: form.college,
       password: form.password,
       phone: form.phone,
       email: form.email,
@@ -93,6 +111,13 @@ async function onSubmit() {
 
           <InkField label="姓名" required :error="errors.name">
             <input v-model.trim="form.name" class="ink-input" type="text" autocomplete="name" />
+          </InkField>
+
+          <InkField label="学院" required :error="errors.college">
+            <select v-model="form.college" class="ink-select">
+              <option value="">请选择学院</option>
+              <option v-for="c in colleges" :key="c.value" :value="c.value">{{ c.label }}</option>
+            </select>
           </InkField>
 
           <InkField label="密码" required :error="errors.password" hint="至少 6 位">

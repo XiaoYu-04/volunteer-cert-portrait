@@ -19,6 +19,7 @@ import com.vcp.system.entity.SysUser;
 import com.vcp.system.mapper.StudentInfoMapper;
 import com.vcp.system.mapper.SysUserMapper;
 import com.vcp.system.service.AuthService;
+import com.vcp.system.service.DictService;
 import com.vcp.system.service.OrgLookupPort;
 import com.vcp.system.vo.LoginVO;
 import com.vcp.system.vo.SessionVO;
@@ -69,6 +70,9 @@ public class AuthServiceImpl implements AuthService {
     /** 邮箱规则 */
     private static final Pattern RE_EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
+    /** 学院字典的类型码，与 sys_dict 种子数据里的 dict_type 一致 */
+    private static final String DICT_TYPE_COLLEGE = "college";
+
     /**
      * 会话中存放用户名的键。
      *
@@ -98,6 +102,9 @@ public class AuthServiceImpl implements AuthService {
      * 组织管理员的 orgId 留空，登录本身不受影响。
      */
     private final ObjectProvider<OrgLookupPort> orgLookupPortProvider;
+
+    /** 学院下拉框的数据源，也是注册时校验学院名的唯一依据 */
+    private final DictService dictService;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -176,6 +183,12 @@ public class AuthServiceImpl implements AuthService {
         if (!RE_EMAIL.matcher(nullToEmpty(dto.getEmail())).matches()) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请输入有效的邮箱地址");
         }
+        // 学院：去空格后非空，且必须命中字典（dict_type = 'college'）的启用项。
+        // 不接受自由文本 —— 同一学院一旦有第二种写法，「按学院统计」就会把它算成另一个学院。
+        String college = dto.getCollege() == null ? null : dto.getCollege().trim();
+        if (!hasText(college) || !isCollegeInDict(college)) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请选择学院");
+        }
         if (findByUsername(dto.getUsername()) != null) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "用户名已存在");
         }
@@ -205,7 +218,8 @@ public class AuthServiceImpl implements AuthService {
         // 新学生一登录「我的报名 / 我的时长 / 我的画像」就报 10003。
         // 与上面两句同处一个事务（register 上有 @Transactional），建档失败连账号一起回滚，
         // 不会留下「有账号、无档案」的孤儿账号。
-        StudentInfo student = studentArchiveRegistrar.ensureArchive(user.getId());
+        // 学院在这里一并落库：student_info.college 目前只有注册这一条写入入口（缺陷 B30）
+        StudentInfo student = studentArchiveRegistrar.ensureArchive(user.getId(), college);
 
         // 注册完直接登录，与前端 mock 一致（前端拿到 token 就写入登录态）
         establishSession(user, studentRole, null, student.getId());
@@ -427,6 +441,20 @@ public class AuthServiceImpl implements AuthService {
             return false;
         }
         return userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getPhone, phone.trim()));
+    }
+
+    /**
+     * 判断学院名是否是字典里启用中的学院。
+     *
+     * <p>学院清单不写死在代码里：学院的增删是数据维护动作，写死意味着加一个学院要发版；
+     * 注册下拉框取的是同一份字典，两边不会各说各话。
+     *
+     * @param college 已去空格的学院名
+     * @return 命中启用项时返回 true
+     */
+    private boolean isCollegeInDict(String college) {
+        return dictService.listByType(DICT_TYPE_COLLEGE).stream()
+                .anyMatch(item -> college.equals(item.getValue()));
     }
 
     private StudentInfo findStudentByUserId(Long userId) {
