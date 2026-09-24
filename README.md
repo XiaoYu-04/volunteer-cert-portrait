@@ -151,6 +151,18 @@ java -jar vcp-boot/target/vcp-boot-1.0.0.jar
 `vcp-boot/src/main/resources/application-local.yml`（已 gitignore，模板见同目录
 `application-local.yml.example`），连接串与其余配置见 `application.yml`。
 
+## 生产部署
+
+完整步骤（含 Nginx 配置与验收清单）见 [docs/部署说明.md](docs/部署说明.md)，这里只强调**一条**：
+
+```bash
+# 生产启动必须带 prod profile，否则三项收紧全部不生效（且不会有任何报错提示）
+java -jar vcp-boot/target/vcp-boot-1.0.0.jar --spring.profiles.active=prod
+```
+
+不带 profile 时（开发口径）：`/doc.html` 免登录可访问、跨域允许所有来源、MyBatis 全量打印 SQL。
+`application-prod.yml` 会把这三项收口；它不激活就完全不生效。
+
 ## 仓库结构
 
 ```text
