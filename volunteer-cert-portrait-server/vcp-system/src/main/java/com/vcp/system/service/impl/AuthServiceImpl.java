@@ -82,6 +82,9 @@ public class AuthServiceImpl implements AuthService {
 
     private final StudentInfoMapper studentInfoMapper;
 
+    /** 建档入口：注册时给新学生建一行 student_info，会话里的 studentId 就取自它 */
+    private final StudentArchiveRegistrar studentArchiveRegistrar;
+
     private final RoleResolver roleResolver;
 
     /** 登录失败计数与锁定判定，登录入口的第一道闸 */
@@ -198,12 +201,18 @@ public class AuthServiceImpl implements AuthService {
 
         roleResolver.bind(user.getId(), studentRole.getId());
 
+        // 建档必须排在建会话之前：会话里的 studentId 取自这里，建晚了或漏建，
+        // 新学生一登录「我的报名 / 我的时长 / 我的画像」就报 10003。
+        // 与上面两句同处一个事务（register 上有 @Transactional），建档失败连账号一起回滚，
+        // 不会留下「有账号、无档案」的孤儿账号。
+        StudentInfo student = studentArchiveRegistrar.ensureArchive(user.getId());
+
         // 注册完直接登录，与前端 mock 一致（前端拿到 token 就写入登录态）
-        establishSession(user, studentRole, null, null);
+        establishSession(user, studentRole, null, student.getId());
 
         LoginVO vo = new LoginVO();
         vo.setToken(StpUtil.getTokenValue());
-        vo.setUser(buildSession(user, studentRole, null, null));
+        vo.setUser(buildSession(user, studentRole, null, student));
         return vo;
     }
 

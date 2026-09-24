@@ -43,8 +43,11 @@ import java.util.Objects;
  *       对自定义 JOIN 的列名与 COUNT 语句有额外要求，两步更稳且结果一致。</li>
  *   <li><b>角色列一次批量补齐</b>：分页查出几十条后再用 {@link RoleResolver#byUserIds}
  *       一次性取角色，避免逐条查造成 N+1。</li>
- *   <li><b>新增用户不建学生档案</b>：表单里没有学号与学院，凭空生成会污染学籍数据。
- *       学生登录后个人数据为空，等管理员补录 —— 与前端 mock 的行为一致。</li>
+ *   <li><b>新增用户按角色决定建不建档案</b>：学生角色会顺手建一行 {@code student_info}
+ *       （占位学号的口径见 {@link StudentArchiveRegistrar}），管理员角色不建 ——
+ *       档案列表与画像重算都按 {@code student_info} 认人，给管理员建档等于把管理员算成学生。
+ *       表单里仍没有学号与学院，档案里这两项由系统占位或留空，等管理员补录
+ *       （补录页面还没做）。</li>
  * </ol>
  */
 @Slf4j
@@ -58,6 +61,9 @@ public class UserServiceImpl implements UserService {
     private final SysUserMapper userMapper;
 
     private final SysUserRoleMapper userRoleMapper;
+
+    /** 建档入口：新增用户被赋予学生角色时补一行 student_info */
+    private final StudentArchiveRegistrar studentArchiveRegistrar;
 
     private final RoleResolver roleResolver;
 
@@ -152,6 +158,13 @@ public class UserServiceImpl implements UserService {
         userMapper.insert(user);
 
         roleResolver.bind(user.getId(), role.getId());
+
+        // 只有学生角色才建档：学校/组织管理员在 student_info 里本来就没有对应行，
+        // 顺手建了会让档案列表与画像重算把他们也算成学生。
+        // 与上面的插入同处一个事务，建档失败会连账号一起回滚。
+        if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
+            studentArchiveRegistrar.ensureArchive(user.getId());
+        }
     }
 
     /**

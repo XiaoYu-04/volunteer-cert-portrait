@@ -2,6 +2,7 @@ package com.vcp.certification.mapper;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.vcp.certification.vo.DurationVO;
+import com.vcp.common.enums.SignupStatusEnum;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -154,11 +155,17 @@ public interface DurationRefMapper {
      *
      * <p>service_duration.signup_id 是 NOT NULL UNIQUE，而前端提交时长时只给
      * studentId + activityId，必须由服务端反查，反查不到要报明确错误。
-     * 只认未逻辑删除的报名：报名被取消（软删除）后不应再产生时长记录。
+     *
+     * <p><b>为什么必须显式过滤报名状态</b>：取消报名与审核驳回都只改 activity_signup.status、
+     * 不做逻辑删除（见 vcp-volunteer 的 SignupServiceImpl.cancelSignup），所以 {@code deleted = 0}
+     * 只说明这一行还在，不等于报名有效 —— 只看它会把已取消 / 已驳回 / 从未审核通过的报名
+     * 一并放进来，而时长一旦审核通过就会累加 student_info.total_duration，且没有撤销入口。
+     * 因此这里只认审核通过的报名：{@link SignupStatusEnum#APPROVED}（已通过）与
+     * {@link SignupStatusEnum#COMPLETED}（已完成），SQL 里的两个字面量就是它们的码值。
      *
      * @param activityId 活动 id
      * @param studentId  学生档案 id
-     * @return 报名 id；没有有效报名时返回 null
+     * @return 报名 id；该学生在此活动下没有 APPROVED / COMPLETED 的报名时返回 null
      */
     @Select("""
             SELECT id
@@ -166,6 +173,7 @@ public interface DurationRefMapper {
              WHERE activity_id = #{activityId}
                AND student_id = #{studentId}
                AND deleted = 0
+               AND status IN ('APPROVED', 'COMPLETED')
              ORDER BY id DESC
              LIMIT 1
             """)
