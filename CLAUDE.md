@@ -197,6 +197,10 @@ vcp-dependencies  独立 BOM
 2. **ECharts 是按需注册的**
    新增图表类型必须在 `src/components/charts/echarts.js` 里补注册，
    否则运行时**静默不渲染且不报错**，很难排查。
+   （2026-09-24 核对过一次，无缺口：`options.js` 用到的 6 类图表
+   `line`/`bar`/`pie`/`gauge`/`heatmap`/`radar` 与 `grid`/`tooltip`/`legend`/`visualMap`/
+   `title`/`radar`/`calendar` 组件全部已注册；`axisPointer` 全嵌在 `tooltip` 内，
+   由 `TooltipComponent` 覆盖，不需要单独注册 `AxisPointerComponent`。）
 
 3. **图表内柱状元素的 `borderRadius` 是原型的刻意选择**
    页面 UI 零圆角、图表内元素轻微圆角（`[6,6,0,0]`）。不要"顺手统一"成零圆角。
@@ -215,6 +219,22 @@ vcp-dependencies  独立 BOM
 7. **改了模拟数据要跑 `npm run verify:mock`**
    聚合数字之间有隐性约束（如学院时长合计 = 累计志愿时长 = 86,420），
    改一个数很容易让不同页面显示的数字互相打架。断言已写成脚本。
+
+8. **Vite 8 底层是 Rolldown：`manualChunks` 不能传对象**
+   `build.rollupOptions.output.manualChunks` 传 `{ echarts: ['echarts'] }` 这种对象形式会
+   **直接让整个构建失败**（`Invalid type: Expected Function but received Object`，
+   随后 `TypeError: manualChunks is not a function`），只接受函数。
+   本项目改用 Rolldown 原生的 `advancedChunks.groups`（见 `vite.config.js`）。
+   **正则匹配路径分隔符必须用 `[\\/]` 而不是 `/`** —— Windows 上模块 id 是反斜杠，
+   写成 `/node_modules\/echarts/` 会匹配不到（rolldown 文档明确警告，本项目正是 Windows 开发）。
+
+9. **别被「Some chunks are larger than 500 kB」这条构建警告误诊**
+   实测（2026-09-24）：**主 chunk 一直只有 ~57 kB**，`request` chunk ~164 kB；
+   超 500 kB 的是**懒加载**的 ECharts chunk（~653 kB）。它**不在** `dist/index.html`
+   的 modulepreload 列表里，只在打开图表页时才下载。
+   历史文档写的「ECharts 使主 chunk 超过 500 kB」是错的（真正被熔在一起的
+   是 `options.js` 的图表配置 + ECharts，rolldown 给那个 chunk 起了个 `options` 的名字，
+   容易让人误以为是主包）。已用 `advancedChunks` 把两者拆开：`echarts` 653 kB + `options` 9.9 kB。
 
 ## 当前进度
 

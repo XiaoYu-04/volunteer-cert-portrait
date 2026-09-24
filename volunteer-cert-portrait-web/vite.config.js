@@ -13,11 +13,39 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
+      // 无需额外加 apply: 'serve' —— 该插件内部已写死 apply: "serve"（见
+      // node_modules/vite-plugin-vue-devtools/dist/vite.js 的 plugin 定义），
+      // 构建时本来就不生效；它的 options 里也没有 apply 这个字段。
       vueDevTools(),
     ],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // 把 ECharts 与图表配置拆成两个 chunk。
+          //
+          // 背景（2026-09-24 实测）：ECharts 本来就是懒加载的独立 chunk，
+          // **主 chunk 一直只有 ~57 kB**，那条「chunks are larger than 500 kB」
+          // 警告说的不是主包。真正的问题只是 options.js 的图表配置（9.9 kB）
+          // 被和 ECharts（653 kB）熔进了同一个 662.7 kB 的 chunk ——
+          // rolldown 给它起名 `options`，很容易被误读成主包。
+          // 拆开后两者可各自缓存，改图表配置不必让用户重下 653 kB。
+          //
+          // ⚠️ Vite 8 底层是 Rolldown，**不能**用 `manualChunks: { echarts: [...] }`
+          // 这种对象写法 —— 只接受函数，传对象会让构建直接失败
+          // （Invalid type: Expected Function but received Object）。
+          // 这里用 Rolldown 原生的 advancedChunks。
+          //
+          // 正则用 `[\\/]` 而不是 `/` 匹配路径分隔符：Windows 上模块 id 是反斜杠，
+          // 写成 /node_modules\/echarts/ 在 Windows 下匹配不到（rolldown 文档明确警告）。
+          advancedChunks: {
+            groups: [{ name: 'echarts', test: /node_modules[\\/]echarts/ }],
+          },
+        },
       },
     },
     server: {
