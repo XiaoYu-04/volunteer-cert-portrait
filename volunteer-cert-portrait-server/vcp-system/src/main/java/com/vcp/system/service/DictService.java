@@ -34,4 +34,20 @@ public interface DictService {
      * @return 条目列表；类型不存在时返回空列表（不抛异常）
      */
     List<DictItemVO> listByType(String dictType);
+
+    /**
+     * 判断某个类型下是否存在指定的启用中字典项。
+     *
+     * <p>给「校验用户提交的值是否合法」这类调用方用：它们只关心「在不在」，
+     * 不需要整份清单，走 COUNT 比拉全部条目再遍历便宜。注册与学生建档两条写入路径
+     * 都要校验学院，规则只留在这里一处，免得两边慢慢漂移出「注册能选、管理端不能选」。
+     *
+     * <p>只认 {@code status = 1}：停用项在前端表现为下拉里选不到，
+     * 因此停用过的学院必须判为不合法，否则会出现「下拉选不到、接口却收得下」。
+     *
+     * @param dictType 字典类型，如 "college"
+     * @param key      字典键（入库值），如学院名
+     * @return 命中启用项时返回 true；任一参数为空时返回 false
+     */
+    boolean containsEnabled(String dictType, String key);
 }

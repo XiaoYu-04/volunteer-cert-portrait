@@ -9,7 +9,7 @@
 
 | 部分 | 状态 |
 |---|---|
-| 前端 `volunteer-cert-portrait-web` | ✅ 28 个页面全部完成；接口层 64 个调用与后端全部对得上，**联调已完成（B12，2026-09-23 审计通过）**。dev server 代理可配置（`VITE_API_TARGET`，默认 `http://127.0.0.1:8080`） |
+| 前端 `volunteer-cert-portrait-web` | ✅ 29 个页面全部完成（第 29 页「学院管理」为 2026-09-24 新增）；接口层 70 个调用与后端全部对得上，**联调已完成（B12，2026-09-23 审计通过）**。dev server 代理可配置（`VITE_API_TARGET`，默认 `http://127.0.0.1:8080`） |
 | 后端 `volunteer-cert-portrait-server` | ✅ 基础设施 + **业务模块 6/6 全部落地**（2026-09-23）：`vcp-system`、`vcp-org`、`vcp-volunteer`、`vcp-certification`、`vcp-portrait`、`vcp-analytics`；`mvn package` 11 个模块全过，三个角色实打 20 个接口全部符合预期、日志零异常 |
 | 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 + 演示数据放大 + 口令密文化（`01`~`08`） |
 | 文档 `docs/` | ✅ 已完成：待办清单、下一步待办、会话记录、前后端进展、公益等级与标签规则方案、ER 图、开发计划与分工、知识库 |
@@ -22,14 +22,20 @@
 
 **后端接口现状**：六个业务模块的接口均已可用并实测通过 ——
 `/api/v1/auth/*`（登录、注册、退出、查改本人资料）、
-`/api/v1/system/*`（用户、角色、字典、学生档案、通知公告、操作日志）、
+`/api/v1/system/*`（用户、角色、字典、学院、学生档案、通知公告、操作日志）、
 `/api/v1/orgs/*`（组织列表、详情、资料维护、资质审核、启停）、
 `/api/v1/activities|categories|signups|attendance`（活动、分类、报名、签到签退）、
 `/api/v1/durations|duration-audits`（时长提交与审核）、
 `/api/v1/portraits/*`（公益画像、等级、标签）、
 `/api/v1/analytics/*`（看板 10 个聚合接口）。
-**接口规模**：OpenAPI 共 54 个路径 / 66 个「方法 + 路径」，前端 `src/api/` 的 64 个调用全部能对上，0 缺失。
+**接口规模**：OpenAPI 共 59 个路径 / 72 个「方法 + 路径」（2026-09-24 运行实例 `/v3/api-docs` 实测），
+前端 `src/api/` 的 70 个调用全部能对上，0 缺失。
 （2026-09-24 口令安全三件套新增 2 条：`PUT /api/v1/auth/password`、`PUT /api/v1/system/users/{id}/password`）
+
+**活动图片**：发布页支持 1 张封面 + 最多 6 张带说明图片。
+图片文件保存在后端 `uploads/`，PostgreSQL 的 `attachment` 只保存 URL、大小、说明和排序；
+活动封面保存在 `volunteer_activity.cover`。上传接口为 `POST /api/v1/attachments/images`，
+仅支持 JPG/PNG、单张不超过 5MB。
 **联调前提**：`sql/06_backend_gap_fix2.sql` 与 `sql/07_demo_scale.sql` 必须在库上执行（均已执行）。
 `07` 含 `activity_category.remark` 补列，执行后需**重启后端**，否则分类接口会查不存在的列报错。
 
@@ -72,13 +78,15 @@
    cd volunteer-cert-portrait
    ```
 
-2. **建库建表**：按顺序执行 `sql/01_create_database.sql` ~ `sql/07_demo_scale.sql`
-   （`05`、`06` 是后端接口的前置依赖，**必执行**；`04`、`07` 是演示数据脚本，可选）：
+2. **建库建表**：按顺序执行 `sql/01_create_database.sql` ~ `sql/12_activity_images_demo.sql`
+   （`05`、`06`、`11` 是后端接口的前置依赖，**必执行**；`04`、`07`、`12` 是演示数据脚本，可选）：
 
    ```text
    sql/01_create_database.sql → 02_schema.sql → 03_init_data.sql
    → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
    → 06_backend_gap_fix2.sql（必执行）→ 07_demo_scale.sql（演示数据放大，可选）
+   → 11_activity_images.sql（活动图片字段，必执行）
+   → 12_activity_images_demo.sql（少量账号、活动和 3 张图文演示，可选）
    ```
 
 3. **配置数据库口令**：复制
@@ -118,6 +126,9 @@ npm run dev
 | 学生 | `student` | `123456` |
 | 组织管理员 | `org_admin` | `123456` |
 | 学校管理员 | `admin` | `123456` |
+| 学生（图文演示） | `demo_stu_01` / `demo_stu_02` / `demo_stu_03` | `123456` |
+| 组织管理员（图文演示） | `demo_org_01` | `123456` |
+| 学校管理员（图文演示） | `demo_school_01` | `123456` |
 
 > 表中的口令是**登录时输入的明文**；库里 `sys_user.password` 存的是它的 BCrypt 密文
 > （同一明文每次哈希结果都不同，所以三个账号在库里的密文并不相同，这是正常的）。
@@ -130,6 +141,8 @@ npm run dev
 #    → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
 #    → 06_backend_gap_fix2.sql（必执行）→ 07_demo_scale.sql（演示数据放大，可选）
 #    → 08_password_bcrypt.sql（仅老库需要：把明文口令刷成 BCrypt 密文）
+#    → 11_activity_images.sql（活动图片字段，必执行）
+#    → 12_activity_images_demo.sql（少量账号、活动和 3 张图文演示，可选）
 #    注意：05、06 是后端接口的前置依赖，缺了 05 登录接口会直接报错
 #    07 是增量脚本（不重建库、可重复执行），含 activity_category.remark 补列，
 #    执行后需重启后端；它把演示数据放大到 1500 学生 / 386 活动 / 10719 条报名
@@ -210,7 +223,7 @@ UI 组件全部手写，视觉风格为**新中式水墨风**（纸白底 + 墨�
 |---|---|---|
 | `STUDENT` | 学生 | 浏览活动、报名、查看本人时长与公益画像 |
 | `ORG_ADMIN` | 组织管理员 | 发布活动、审核报名、管理签到、提交服务时长 |
-| `SCHOOL_ADMIN` | 学校管理员 | 审核组织资质与时长、维护用户与字典、查看全校数据看板 |
+| `SCHOOL_ADMIN` | 学校管理员 | 审核组织资质与时长、维护用户、字典与学院、查看全校数据看板 |
 
 ## 开发规范
 

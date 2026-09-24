@@ -49,15 +49,18 @@ const statusOptions = dict.options('activity_status')
     <header class="page-head">
       <span class="hero-kicker">志愿活动</span>
       <h1>浏览志愿活动</h1>
-      <p class="page-head-sub">
-        按类型与关键字筛选，查看活动详情与剩余名额。报名后由组织管理员审核，结果通过站内通知送达。
-      </p>
+      <p class="page-head-sub">按类型与关键字筛选，查看详情与剩余名额。</p>
     </header>
 
     <section class="sec-list">
       <form class="ink-filter" @submit.prevent="search">
         <InkField label="关键字">
-          <input v-model.trim="query.keyword" class="ink-input" type="search" placeholder="活动名称" />
+          <input
+            v-model.trim="query.keyword"
+            class="ink-input"
+            type="search"
+            placeholder="活动名称"
+          />
         </InkField>
 
         <InkField label="活动类型">
@@ -70,7 +73,9 @@ const statusOptions = dict.options('activity_status')
         <InkField label="状态">
           <select v-model="query.status" class="ink-select">
             <option value="">全部状态</option>
-            <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+            <option v-for="s in statusOptions" :key="s.value" :value="s.value">
+              {{ s.label }}
+            </option>
           </select>
         </InkField>
 
@@ -81,6 +86,13 @@ const statusOptions = dict.options('activity_status')
       </form>
 
       <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的活动">
+        <template #title="{ row }">
+          <span class="cell-activity">
+            <img v-if="row.cover" class="cell-cover" :src="row.cover" :alt="`${row.title}封面`" />
+            <span class="cell-strong">{{ row.title }}</span>
+          </span>
+        </template>
+
         <template #type="{ row }">
           <span class="ink-act-type">{{ row.type }}</span>
         </template>
@@ -90,7 +102,9 @@ const statusOptions = dict.options('activity_status')
         </template>
 
         <template #enrolled="{ row }">
-          <span class="col-num">{{ formatNumber(row.enrolled) }} / {{ formatNumber(row.capacity) }}</span>
+          <span class="col-num"
+            >{{ formatNumber(row.enrolled) }} / {{ formatNumber(row.capacity) }}</span
+          >
         </template>
 
         <template #status="{ row }">
@@ -98,15 +112,13 @@ const statusOptions = dict.options('activity_status')
         </template>
 
         <template #actions="{ row }">
-          <InkButton :to="`/student/activities/${row.id}`" size="sm" variant="ghost">详情</InkButton>
+          <InkButton :to="`/student/activities/${row.id}`" size="sm" variant="ghost"
+            >详情</InkButton
+          >
         </template>
       </InkTable>
 
-      <InkPagination
-        v-model:page="query.page"
-        v-model:page-size="query.pageSize"
-        :total="total"
-      />
+      <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
     </section>
   </div>
 </template>
@@ -120,5 +132,25 @@ const statusOptions = dict.options('activity_status')
   display: flex;
   gap: 12px;
   padding-bottom: 2px;
+}
+
+.cell-activity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cell-strong {
+  font-family: var(--font-display);
+  color: var(--c-ink);
+}
+
+.cell-cover {
+  flex: none;
+  width: 48px;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid var(--c-line);
 }
 </style>

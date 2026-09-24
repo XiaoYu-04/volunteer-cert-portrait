@@ -200,9 +200,7 @@ async function submit() {
 
 <template>
   <h1 class="console-title">时长提交</h1>
-  <p class="console-sub">
-    本组织已提交的服务时长记录。活动结束、学生完成签退后，在这里按活动批量提交时长，提交后由学校管理员审核，通过即计入学生公益画像。
-  </p>
+  <p class="console-sub">按活动批量提交服务时长，交学校管理员审核。</p>
 
   <div class="stats stats-duration" :aria-busy="loading">
     <InkStat label="记录总数" :value="summary.total" unit="条" :delta="null" />
@@ -288,7 +286,7 @@ async function submit() {
     <InkField
       label="选择活动"
       required
-      hint="只能从本组织已签退的签到记录中提交，每位学生在同一活动下不重复提交"
+      hint="仅限本组织已签退的签到记录，同一活动不重复提交"
     >
       <select v-model="dialog.activityId" class="ink-select" @change="loadCandidates">
         <option value="">请选择活动</option>
@@ -303,7 +301,7 @@ async function submit() {
       :rows="dialog.candidates"
       :loading="dialog.loading"
       empty-text="暂无可提交的签到记录"
-      empty-hint="请先选择活动，且该活动需有已签退且未提交时长的学生"
+      empty-hint="先选择活动，且该活动需有已签退、未提交时长的学生"
     >
       <template #select="{ row }">
         <label v-if="!row.submitted" class="ink-check">
@@ -314,7 +312,7 @@ async function submit() {
             @change="toggleOne(row.id, $event.target.checked)"
           />
         </label>
-        <span v-else class="cell-mute" title="该学生此活动的时长已提交">已提交</span>
+        <span v-else class="cell-mute" title="该学生此活动的时长已提交过">已提交</span>
       </template>
 
       <template #studentName="{ row }">

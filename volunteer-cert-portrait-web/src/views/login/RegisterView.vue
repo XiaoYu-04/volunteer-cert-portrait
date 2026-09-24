@@ -76,7 +76,7 @@ async function onSubmit() {
     })
     // 注册接口直接返回会话，免去二次登录
     user.applySession(data)
-    toast.success('注册成功，欢迎加入')
+    toast.success('注册成功')
     router.replace(user.homePath)
   } catch (err) {
     toast.error(err.message || '注册失败')
@@ -94,7 +94,7 @@ async function onSubmit() {
         <span class="auth-aside-name">志愿服务数据志</span>
       </div>
 
-      <p class="auth-aside-quote">注册后即可<em>报名</em>活动，<br />服务时长经审核计入公益画像</p>
+      <p class="auth-aside-quote">注册后即可<em>报名</em>活动，<br />服务时长经审核后计入公益画像</p>
 
       <p class="auth-aside-foot">VOLUNTEER SERVICE · VCP</p>
     </aside>
@@ -128,7 +128,7 @@ async function onSubmit() {
             <input v-model="form.confirm" class="ink-input" type="password" autocomplete="new-password" />
           </InkField>
 
-          <InkField label="手机号" required :error="errors.phone" hint="11 位手机号，用于接收活动通知">
+          <InkField label="手机号" required :error="errors.phone" hint="11 位手机号">
             <input
               v-model.trim="form.phone"
               class="ink-input"
@@ -139,7 +139,7 @@ async function onSubmit() {
             />
           </InkField>
 
-          <InkField label="邮箱" required :error="errors.email" hint="用于接收审核结果通知">
+          <InkField label="邮箱" required :error="errors.email">
             <input v-model.trim="form.email" class="ink-input" type="email" autocomplete="email" />
           </InkField>
 

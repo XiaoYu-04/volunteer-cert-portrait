@@ -84,6 +84,28 @@ public class DictServiceImpl implements DictService {
     }
 
     /**
+     * 判断某个类型下是否存在指定的启用中字典项。
+     *
+     * <p>空值一律判否，不下推给 SQL：{@code eq(column, null)} 在 MyBatis-Plus 里是
+     * 「不拼这个条件」，传空值会退化成「这个类型下有没有任意一条启用项」，恒为真。
+     *
+     * @param dictType 字典类型，如 "college"
+     * @param key      字典键（入库值），如学院名
+     * @return 命中启用项时返回 true；任一参数为空时返回 false
+     */
+    @Override
+    public boolean containsEnabled(String dictType, String key) {
+        if (dictType == null || dictType.isBlank() || key == null || key.isBlank()) {
+            return false;
+        }
+        Long count = dictMapper.selectCount(Wrappers.<SysDict>lambdaQuery()
+                .eq(SysDict::getDictType, dictType)
+                .eq(SysDict::getDictKey, key)
+                .eq(SysDict::getStatus, STATUS_ENABLED));
+        return count != null && count > 0;
+    }
+
+    /**
      * 字典实体列表转条目列表。
      *
      * @param items 字典实体列表

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.vcp.common.enums.ActivityStatusEnum;
+import com.vcp.common.enums.AttachmentBizTypeEnum;
 import com.vcp.common.exception.BusinessException;
 import com.vcp.common.exception.ErrorCodeEnum;
 import com.vcp.common.result.PageResult;
@@ -12,8 +13,12 @@ import com.vcp.framework.security.AuthUtils;
 import com.vcp.framework.util.PageUtils;
 import com.vcp.org.service.OrgService;
 import com.vcp.org.vo.OrgVO;
+import com.vcp.system.dto.AttachmentSaveDTO;
+import com.vcp.system.service.AttachmentService;
+import com.vcp.system.vo.AttachmentVO;
 import com.vcp.volunteer.constant.VolunteerConstants;
 import com.vcp.volunteer.dto.ActivityQuery;
+import com.vcp.volunteer.dto.ActivityImageSaveDTO;
 import com.vcp.volunteer.dto.ActivitySaveDTO;
 import com.vcp.volunteer.dto.ActivityStatusDTO;
 import com.vcp.volunteer.entity.ActivityCategory;
@@ -25,11 +30,13 @@ import com.vcp.volunteer.mapper.row.ActivityRow;
 import com.vcp.volunteer.mapper.row.OrgOverviewRow;
 import com.vcp.volunteer.service.ActivityService;
 import com.vcp.volunteer.support.VolunteerTimeUtils;
+import com.vcp.volunteer.vo.ActivityImageVO;
 import com.vcp.volunteer.vo.ActivityVO;
 import com.vcp.volunteer.vo.OrgOverviewVO;
 import com.vcp.volunteer.vo.StatItemVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +67,9 @@ public class ActivityServiceImpl implements ActivityService {
     /** 单人服务时长的上限，与前端发布表单的校验（0 ~ 24 小时）保持一致 */
     private static final BigDecimal MAX_PLANNED_HOURS = BigDecimal.valueOf(24);
 
+    /** 图文说明图片上限，与附件服务、前端上传组件保持一致 */
+    private static final int MAX_ACTIVITY_IMAGES = 6;
+
     private final VolunteerActivityMapper activityMapper;
 
     private final ActivityCategoryMapper categoryMapper;
@@ -67,6 +77,11 @@ public class ActivityServiceImpl implements ActivityService {
     private final ActivitySignupMapper signupMapper;
 
     private final OrgService orgService;
+
+    private final AttachmentService attachmentService;
+
+    @Value("${vcp.upload.public-prefix:/uploads}")
+    private String uploadPublicPrefix;
 
     @Override
     public PageResult<ActivityVO> listActivities(ActivityQuery query) {
@@ -105,7 +120,10 @@ public class ActivityServiceImpl implements ActivityService {
                 throw new BusinessException(ErrorCodeEnum.ACTIVITY_NOT_FOUND);
             }
         }
-        return toVO(row);
+        ActivityVO vo = toVO(row);
+        vo.setImages(toImageVOs(attachmentService.listAttachments(
+                AttachmentBizTypeEnum.ACTIVITY.getCode(), id)));
+        return vo;
     }
 
     @Override
@@ -149,9 +167,11 @@ public class ActivityServiceImpl implements ActivityService {
         activity.setDuration(plannedHours(hours));
         activity.setStatus(ActivityStatusEnum.DRAFT.getCode());
         activity.setDescription(trimToNull(dto.getDescription()));
+        activity.setCover(normalizeCover(dto.getCover()));
         activity.setDeadline(deadline);
         activity.setContact(contact);
         activityMapper.insert(activity);
+        replaceActivityImages(activity.getId(), dto.getImages());
 
         log.info("[志愿活动] 新建活动草稿。id={}, title={}, orgId={}",
                 activity.getId(), title, activity.getOrgId());
@@ -224,9 +244,13 @@ public class ActivityServiceImpl implements ActivityService {
         if (dto.getDescription() != null) {
             update.set(VolunteerActivity::getDescription, trimToNull(dto.getDescription()));
         }
+        if (dto.getCover() != null) {
+            update.set(VolunteerActivity::getCover, normalizeCover(dto.getCover()));
+        }
         // 用 UpdateWrapper 而不是 updateById：空串要能把字段改回 NULL（updateById 会忽略 null 字段）
         update.set(VolunteerActivity::getUpdateTime, LocalDateTime.now());
         activityMapper.update(null, update);
+        replaceActivityImages(id, dto.getImages());
 
         log.info("[志愿活动] 修改活动。id={}, title={}", id, title);
     }
@@ -466,7 +490,78 @@ public class ActivityServiceImpl implements ActivityService {
         vo.setDeadline(DateTimeUtils.formatDate(row.getDeadline()));
         vo.setContact(row.getContact());
         vo.setDescription(row.getDescription());
+        vo.setCover(row.getCover());
+        vo.setImages(List.of());
         return vo;
+    }
+
+    /**
+     * 保存活动图文说明。null 表示本次不修改；空列表表示清空。
+     *
+     * @param activityId 活动 id
+     * @param images     前端提交的图片元数据
+     */
+    private void replaceActivityImages(Long activityId, List<ActivityImageSaveDTO> images) {
+        if (images == null) {
+            return;
+        }
+        if (images.size() > MAX_ACTIVITY_IMAGES) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "活动图片最多 6 张");
+        }
+        List<AttachmentSaveDTO> attachments = new ArrayList<>(images.size());
+        for (ActivityImageSaveDTO image : images) {
+            if (image == null || trimToNull(image.getFileUrl()) == null) {
+                throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "图片地址不能为空");
+            }
+            AttachmentSaveDTO item = new AttachmentSaveDTO();
+            item.setFileUrl(image.getFileUrl().trim());
+            item.setFileName(image.getFileName());
+            item.setFileSize(image.getFileSize());
+            item.setContentType(image.getContentType());
+            item.setCaption(image.getCaption());
+            attachments.add(item);
+        }
+        attachmentService.replaceAttachments(AttachmentBizTypeEnum.ACTIVITY.getCode(), activityId, attachments);
+    }
+
+    /**
+     * 校验并规范化封面地址。
+     *
+     * @param cover 前端提交的地址
+     * @return 空值或规范化后的 /uploads/... 地址
+     */
+    private String normalizeCover(String cover) {
+        String value = trimToNull(cover);
+        if (value == null) {
+            return null;
+        }
+        String prefix = trimToNull(uploadPublicPrefix);
+        if (prefix == null) {
+            prefix = "/uploads";
+        }
+        while (prefix.endsWith("/")) {
+            prefix = prefix.substring(0, prefix.length() - 1);
+        }
+        if (!value.startsWith(prefix + "/") || value.length() > 255) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "封面地址不合法");
+        }
+        return value;
+    }
+
+    private static List<ActivityImageVO> toImageVOs(List<AttachmentVO> attachments) {
+        List<ActivityImageVO> images = new ArrayList<>(attachments.size());
+        for (AttachmentVO attachment : attachments) {
+            ActivityImageVO image = new ActivityImageVO();
+            image.setId(attachment.getId());
+            image.setFileUrl(attachment.getFileUrl());
+            image.setFileName(attachment.getFileName());
+            image.setFileSize(attachment.getFileSize());
+            image.setContentType(attachment.getContentType());
+            image.setCaption(attachment.getCaption());
+            image.setSortOrder(attachment.getSortOrder());
+            images.add(image);
+        }
+        return images;
     }
 
     /**

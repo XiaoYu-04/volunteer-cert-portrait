@@ -41,6 +41,7 @@ export const ROLE_PERMS = {
     'system:user:update',
     'system:user:delete',
     'system:role:list',
+    'system:college:manage',
     'system:notice:manage',
     'system:log:list',
     'analytics:dashboard:view',

@@ -1,6 +1,6 @@
 # 数据库 ER 图
 
-> 依据 `sql/02_schema.sql` + `sql/05` + `sql/06` + `sql/07` 整理，反映 2026-09-24 的最终结构。
+> 依据 `sql/02_schema.sql` + `sql/05` + `sql/06` + `sql/07` + `sql/11` 整理，反映 2026-09-24 的最终结构。
 > 共 16 张表。
 
 数据库：PostgreSQL（脚本标注 16+，当前环境 18.6），库名 `volunteer_cert_portrait`。
@@ -9,8 +9,9 @@
 - `sql/05_backend_gap_fix.sql` —— 补列 15 个 + 索引 4 个 + 部分唯一索引 1 个
 - `sql/06_backend_gap_fix2.sql` —— 补列 9 个 + 唯一约束 1 个 + 索引 11 个（另有 1 条是 05 已建索引的幂等重申）
 - `sql/07_demo_scale.sql` —— 补列 1 个（`activity_category.remark`）+ 演示数据放大（活动 386 / 学生 1500 / 报名 10719）
+- `sql/11_activity_images.sql` —— `attachment` 补 3 个图片元数据列 + 1 个排序索引
 
-即本图反映的是 **02 + 05 + 06 + 07 叠加后**的最终结构，不是单独 `02` 的样子。
+即本图反映的是 **02 + 05 + 06 + 07 + 11 叠加后**的最终结构，不是单独 `02` 的样子。
 `sql/03_init_data.sql`、`sql/04_demo_data.sql`、`sql/08_password_bcrypt.sql` 只写数据、不改结构，不影响本图。
 
 ## 一、总览图
@@ -65,6 +66,10 @@ erDiagram
         bigint id PK "主键"
         varchar biz_type "ACTIVITY / ORG / AVATAR"
         bigint biz_id "多态业务ID，无物理外键"
+        varchar file_url "访问地址"
+        varchar content_type "MIME 类型，11 补列"
+        varchar caption "图片说明，11 补列"
+        int sort_order "展示顺序，11 补列"
     }
 
     org_info {
@@ -132,7 +137,7 @@ erDiagram
     org_info ||..o{ attachment : "组织资质附件，多态且无物理外键"
     volunteer_activity ||--o{ activity_signup : "被学生报名"
     volunteer_activity ||--o{ service_duration : "产生时长记录"
-    volunteer_activity ||..o{ attachment : "活动封面附件，多态且无物理外键"
+    volunteer_activity ||..o{ attachment : "活动图片附件，多态且无物理外键"
     student_info ||--o{ activity_signup : "学生提交报名"
     student_info ||--o{ service_duration : "学生累计时长"
     student_info ||--o| student_profile : "拥有一份公益画像"
@@ -292,14 +297,17 @@ erDiagram
 | 字段 | 类型 | 约束 | 说明 |
 |---|---|---|---|
 | id | BIGSERIAL | PK | 主键 |
-| biz_type | VARCHAR(50) | | ACTIVITY 活动封面 / ORG 组织资质 / AVATAR 用户头像 |
+| biz_type | VARCHAR(50) | | ACTIVITY 活动图片 / ORG 组织资质 / AVATAR 用户头像 |
 | biz_id | BIGINT | | 业务 ID（多态，不加外键约束） |
 | file_name | VARCHAR(255) | | 原始文件名 |
 | file_url | VARCHAR(255) | | 访问地址 |
 | file_size | BIGINT | | 文件大小（字节） |
+| content_type | VARCHAR(100) | 11 补列 | MIME 类型，如 image/png |
+| caption | VARCHAR(255) | 11 补列 | 图片说明 |
+| sort_order | INT | DEFAULT 0，11 补列 | 同一业务下的展示顺序 |
 | create_time | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 
-无 `deleted`、无 `update_time`，无索引。
+无 `deleted`、无 `update_time`；索引 `idx_attachment_biz_sort (biz_type, biz_id, sort_order, id)`。
 
 ### 9. org_info —— 志愿组织信息表
 
@@ -517,7 +525,7 @@ erDiagram
 |---|---|---|---|---|
 | 19 | service_duration.org_id | org_info.id | N:1 | 冗余的所属组织，供看板按组织汇总时长；只建了 `idx_duration_org`，不加约束 |
 | 20 | operation_log.user_id | sys_user.id | N:1 | 操作人；日志只追加，不加外键（且未登录时可为空） |
-| 21 | attachment.biz_id（biz_type='ACTIVITY'） | volunteer_activity.id | N:1 | 活动封面附件，多态指向 |
+| 21 | attachment.biz_id（biz_type='ACTIVITY'） | volunteer_activity.id | N:1 | 活动图片附件，多态指向 |
 | 22 | attachment.biz_id（biz_type='ORG'） | org_info.id | N:1 | 组织资质附件，多态指向 |
 | 23 | attachment.biz_id（biz_type='AVATAR'） | sys_user.id | N:1 | 用户头像附件，多态指向 |
 

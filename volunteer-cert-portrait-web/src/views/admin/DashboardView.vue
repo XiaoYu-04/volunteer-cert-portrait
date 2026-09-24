@@ -44,8 +44,8 @@ const heatMonth = computed(() => {
 
 /* 图注与无障碍描述一律从接口数据现算，见 composables/useDashboardText.js 的说明 */
 const {
-  trendTotal,
-  trendHours,
+  trendTotalText,
+  trendHoursText,
   trendDesc,
   trendLabel,
   hoursLabel,
@@ -62,10 +62,7 @@ const {
 
 <template>
   <h1 class="console-title">全校数据看板</h1>
-  <p class="console-sub">
-    汇总全校志愿服务的关键指标：活动规模、服务时长、类型结构与学院分布、时长审核与签到质量。
-    数据由各组织日常业务沉淀而成，供认证决策与学期总结使用。
-  </p>
+  <p class="console-sub">全校志愿服务的规模、结构与审核质量。</p>
 
   <!-- 核心指标 -->
   <div class="stats stats-console" :aria-busy="loading">
@@ -85,7 +82,7 @@ const {
     <div class="panel-head">
       <span class="panel-title">活动与服务时长趋势</span>
       <span class="panel-extra panel-note">
-        近 12 个月 {{ formatNumber(trendTotal) }} 场 · {{ formatNumber(trendHours) }} 小时
+        近 12 个月 {{ formatNumber(trendTotalText) }} 场 · {{ formatNumber(trendHoursText) }} 小时
       </span>
     </div>
 
@@ -98,7 +95,7 @@ const {
           :label="trendLabel"
         />
         <figcaption class="fig-cap">
-          <b>图一</b>逐月活动数量（场），近 12 个月合计 {{ formatNumber(trendTotal) }} 场。{{ trendDesc }}
+          <b>图一</b>逐月活动数量（场），近 12 个月合计 {{ formatNumber(trendTotalText) }} 场。{{ trendDesc }}
         </figcaption>
       </figure>
 
@@ -110,7 +107,7 @@ const {
           :label="hoursLabel"
         />
         <figcaption class="fig-cap">
-          <b>图二</b>逐月服务时长（小时），近 12 个月合计 {{ formatNumber(trendHours) }} 小时，与活动量走势一致。
+          <b>图二</b>逐月服务时长（小时），近 12 个月合计 {{ formatNumber(trendHoursText) }} 小时。
         </figcaption>
       </figure>
     </div>
@@ -178,7 +175,7 @@ const {
           :label="signinLabel"
         />
         <figcaption class="fig-cap">
-          <b>图六</b>活动签到率，是衡量活动执行质量的核心指标。
+          <b>图六</b>活动签到率。
         </figcaption>
       </figure>
     </div>

@@ -71,9 +71,7 @@ const quickLinks = [
     <header class="page-head">
       <span class="hero-kicker">个人中心</span>
       <h1>个人中心</h1>
-      <p class="page-head-sub">
-        查看账号信息并维护联系方式。姓名、手机号与邮箱将用于志愿活动通知与服务时长认证。
-      </p>
+      <p class="page-head-sub">查看账号信息，维护手机号与邮箱。</p>
     </header>
 
     <section class="sec-detail">
@@ -125,16 +123,16 @@ const quickLinks = [
               <input v-model.trim="form.name" class="ink-input" type="text" placeholder="真实姓名" />
             </InkField>
 
-            <InkField label="手机号" :error="errors.phone" hint="留空表示不修改，填写后将覆盖原值">
-              <input v-model.trim="form.phone" class="ink-input" type="tel" placeholder="11 位手机号" />
+            <InkField label="手机号" :error="errors.phone" hint="11 位手机号，留空表示不修改，填写后将覆盖原值">
+              <input v-model.trim="form.phone" class="ink-input" type="tel" placeholder="如 13800000000" />
             </InkField>
 
-            <InkField label="邮箱" :error="errors.email" hint="用于接收审核结果通知">
+            <InkField label="邮箱" :error="errors.email">
               <input
                 v-model.trim="form.email"
                 class="ink-input"
                 type="email"
-                placeholder="name@example.edu"
+                placeholder="如 name@example.edu"
               />
             </InkField>
 

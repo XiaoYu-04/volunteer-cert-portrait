@@ -1,4 +1,6 @@
 <script setup>
+import { formatPercent } from '@/utils/format'
+
 /**
  * 组织活跃度列表。对应原型的 .ink-org-row：
  * 组织名占满剩余宽度，右侧三个等宽体指标 —— 场次 / 签到 / 通过。
@@ -8,7 +10,9 @@ defineProps({
   rows: { type: Array, default: () => [] },
 })
 
-const pct = (r) => `${Math.round(r * 100)}%`
+// 统一走 formatPercent：与看板、画像等处的百分比同为 1 位小数，
+// 不再出现同一页「94 %」与「94.0%」两种写法。
+const pct = (r) => formatPercent(r)
 </script>
 
 <template>

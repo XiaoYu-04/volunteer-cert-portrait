@@ -122,7 +122,7 @@ async function submit() {
         />
       </InkField>
 
-      <p class="pwd-note">修改成功后其它设备上的登录会被强制退出，当前页面不受影响。</p>
+      <p class="pwd-note">修改成功后，其它设备上的登录会被强制退出。</p>
     </form>
 
     <template #footer>

@@ -66,12 +66,13 @@ public class StudentArchiveRegistrar {
      *       画像侧读取时会按累计时长兜底算一次等级，不会显示成空白。</li>
      *   <li>{@code college} 写注册表单提交的学院（{@code AuthServiceImpl} 已校验过它命中
      *       字典里的启用项）。这是该列目前唯一的写入入口：学院是「按学院统计」的分组键，
-     *       缺了就落进空分组。管理员新增用户那条路径的表单里没有学院下拉框，因此传 null 留空，
-     *       等管理员补录（补录页面还没做，B30 只修注册链路）。</li>
+     *       缺了就落进空分组。两条调用路径都收学院（注册表单、管理员新增用户表单），
+     *       各自在调用前用 {@code DictService.containsEnabled} 校验过，这里不再重复判空 ——
+     *       真要收下 null，说明上游漏了校验，属于该修上游的 bug，不该靠建档层静默兜住。</li>
      * </ul>
      *
      * @param userId  用户 id（{@code sys_user.id}）
-     * @param college 学院名，来自注册表单；不收集学院的入口传 null
+     * @param college 学院名，来自注册表单或管理员新增用户表单
      * @return 该用户的档案实体（含 id 与占位学号，调用方拿去写会话）；已有档案时返回库里那一行
      * @throws BusinessException 用户 id 为空（10001）、或该账号已有档案（10000）
      */
@@ -106,21 +107,6 @@ public class StudentArchiveRegistrar {
             throw new BusinessException(ErrorCodeEnum.SYSTEM_ERROR, "该账号已有学生档案，请联系学校管理员核对数据");
         }
         return archive;
-    }
-
-    /**
-     * 不收集学院的入口（管理员新增用户）用这个重载，等价于 {@code ensureArchive(userId, null)}。
-     *
-     * <p>事务注解与双参重载重复是必须的：类内自调用不走 Spring 代理，只在双参方法上标注的话，
-     * 这条路径会静默地跑在没有事务的连接上 —— 建档失败时账号已经提交，留下孤儿账号。
-     *
-     * @param userId 用户 id（{@code sys_user.id}）
-     * @return 该用户的档案实体（含 id 与占位学号）；已有档案时返回库里那一行
-     * @throws BusinessException 用户 id 为空（10001）、或该账号已有档案（10000）
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public StudentInfo ensureArchive(Long userId) {
-        return ensureArchive(userId, null);
     }
 
     /**

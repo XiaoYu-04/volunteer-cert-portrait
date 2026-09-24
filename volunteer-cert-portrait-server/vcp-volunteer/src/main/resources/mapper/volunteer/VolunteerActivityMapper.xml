@@ -33,7 +33,8 @@
         o.org_name,
         a.deadline,
         a.contact,
-        a.description
+        a.description,
+        a.cover
     </sql>
 
     <sql id="activityFrom">

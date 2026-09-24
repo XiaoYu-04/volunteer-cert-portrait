@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { getDistribution, listPortraits } from '@/api/portrait'
+import { getColleges } from '@/api/auth'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { formatNumber, formatPercent } from '@/utils/format'
@@ -22,11 +23,21 @@ const { rows, total, loading, query, search } = useTable(listPortraits, {
   defaultQuery: { keyword: '', college: '', tag: '' },
 })
 
+// 学院下拉选项：数据源与注册页同一份（字典里 dict_type='college' 的启用项）。
+// 刻意不做前端兜底列表 —— 学院是管理员可增删的字典数据，写死等于造第二份真相。
+const colleges = ref([])
+
 onMounted(async () => {
   try {
     distribution.value = await getDistribution()
   } catch (err) {
     toast.error(err.message)
+  }
+  try {
+    colleges.value = await getColleges()
+  } catch {
+    // 下拉加载失败只影响这一个筛选项，不打断页面其它数据的加载，因此不弹提示
+    colleges.value = []
   }
 })
 
@@ -84,8 +95,7 @@ function resetQuery() {
 <template>
   <h1 class="console-title">学生公益画像</h1>
   <p class="console-sub">
-    画像由系统依据学生参与活动的类型、频次与累计时长自动归类，每学期更新一次。
-    可按学院与标签筛选查看明细，用于评选推荐与帮扶对象识别。
+    按学院与标签查看学生公益画像明细。
   </p>
 
   <div class="stats">
@@ -138,7 +148,10 @@ function resetQuery() {
       </InkField>
 
       <InkField label="学院">
-        <input v-model.trim="query.college" class="ink-input" type="text" placeholder="如 计算机学院" />
+        <select v-model="query.college" class="ink-select">
+          <option value="">全部学院</option>
+          <option v-for="c in colleges" :key="c.value" :value="c.value">{{ c.label }}</option>
+        </select>
       </InkField>
 
       <InkField label="画像标签">
@@ -222,6 +235,11 @@ function resetQuery() {
 }
 
 .dash-fig {
+  /* 玫瑰图的半径是固定像素（options.profile 里的 [26, 112]），画布越宽、饼越显小，
+     而图注是左对齐的 —— 整幅图铺满 1000+ px 的 panel 时，饼飘在中间、图注贴在左边，
+     两者对不上。这里把画布收窄到与饼相称的宽度，图注就跟在饼下面。
+     不改成百分比半径：百分比按 min(宽, 高) 算，在宽而扁的容器里只会更小。 */
+  max-width: 620px;
   margin: 0;
 }
 

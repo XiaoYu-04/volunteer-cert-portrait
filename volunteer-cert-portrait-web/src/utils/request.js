@@ -96,25 +96,52 @@ export function request(config) {
 
   return service(config)
     .then((res) => unwrap(res.data))
-    .catch((err) => {
-      // HTTP 401 也要清登录态，与业务码路径保持一致
-      if (err.response && err.response.status === 401) {
-        removeToken()
-        const { pathname, search, hash } = window.location
-        const from = encodeURIComponent(pathname + search + hash)
-        if (!pathname.startsWith('/login')) {
-          window.location.replace(`/login?redirect=${from}`)
-        }
-        throw new ApiError(20001, '登录已过期，请重新登录')
-      }
-      if (err instanceof ApiError) throw err
-      throw new ApiError(10000, err.message || '网络异常，请稍后重试')
+    .catch(handleRequestError)
+}
+
+/**
+ * 上传图片。
+ *
+ * @param {string} url 接口地址
+ * @param {File} file 图片文件
+ * @param {(event: ProgressEvent) => void} [onUploadProgress] 上传进度回调
+ * @returns {Promise<any>} 已解包的业务数据
+ */
+export function upload(url, file, onUploadProgress) {
+  if (USE_MOCK) {
+    return Promise.reject(new ApiError(10000, '模拟数据模式暂不支持图片上传'))
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+  return service
+    .post(url, formData, {
+      // 不手工设置 multipart/form-data，让浏览器自动带 boundary。
+      headers: { 'Content-Type': undefined },
+      onUploadProgress,
     })
+    .then((res) => unwrap(res.data))
+    .catch(handleRequestError)
 }
 
 export const get = (url, params) => request({ url, method: 'get', params })
 export const post = (url, data) => request({ url, method: 'post', data })
 export const put = (url, data) => request({ url, method: 'put', data })
 export const del = (url, data) => request({ url, method: 'delete', data })
+
+function handleRequestError(err) {
+  // HTTP 401 也要清登录态，与业务码路径保持一致
+  if (err.response && err.response.status === 401) {
+    removeToken()
+    const { pathname, search, hash } = window.location
+    const from = encodeURIComponent(pathname + search + hash)
+    if (!pathname.startsWith('/login')) {
+      window.location.replace(`/login?redirect=${from}`)
+    }
+    throw new ApiError(20001, '登录已过期，请重新登录')
+  }
+  if (err instanceof ApiError) throw err
+  throw new ApiError(10000, err.message || '网络异常，请稍后重试')
+}
 
 export default request

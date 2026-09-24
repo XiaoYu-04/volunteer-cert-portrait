@@ -217,15 +217,21 @@ CREATE TABLE attachment (
     file_name   VARCHAR(255),
     file_url    VARCHAR(255),
     file_size   BIGINT,
+    content_type VARCHAR(100),
+    caption     VARCHAR(255),
+    sort_order  INT          DEFAULT 0,
     create_time TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE  attachment           IS '附件表';
-COMMENT ON COLUMN attachment.biz_type  IS '业务类型：ACTIVITY活动封面，ORG组织资质，AVATAR用户头像';
+COMMENT ON COLUMN attachment.biz_type  IS '业务类型：ACTIVITY活动图片，ORG组织资质，AVATAR用户头像';
 COMMENT ON COLUMN attachment.biz_id    IS '业务ID（多态，不加外键约束）';
 COMMENT ON COLUMN attachment.file_name IS '原始文件名';
 COMMENT ON COLUMN attachment.file_url  IS '访问地址';
 COMMENT ON COLUMN attachment.file_size IS '文件大小（字节）';
+COMMENT ON COLUMN attachment.content_type IS 'MIME 类型，如 image/png';
+COMMENT ON COLUMN attachment.caption   IS '图片说明';
+COMMENT ON COLUMN attachment.sort_order IS '同一业务下的展示顺序，从 0 开始';
 
 
 -- =============================================================
@@ -494,6 +500,9 @@ CREATE INDEX idx_activity_start_time ON volunteer_activity (start_time);
 CREATE INDEX idx_activity_org_status ON volunteer_activity (org_id, status);
 -- 活动：看板"本月新增活动数"与活动数量趋势图
 CREATE INDEX idx_activity_create_time ON volunteer_activity (create_time);
+
+-- 附件：按业务对象读取图片，并保持展示顺序
+CREATE INDEX idx_attachment_biz_sort ON attachment (biz_type, biz_id, sort_order, id);
 
 -- 报名：学生端"我的报名"按状态筛选（student_id 为最左前缀，同时覆盖仅按 student_id 的查询）
 CREATE INDEX idx_signup_student_status ON activity_signup (student_id, status);

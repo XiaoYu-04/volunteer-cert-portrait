@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { listOrgs, auditOrg, updateOrgStatus } from '@/api/org'
+import { getColleges } from '@/api/auth'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -23,7 +24,19 @@ const { rows, total, loading, query, search, load } = useTable(listOrgs, {
   defaultQuery: { keyword: '', status: '', college: '' },
 })
 
-onMounted(() => dict.load())
+// 学院下拉选项：数据源与注册页同一份（字典里 dict_type='college' 的启用项）。
+// 刻意不做前端兜底列表 —— 学院是管理员可增删的字典数据，写死等于造第二份真相。
+const colleges = ref([])
+
+onMounted(async () => {
+  dict.load()
+  try {
+    colleges.value = await getColleges()
+  } catch {
+    // 下拉加载失败只影响这一个筛选项，不打断页面其它数据的加载，因此不弹提示
+    colleges.value = []
+  }
+})
 
 const statusTabs = [
   { value: '', label: '全部' },
@@ -91,7 +104,7 @@ async function toggleStatus(row) {
   if (next === 'DISABLED') {
     const okToGo = await confirm({
       title: '停用组织',
-      message: `停用后「${row.name}」将无法发布活动与提交服务时长，确定继续吗？`,
+      message: `停用后「${row.name}」无法发布活动与提交时长。`,
       tone: 'danger',
       confirmText: '停用',
     })
@@ -111,8 +124,7 @@ async function toggleStatus(row) {
 <template>
   <h1 class="console-title">组织管理</h1>
   <p class="console-sub">
-    审核学生志愿服务组织的资质，维护其启用状态。资质通过后组织才能发布活动、提交服务时长；
-    停用后其名下活动与时长记录仍保留，可随时恢复。
+    审核组织资质，维护启用状态。
   </p>
 
   <section class="panel">
@@ -124,12 +136,10 @@ async function toggleStatus(row) {
       </InkField>
 
       <InkField label="挂靠学院">
-        <input
-          v-model.trim="query.college"
-          class="ink-input"
-          type="text"
-          placeholder="如 计算机学院"
-        />
+        <select v-model="query.college" class="ink-select">
+          <option value="">全部学院</option>
+          <option v-for="c in colleges" :key="c.value" :value="c.value">{{ c.label }}</option>
+        </select>
       </InkField>
 
       <div class="ink-filter-actions">
@@ -270,17 +280,16 @@ async function toggleStatus(row) {
         v-if="dialog.mode === 'REJECT'"
         label="驳回理由"
         required
-        hint="将随审核结果通知组织负责人"
         class="audit-field"
       >
         <textarea
           v-model.trim="dialog.remark"
           class="ink-textarea"
-          placeholder="请说明驳回原因，例如：指导单位意见缺失，请补充盖章材料后重新提交"
+          placeholder="请说明驳回原因"
         ></textarea>
       </InkField>
       <p v-else class="ink-dialog-text audit-field">
-        通过后「{{ dialog.row.name }}」可发布活动、审核报名并提交服务时长。
+        通过后「{{ dialog.row.name }}」可发布活动与提交服务时长。
       </p>
     </template>
 

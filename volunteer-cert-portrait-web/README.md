@@ -58,6 +58,14 @@ VITE_API_BASE_URL=/api
 **默认 `http://127.0.0.1:8080`**（各人跑各自的本机后端）；要和队友联调时，
 在 `.env.local` 里设 `VITE_API_TARGET` 覆盖，**不要把某个人的内网 IP 写进入库文件**。
 注意改完 `.env*` 或 `vite.config.js` 必须**重启 dev server** 才生效。
+`/uploads` 也使用同一个代理目标，用来读取后端上传的活动图片。
+
+## 活动图片
+
+发布活动页支持 1 张封面和最多 6 张图文说明，组件为
+`src/components/common/InkImageUploader.vue`。开发环境上传到后端
+`POST /api/v1/attachments/images`；只支持 JPG/PNG、单张不超过 5MB。
+纯 mock 模式不提供真实上传能力，页面会明确显示不可用，避免误判为已保存。
 
 **响应契约**（与架构文档一致）：
 

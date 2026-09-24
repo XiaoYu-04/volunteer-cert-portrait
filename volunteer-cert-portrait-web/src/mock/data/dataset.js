@@ -77,15 +77,61 @@ export const types = [
   { name: '文化传播', code: 'CULTURE', value: 62, remark: '文化传播类：非遗宣传、文化节讲解、博物馆导览、校史宣讲等' },
 ]
 
+/**
+ * 学院时长排名（`/analytics/colleges` 的数据源，喂看板图四、首页图三与排行列表）。
+ *
+ * 只列**有认证时长的学院**：真库那边是 `GROUP BY si.college` 现算，没有学生的
+ * 学院根本不会出现在结果里，所以这里也不列「电子信息学院」（它在 mock 里既无
+ * 学生也无组织）。名字取自下面的 `collegeDict`，不再是原型里那 8 个学院 ——
+ * 原型那份含「环境学院 / 文学院 / 医学院 / 体育学院」，与系统里的学院字典对不上，
+ * 看板显示「8 个学院」而学院管理页只有 5 个，属于同一屏自相矛盾。
+ *
+ * `hours` 合计仍是 86,420（verify:mock 钉着「学院时长合计 = 累计志愿时长」），
+ * 只是把原型 8 行的时长并到 4 行上。`students` 沿用原型规模、`avg` 按
+ * hours / students 重算 —— 聚合层按原型规模、实体层按演示规模，是 mock 的既有取舍。
+ */
 export const colleges = [
-  { college: '计算机学院', hours: 15240, students: 1240, avg: 12.3 },
-  { college: '外国语学院', hours: 12860, students: 980, avg: 13.1 },
-  { college: '经济管理学院', hours: 11940, students: 1120, avg: 10.7 },
-  { college: '机械工程学院', hours: 10880, students: 1060, avg: 10.3 },
-  { college: '环境学院', hours: 9760, students: 720, avg: 13.6 },
-  { college: '文学院', hours: 9120, students: 860, avg: 10.6 },
-  { college: '医学院', hours: 8640, students: 940, avg: 9.2 },
-  { college: '体育学院', hours: 7980, students: 560, avg: 14.3 },
+  { college: '计算机学院', hours: 24860, students: 1240, avg: 20.0 },
+  { college: '外国语学院', hours: 22340, students: 980, avg: 22.8 },
+  { college: '经济管理学院', hours: 21120, students: 1120, avg: 18.9 },
+  { college: '机械工程学院', hours: 18100, students: 1060, avg: 17.1 },
+]
+
+/**
+ * 学院字典（`sys_dict` 里 `dict_type = 'college'` 的那一组）。
+ *
+ * 学院在库里不是独立表：`dict_key` 与 `dict_value` 都存学院名（这类数据没有英文码），
+ * `sort` 决定下拉顺序，`status = 1` 才出现在注册页的学院下拉里。真库的种子见
+ * `sql/10_base_and_test_accounts.sql`，下面这 5 条与它逐字一致，顺序也一致。
+ *
+ * ⚠️ 与上面那份 `colleges` 不是一回事，刻意不合并：
+ *   · `colleges` 是**聚合数据**（参与 verify:mock 的「学院时长合计 = 86,420」断言），
+ *     只喂看板与首页的学院排名，**不给实体表赋值**，名字取自本清单；
+ *   · 本清单是**字典数据**，管理员在学院管理页可增可删可停用，是注册页下拉的唯一数据源。
+ *   `students` / `orgList` 的学院取值已收敛到本清单（见下面的 COLLEGE_TRACK），
+ *   只覆盖其中 4 个：「电子信息学院」刻意留空 —— 学院管理页要能演示删除，
+ *   而 verify:mock 有一条断言钉着「至少有一个未被占用的学院」。
+ */
+export const collegeDict = [
+  { id: 1, name: '计算机学院', sort: 1, status: 1 },
+  { id: 2, name: '电子信息学院', sort: 2, status: 1 },
+  { id: 3, name: '经济管理学院', sort: 3, status: 1 },
+  { id: 4, name: '外国语学院', sort: 4, status: 1 },
+  { id: 5, name: '机械工程学院', sort: 5, status: 1 },
+]
+
+/**
+ * 学生的「学院 / 专业 / 班级」三元组：三者必须同下标（`sql/04` 里记过这个坑，
+ * 学院、专业、班级错配过一次）。学院名取自 `collegeDict`（= 真库 `sys_dict` 的 5 条），
+ * 只覆盖其中 4 个，「电子信息学院」刻意留空（理由见上面 collegeDict 的注释）。
+ *
+ * 定义在 `orgList` / `students` 之前：两处都要在模块初始化时按 i 取用。
+ */
+const COLLEGE_TRACK = [
+  { college: '计算机学院', major: '计算机科学与技术', classPrefix: '计科' },
+  { college: '外国语学院', major: '英语', classPrefix: '英语' },
+  { college: '经济管理学院', major: '工商管理', classPrefix: '工商' },
+  { college: '机械工程学院', major: '机械工程', classPrefix: '机械' },
 ]
 
 export const orgs = [
@@ -629,7 +675,7 @@ export const orgList = orgs.map((o, i) => ({
   // 存完整号码，不存脱敏串 —— 库里 org_info.phone 也是完整的（13800000002）。
   // 脱敏串一旦被回填进可编辑表单就必然过不了 /^1\d{10}$/（C13 的成因）。
   phone: `138${String(22000000 + i * 111).slice(0, 8)}`,
-  college: colleges[i % colleges.length].college,
+  college: COLLEGE_TRACK[i % COLLEGE_TRACK.length].college,
   memberCount: [186, 142, 118, 96, 74, 68][i] || 60,
   foundedAt: `20${14 + i}-09-01`,
   status: i === 5 ? 'PENDING' : 'APPROVED',
@@ -647,9 +693,6 @@ const GIVEN_NAMES = [
   '浩然', '雨欣', '天佑', '梦洁', '泽宇', '欣怡', '子轩', '嘉怡', '晨曦', '若曦',
   '明轩', '静怡', '宇航', '可欣', '博文', '嘉宁', '天成', '梦琪', '文轩', '雅婷',
 ]
-const MAJORS = ['计算机科学与技术', '英语', '工商管理', '机械工程', '环境工程', '汉语言文学']
-const CLASS_PREFIX = ['计科', '英语', '工商', '机械', '环境', '中文']
-
 /**
  * 60 名学生。
  *
@@ -669,10 +712,10 @@ export const students = Array.from({ length: 60 }, (_, i) => {
     name,
     studentNo: `2022${String(10001 + i * 137).slice(0, 5)}`,
     gender: i % 2 === 0 ? 'MALE' : 'FEMALE',
-    college: colleges[i % colleges.length].college,
-    major: MAJORS[i % MAJORS.length],
+    college: COLLEGE_TRACK[i % COLLEGE_TRACK.length].college,
+    major: COLLEGE_TRACK[i % COLLEGE_TRACK.length].major,
     grade: ['2022', '2023', '2024'][i % 3],
-    className: `${CLASS_PREFIX[i % CLASS_PREFIX.length]}${2201 + (i % 3)}`,
+    className: `${COLLEGE_TRACK[i % COLLEGE_TRACK.length].classPrefix}${2201 + (i % 3)}`,
     // 完整 11 位号码，与库里 sys_user.phone（13800000003）同形态。
     // 个人中心 / 用户管理都会把它预填进表单，脱敏串会被 /^1\d{10}$/ 拒掉（C13）。
     phone: `138${String(33000000 + i * 173).slice(0, 8)}`,

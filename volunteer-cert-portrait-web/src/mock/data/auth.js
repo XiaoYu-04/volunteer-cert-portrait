@@ -1,4 +1,4 @@
-import { users, students } from './dataset'
+import { users, students, collegeDict } from './dataset'
 import { ok, fail, currentUserId, nextId, now, persistUser } from './_helpers'
 
 /* 注册校验。前端已拦一道，这里再拦一道 —— 客户端校验只是体验优化，
@@ -7,17 +7,20 @@ const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
 const RE_PHONE = /^1[3-9]\d{9}$/
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-/* 学院字典项。形状与字典接口的 {value,label,tone} 一致：注册页只取 value/label，
+/* 学院下拉选项：形状与字典接口的 {value,label,tone} 一致 —— 注册页只取 value/label，
    tone 是给状态标签用的色调，学院没有状态语义，统一中性色。
-   这 5 条是 mock 侧的字典种子（顺序按契约固定），不是给前端兜底的副本 ——
-   接口挂掉时前端就该是空下拉，而不是拿这份列表顶上。 */
-const COLLEGE_OPTIONS = [
-  { value: '计算机学院', label: '计算机学院', tone: 'mute' },
-  { value: '电子信息学院', label: '电子信息学院', tone: 'mute' },
-  { value: '经济管理学院', label: '经济管理学院', tone: 'mute' },
-  { value: '外国语学院', label: '外国语学院', tone: 'mute' },
-  { value: '机械工程学院', label: '机械工程学院', tone: 'mute' },
-]
+
+   数据源是 dataset.js 的 collegeDict（可增删可停用），**不是**一份写死的副本：
+   学校管理端的学院管理页改的就是那一份，改完注册页下拉立刻跟着变，
+   这与真库「两处读同一个 sys_dict」的行为一致。
+   停用项（status = 0）在这里就被滤掉，与后端 DictService.listByType 只取启用项同口径。 */
+export function collegeOptions() {
+  return collegeDict
+    .filter((c) => c.status !== 0)
+    .slice()
+    .sort((a, b) => a.sort - b.sort || a.id - b.id)
+    .map((c) => ({ value: c.name, label: c.name, tone: 'mute' }))
+}
 
 /** 把用户记录转成前端会话对象（不含密码） */
 function toSession(user) {
@@ -44,7 +47,7 @@ export default [
   {
     method: 'get',
     path: '/v1/auth/colleges',
-    handler: () => ok(COLLEGE_OPTIONS),
+    handler: () => ok(collegeOptions()),
   },
 
   {
@@ -76,7 +79,11 @@ export default [
       if (!String(body.name || '').trim()) {
         return fail(10001, '姓名不能为空')
       }
-      if (!String(body.college || '').trim()) {
+      // 学院必须命中字典里的启用项，不接受自由文本 —— 同一学院一旦有第二种写法，
+      // 「按学院统计」就会把它算成另一个学院（与后端 AuthServiceImpl.register 同口径）。
+      // 这条也保证「管理端删掉一个学院后，注册页再提交它一定被拒」。
+      const college = String(body.college || '').trim()
+      if (!college || !collegeDict.some((c) => c.status !== 0 && c.name === college)) {
         return fail(10001, '请选择学院')
       }
       if (!body.password || String(body.password).length < 6) {
@@ -196,7 +203,7 @@ export default [
         return fail(10001, '新密码不能与原密码相同')
       }
       // mock 不做哈希，直接存明文；真实后端存的是 BCrypt 密文，比对也发生在服务端。
-      // 明文是为了演示闭环：改成什么，就能当场用什么登进去验一遍。
+      // 存明文是为了演示方便：改成什么，就能当场用什么登进去验一遍。
       user.password = newPassword
       return ok(null)
     },

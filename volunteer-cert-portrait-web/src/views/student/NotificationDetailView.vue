@@ -42,7 +42,7 @@ const actions = computed(() => {
   const type = notice.value?.type
   if (type === 'SIGNUP') {
     return {
-      hint: '报名结果通知与你的报名记录相关，可前往以下页面查看明细。',
+      hint: '可核对报名记录，或浏览其他活动。',
       links: [
         { to: '/student/signups', label: '查看我的报名' },
         { to: '/student/activities', label: '浏览志愿活动' },
@@ -51,7 +51,7 @@ const actions = computed(() => {
   }
   if (type === 'DURATION') {
     return {
-      hint: '时长审核类通知与你的服务时长记录相关，可前往以下页面查看明细。',
+      hint: '可查看服务时长记录与公益画像。',
       links: [
         { to: '/student/durations', label: '查看我的服务时长' },
         { to: '/student/portrait', label: '查看我的公益画像' },
@@ -59,7 +59,7 @@ const actions = computed(() => {
     }
   }
   return {
-    hint: '系统通知由校团委与学生工作处发布，可查看公益画像了解自己的服务记录。',
+    hint: '可查看我的公益画像，或返回通知列表。',
     links: [
       { to: '/student/portrait', label: '查看我的公益画像' },
       { to: '/student/notifications', label: '返回通知列表' },
@@ -96,7 +96,7 @@ const actions = computed(() => {
       <InkEmpty
         v-else-if="!notice"
         text="通知不存在或已被删除"
-        hint="请返回通知列表查看其他通知"
+        hint="返回通知列表查看其他通知"
       />
 
       <template v-else>

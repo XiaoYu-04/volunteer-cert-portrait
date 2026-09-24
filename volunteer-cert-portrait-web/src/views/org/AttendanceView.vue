@@ -63,8 +63,9 @@ function openFix(row) {
     open: true,
     row,
     status: row.status,
-    signInAt: row.signInAt || '',
-    signOutAt: row.signOutAt || '',
+    // 预填到分钟：与表格列、输入框 placeholder 同一精度（接口两种格式都收）
+    signInAt: row.signInAt ? formatDateTime(row.signInAt) : '',
+    signOutAt: row.signOutAt ? formatDateTime(row.signOutAt) : '',
   }
 }
 
@@ -93,9 +94,7 @@ async function submitFix() {
 
 <template>
   <h1 class="console-title">签到管理</h1>
-  <p class="console-sub">
-    查看本组织活动的签到签退记录与实得时长。现场设备异常导致漏签时，可在此手动修正状态与时间，修正结果作为时长提交的依据。
-  </p>
+  <p class="console-sub">查看本组织活动的签到签退记录，漏签可在此手动修正。</p>
 
   <section class="panel">
     <form class="ink-filter" @submit.prevent="search">
@@ -193,7 +192,7 @@ async function submitFix() {
         <input v-model.trim="dialog.signInAt" class="ink-input" type="text" placeholder="2025-03-22 08:45" />
       </InkField>
 
-      <InkField label="签退时间" hint="置为「已签退」时必填，实得时长按活动时长记录">
+      <InkField label="签退时间" hint="置为「已签退」时必填">
         <input v-model.trim="dialog.signOutAt" class="ink-input" type="text" placeholder="2025-03-22 12:05" />
       </InkField>
     </template>

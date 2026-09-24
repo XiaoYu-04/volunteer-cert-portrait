@@ -63,10 +63,8 @@ const {
     <div class="wrap hero-in">
       <div class="hero-main">
         <p class="hero-kicker">{{ trendRange || '志愿服务数据' }}</p>
-        <h1>以微光聚炬，<br />让每一次<em>服务</em>都被记住</h1>
-        <p class="hero-sub">
-          活动发布、报名审核、签到签退、服务时长记录、多角色时长审核、学生公益画像——六个环节环环相扣，构成全校志愿服务的完整闭环。
-        </p>
+        <h1>全校志愿服务<br /><em>时长认证</em>与公益画像</h1>
+        <p class="hero-sub">全校志愿服务的汇总数据，含活动、签到、时长与画像。</p>
         <div class="hero-actions">
           <InkButton to="/student/activities" variant="primary">浏览志愿活动</InkButton>
           <InkButton to="/student/portrait">查看我的公益画像</InkButton>
@@ -131,7 +129,7 @@ const {
     <InkSection
       no="02 / 活动"
       title="本期志愿活动"
-      desc="近期活动开放报名，可在线提交报名申请并等待组织管理员审核。"
+      desc="仅列出开放报名的活动，最多 6 场。"
     >
       <div class="grid-3">
         <ActivityCard
@@ -159,7 +157,7 @@ const {
     <InkSection
       no="04 / 流程"
       title="志愿服务流程"
-      desc="四步闭环，多角色审核贯穿全程，服务时长经学校审核后计入公益画像。"
+      desc="从浏览活动到计入公益画像，共四步。"
     >
       <ol class="ink-flow">
         <li v-for="(step, i) in data?.flow || []" :key="step.step" class="ink-flow-step">
@@ -204,7 +202,7 @@ const {
     <InkSection
       no="06 / 审核"
       title="时长审核与签到"
-      desc="组织提交时长后由学校管理员审核，通过率与签到率是衡量活动执行质量的两项核心指标。"
+      desc="审核按条、签到按人次统计；两项比率以记录总数为分母。"
     >
       <div class="grid-2">
         <figure class="fig-frame" style="margin: 0">

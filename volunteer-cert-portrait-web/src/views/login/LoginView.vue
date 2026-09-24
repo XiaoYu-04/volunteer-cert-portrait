@@ -58,7 +58,7 @@ async function onSubmit() {
         <span class="auth-aside-name">志愿服务数据志</span>
       </div>
 
-      <p class="auth-aside-quote">以微光聚炬，<br />让每一次<em>服务</em>都被记住</p>
+      <p class="auth-aside-quote">全校志愿服务<br /><em>时长认证</em>与公益画像</p>
 
       <p class="auth-aside-foot">VOLUNTEER SERVICE · VCP</p>
     </aside>

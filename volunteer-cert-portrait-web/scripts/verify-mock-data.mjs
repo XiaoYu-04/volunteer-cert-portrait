@@ -160,6 +160,74 @@ check(
   ['SIGNED_OUT', 'SIGNED_IN', 'ABNORMAL', 'ABSENT'].every((s) => attendanceStatuses.has(s)),
 )
 
+/* ---------- 学院字典（注册页下拉与学院管理页的唯一数据源）----------
+   学院不是独立表，是 sys_dict 里 dict_type = 'college' 的字典行。
+   下面三条把它和真库种子钉在一起：改 mock 的学院清单而不改 sql/10，
+   或者反过来，都会在这里失败 —— 两处不一致的表现是「注册页选得到、
+   管理页看不到」，属于静态检查看不出来、真跑也不报错的那类问题。 */
+const collegeNames = D.collegeDict.map((c) => c.name)
+check(
+  '学院字典无重名',
+  new Set(collegeNames).size === collegeNames.length,
+  `${collegeNames.length} 个学院`,
+)
+check(
+  '学院字典的 sort 互不相同（并列会让下拉顺序不确定）',
+  new Set(D.collegeDict.map((c) => c.sort)).size === D.collegeDict.length,
+)
+check(
+  '学院字典与 sql/10 的种子逐字一致，顺序也一致',
+  JSON.stringify(collegeNames) ===
+    JSON.stringify(['计算机学院', '电子信息学院', '经济管理学院', '外国语学院', '机械工程学院']),
+  collegeNames.join(' / '),
+)
+// 学院管理页要能演示「删除已有学院」，前提是至少有一个学院在 mock 里没被占用
+// （占用校验会挡住还有学生或组织的学院）。真库清空演示数据后 5 个都满足，
+// mock 里只有电子信息学院满足 —— 它不在 students / orgList 的学院取值清单里。
+const deletable = D.collegeDict.filter(
+  (c) =>
+    !D.students.some((s) => s.college === c.name) && !D.orgList.some((o) => o.college === c.name),
+)
+check(
+  '至少有一个未被占用的学院（学院管理页的删除流程可演示）',
+  deletable.length > 0,
+  deletable.map((c) => c.name).join(' / ') || '无',
+)
+
+// 取值域已收敛：实体表（students / orgList）里的学院必须都在字典里。三个页面的
+// 学院筛选下拉读的是字典，越界的学院名会让「表里有记录、下拉里筛不到」。
+const collegeOutsideDict = [
+  ...new Set([...D.students.map((s) => s.college), ...D.orgList.map((o) => o.college)]),
+].filter((name) => !collegeNames.includes(name))
+check(
+  '学生与组织的学院都在学院字典里（筛选下拉能筛到全部记录）',
+  collegeOutsideDict.length === 0,
+  collegeOutsideDict.join(' / ') || '无越界取值',
+)
+// 学院、专业、班级同下标（sql/04 记过这个坑）：一个学院只应对应一个专业与一种班级前缀，
+// 否则会出现「计算机学院 / 英语专业」这类错配。
+const trackByCollege = new Map()
+for (const s of D.students) {
+  const key = `${s.major}|${s.className.replace(/\d+$/, '')}`
+  if (!trackByCollege.has(s.college)) trackByCollege.set(s.college, new Set())
+  trackByCollege.get(s.college).add(key)
+}
+const trackMismatch = [...trackByCollege].filter(([, keys]) => keys.size > 1).map(([c]) => c)
+check(
+  '学院与专业、班级同下标，无错配',
+  trackMismatch.length === 0,
+  trackMismatch.join(' / ') || `${trackByCollege.size} 个学院各一种专业`,
+)
+
+// 看板 / 首页的学院排名（colleges）只列有数据的学院，名字必须来自字典，
+// 否则会出现「排名里有文学院、学院管理页里没有」这种同屏矛盾。
+const rankOutside = D.colleges.map((c) => c.college).filter((name) => !collegeNames.includes(name))
+check(
+  '学院排名的名字都在学院字典里',
+  rankOutside.length === 0,
+  rankOutside.join(' / ') || `${D.colleges.length} 个学院上榜`,
+)
+
 check(
   '用户关联的 studentId 均可解析',
   D.users.filter((u) => u.studentId).every((u) => D.students.some((s) => s.id === u.studentId)),

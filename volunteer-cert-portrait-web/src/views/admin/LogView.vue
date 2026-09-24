@@ -52,7 +52,7 @@ function resetQuery() {
 <template>
   <h1 class="console-title">操作日志</h1>
   <p class="console-sub">
-    记录管理员与组织管理员的关键操作，含审核、发布、账号变更与登录事件。日志仅可查询，不可修改或删除。
+    查询审核、发布与账号变更记录，日志不可修改。
   </p>
 
   <section class="panel">

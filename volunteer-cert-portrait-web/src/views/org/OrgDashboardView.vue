@@ -65,9 +65,7 @@ const rank = computed(() => {
 
 <template>
   <h1 class="console-title">组织数据</h1>
-  <p class="console-sub">
-    本组织志愿服务的实时概览：活动场次、报名审核、签到与时长认证情况。数据在进入页面时刷新一次。
-  </p>
+  <p class="console-sub">本组织活动的场次、报名、签到与时长认证情况。</p>
 
   <div class="stats stats-org" :aria-busy="loading">
     <InkStat

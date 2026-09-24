@@ -8,6 +8,7 @@ import { useToast } from '@/composables/useToast'
 
 import InkField from '@/components/common/InkField.vue'
 import InkButton from '@/components/common/InkButton.vue'
+import InkImageUploader from '@/components/common/InkImageUploader.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -18,6 +19,9 @@ const orgId = computed(() => user.info?.orgId || 1)
 const categories = ref([])
 const orgName = ref('')
 const submitting = ref(false)
+const coverImages = ref([])
+const descriptionImages = ref([])
+const uploadingImages = ref(0)
 
 const form = reactive({
   title: '',
@@ -89,6 +93,11 @@ function validate() {
 }
 
 async function onSubmit() {
+  if (submitting.value) return
+  if (uploadingImages.value > 0) {
+    toast.warn('图片上传完成后再提交')
+    return
+  }
   if (!validate()) {
     toast.warn('请先补全标有 * 的必填项')
     return
@@ -108,6 +117,16 @@ async function onSubmit() {
       deadline: form.deadline,
       contact: form.contact.trim(),
       description: form.description.trim(),
+      cover: coverImages.value[0]?.fileUrl || '',
+      images: descriptionImages.value.map(
+        ({ fileUrl, fileName, fileSize, contentType, caption }) => ({
+          fileUrl,
+          fileName,
+          fileSize,
+          contentType,
+          caption: caption?.trim() || '',
+        }),
+      ),
       orgId: orgId.value,
       org: orgName.value,
     })
@@ -121,6 +140,7 @@ async function onSubmit() {
 }
 
 function onReset() {
+  if (uploadingImages.value > 0) return
   Object.assign(form, {
     title: '',
     categoryId: '',
@@ -133,15 +153,19 @@ function onReset() {
     contact: '',
     description: '',
   })
+  coverImages.value = []
+  descriptionImages.value = []
   clearErrors()
+}
+
+function onUploadingChange(active) {
+  uploadingImages.value = Math.max(0, uploadingImages.value + (active ? 1 : -1))
 }
 </script>
 
 <template>
   <h1 class="console-title">发布活动</h1>
-  <p class="console-sub">
-    填写活动信息并提交后，活动先保存为草稿，确认无误后在「活动管理」中点击发布，学生即可报名。
-  </p>
+  <p class="console-sub">填写活动信息，提交即存为草稿，发布入口在活动管理页。</p>
 
   <section class="panel">
     <div class="panel-head">
@@ -159,7 +183,7 @@ function onReset() {
         />
       </InkField>
 
-      <InkField label="活动分类" required :error="errors.categoryId" hint="决定活动在类型统计中的归属">
+      <InkField label="活动分类" required :error="errors.categoryId">
         <select v-model="form.categoryId" class="ink-select">
           <option value="">请选择分类</option>
           <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
@@ -167,7 +191,12 @@ function onReset() {
       </InkField>
 
       <InkField label="活动地点" required :error="errors.place">
-        <input v-model.trim="form.place" class="ink-input" type="text" placeholder="如 幸福里社区敬老院" />
+        <input
+          v-model.trim="form.place"
+          class="ink-input"
+          type="text"
+          placeholder="如 幸福里社区敬老院"
+        />
       </InkField>
 
       <InkField label="活动日期" required :error="errors.date">
@@ -178,35 +207,84 @@ function onReset() {
         <input v-model="form.time" class="ink-input" type="time" />
       </InkField>
 
-      <InkField label="报名截止日期" required :error="errors.deadline" hint="截止后不再接受新的报名">
+      <InkField
+        label="报名截止日期"
+        required
+        :error="errors.deadline"
+        hint="截止后不再接受新的报名"
+      >
         <input v-model="form.deadline" class="ink-input" type="date" />
       </InkField>
 
-      <InkField label="招募名额" required :error="errors.capacity" hint="报名人数达到名额后自动停止报名">
-        <input v-model="form.capacity" class="ink-input" type="number" min="1" placeholder="如 60" />
+      <InkField label="招募名额" required :error="errors.capacity" hint="达到名额后自动停止报名">
+        <input
+          v-model="form.capacity"
+          class="ink-input"
+          type="number"
+          min="1"
+          placeholder="如 60"
+        />
       </InkField>
 
-      <InkField label="单人服务时长" required :error="errors.hours" hint="单位：小时，用于时长认证">
-        <input v-model="form.hours" class="ink-input" type="number" min="1" max="24" step="0.5" placeholder="如 4" />
+      <InkField label="单人服务时长" required :error="errors.hours" hint="单位：小时">
+        <input
+          v-model="form.hours"
+          class="ink-input"
+          type="number"
+          min="1"
+          max="24"
+          step="0.5"
+          placeholder="如 4"
+        />
       </InkField>
 
-      <InkField label="联系人" required :error="errors.contact" hint="格式：姓名 + 联系方式，将展示在活动详情">
-        <input v-model.trim="form.contact" class="ink-input" type="text" placeholder="如 李同学 138****2201" />
+      <InkField label="联系人" required :error="errors.contact" hint="格式：姓名 + 联系方式">
+        <input
+          v-model.trim="form.contact"
+          class="ink-input"
+          type="text"
+          placeholder="如 李同学 138****2201"
+        />
       </InkField>
 
       <InkField label="活动简介" required :error="errors.description" class="span-2">
         <textarea
           v-model.trim="form.description"
           class="ink-textarea"
-          placeholder="说明服务内容、集合时间、着装与工具要求等"
+          placeholder="如 集合时间、着装要求、需自带的工具"
         ></textarea>
       </InkField>
 
+      <div class="span-2 image-field">
+        <InkImageUploader
+          v-model="coverImages"
+          :max="1"
+          label="活动封面"
+          hint="建议使用 3:2 横图，支持 JPG、PNG，单张不超过 5MB。"
+          @uploading-change="onUploadingChange"
+        />
+      </div>
+
+      <div class="span-2 image-field">
+        <InkImageUploader
+          v-model="descriptionImages"
+          :max="6"
+          label="图文说明"
+          hint="可添加最多 6 张图片，并为每张填写说明。"
+          captionable
+          @uploading-change="onUploadingChange"
+        />
+      </div>
+
       <div class="ink-form-actions span-2">
-        <InkButton native-type="submit" variant="primary" :disabled="submitting">
-          {{ submitting ? '提交中…' : '提交活动' }}
+        <InkButton
+          native-type="submit"
+          variant="primary"
+          :disabled="submitting || uploadingImages > 0"
+        >
+          {{ submitting ? '提交中…' : uploadingImages > 0 ? '图片上传中…' : '提交活动' }}
         </InkButton>
-        <InkButton :disabled="submitting" @click="onReset">重置</InkButton>
+        <InkButton :disabled="submitting || uploadingImages > 0" @click="onReset">重置</InkButton>
         <InkButton variant="ghost" to="/org/activities">返回活动管理</InkButton>
       </div>
     </form>
@@ -220,5 +298,10 @@ function onReset() {
 
 .ink-form-actions {
   padding-top: 8px;
+}
+
+.image-field {
+  padding: 18px 0;
+  border-top: 1px solid var(--c-line-2);
 }
 </style>

@@ -57,11 +57,15 @@ export function useDashboardText(data) {
       图注必须与图同口径，否则图上 14 条、文字写 20 场。 */
   const trendTotal = computed(() => trend.value.reduce((sum, r) => sum + (r.count || 0), 0))
   const trendHours = computed(() => trend.value.reduce((sum, r) => sum + (r.hours || 0), 0))
+  /** 图注 / 面板角标用的合计：加载态给 null，formatNumber 会渲染成「—」。
+      直接写 0 会被读成真实数据（「近 12 个月合计 0 场」）。 */
+  const trendTotalText = computed(() => (trend.value.length ? trendTotal.value : null))
+  const trendHoursText = computed(() => (trend.value.length ? trendHours.value : null))
 
   const trendDesc = computed(() => {
     const { peak, low } = extremes.value
     if (!peak || !low) return '各月活动量分布'
-    return `全年活动量以 ${monthText(peak.month)}最高（${peak.count} 场），${monthText(low.month)}最低（${low.count} 场）。`
+    return `近 12 个月以 ${monthText(peak.month)}最高（${peak.count} 场），${monthText(low.month)}最低（${low.count} 场）。`
   })
 
   const trendLabel = computed(() => {
@@ -130,14 +134,14 @@ export function useDashboardText(data) {
 
   const signinDesc = computed(() => {
     const s = signin.value
-    if (s.total === undefined) return '活动签到率，是衡量活动执行质量的核心指标。'
+    if (s.total === undefined) return '活动签到率。'
     return `活动签到率，应签到 ${formatNumber(s.total)} 人次、实签到 ${formatNumber(s.signed)} 人次。`
   })
 
   /** 画像区文案。刻意不写「全校 N 名学生」——profiles 是「标签 → 人数」的分布，
       一个学生可同时有多个标签，其 count 之和是**标签计数**而非学生数，写成学生数会偏大。 */
   const portraitDesc = computed(
-    () => `系统依据参与活动的类型、频次与时长自动归类，共 ${profiles.value.length} 类画像标签。`,
+    () => `共 ${profiles.value.length} 类画像标签，按参与活动的类型、频次与时长归类。`,
   )
 
   /** 「N 类活动 · M 个学院」这类结构性说明 */
@@ -151,7 +155,7 @@ export function useDashboardText(data) {
   const heatLabel = computed(() => {
     const month = data.value?.heatmap?.month
     if (!month) return '逐日签到人次热力日历'
-    return `${monthText(month)}逐日签到人次热力日历，周末与中下旬人次明显更高`
+    return `${monthText(month)}逐日签到人次热力日历`
   })
 
   return {
@@ -170,6 +174,8 @@ export function useDashboardText(data) {
     trendRange,
     trendTotal,
     trendHours,
+    trendTotalText,
+    trendHoursText,
     trendDesc,
     trendLabel,
     hoursLabel,

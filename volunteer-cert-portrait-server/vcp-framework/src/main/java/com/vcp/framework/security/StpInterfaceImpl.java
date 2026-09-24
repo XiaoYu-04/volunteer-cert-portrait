@@ -33,7 +33,7 @@ public class StpInterfaceImpl implements StpInterface {
      * 角色码 → 权限标识集合。
      *
      * <p>与前端 stores/user.js 的 ROLE_PERMS 逐条对应：学生 5 条 / 组织管理员 7 条 /
-     * 学校管理员 16 条。权限标识统一为「域:资源:操作」，与后端 {@code @SaCheckPermission}
+     * 学校管理员 17 条。权限标识统一为「域:资源:操作」，与后端 {@code @SaCheckPermission}
      * 的写法同构。
      */
     private static final Map<String, List<String>> ROLE_PERMS = Map.of(
@@ -67,6 +67,7 @@ public class StpInterfaceImpl implements StpInterface {
                     "system:user:update",
                     "system:user:delete",
                     "system:role:list",
+                    "system:college:manage",
                     "system:notice:manage",
                     "system:log:list",
                     "analytics:dashboard:view"

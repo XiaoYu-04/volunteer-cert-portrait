@@ -83,9 +83,7 @@ function openDetail(row) {
     <header class="page-head">
       <span class="hero-kicker">我的</span>
       <h1>我的服务时长</h1>
-      <p class="page-head-sub">
-        活动签到签退后由组织提交服务时长，经学校管理员审核通过后计入公益画像。驳回的记录会附上审核意见。
-      </p>
+      <p class="page-head-sub">查看服务时长记录与审核状态，驳回的可查看理由。</p>
     </header>
 
     <section class="sec-list">
@@ -123,7 +121,7 @@ function openDetail(row) {
         :rows="rows"
         :loading="loading"
         empty-text="还没有服务时长记录"
-        empty-hint="完成活动签到签退后，组织会为你提交服务时长"
+        empty-hint="参加活动并完成签到签退后，由组织提交时长记录"
       >
         <template #activityTitle="{ row }">
           <RouterLink class="row-link" :to="`/student/activities/${row.activityId}`">

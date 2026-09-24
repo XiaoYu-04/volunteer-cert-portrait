@@ -40,6 +40,15 @@ public class Attachment implements Serializable {
     /** 文件大小（字节） */
     private Long fileSize;
 
+    /** MIME 类型，如 image/png */
+    private String contentType;
+
+    /** 图片说明 */
+    private String caption;
+
+    /** 同一业务下的展示顺序，从 0 开始 */
+    private Integer sortOrder;
+
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }

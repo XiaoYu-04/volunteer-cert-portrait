@@ -26,56 +26,73 @@ async function onLogout() {
 </script>
 
 <template>
-  <a class="skip" href="#main">跳到主要内容</a>
+  <div class="student-shell">
+    <a class="skip" href="#main">跳到主要内容</a>
 
-  <header class="top">
-    <div class="wrap top-in">
-      <RouterLink class="brand" :to="user.homePath">
-        <span class="seal" aria-hidden="true">志愿</span>
-        <span>
-          <span class="brand-name">志愿服务数据志</span>
-          <span class="brand-sub">VOLUNTEER SERVICE</span>
-        </span>
-      </RouterLink>
-
-      <nav class="top-nav" aria-label="主导航">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          :class="{ 'is-current': isCurrent(item.path) }"
-          :aria-current="isCurrent(item.path) ? 'page' : undefined"
-        >
-          {{ item.title }}
+    <header class="top">
+      <div class="wrap top-in">
+        <RouterLink class="brand" :to="user.homePath">
+          <span class="seal" aria-hidden="true">志愿</span>
+          <span>
+            <span class="brand-name">志愿服务数据志</span>
+            <span class="brand-sub">VOLUNTEER SERVICE</span>
+          </span>
         </RouterLink>
 
-        <span class="top-user">
-          <span class="top-user-name">{{ user.name }}</span>
-          <button class="top-user-out" type="button" @click="onLogout">退出</button>
-        </span>
-      </nav>
-    </div>
-  </header>
+        <nav class="top-nav" aria-label="主导航">
+          <RouterLink
+            v-for="item in navItems"
+            :key="item.path"
+            :to="item.path"
+            :class="{ 'is-current': isCurrent(item.path) }"
+            :aria-current="isCurrent(item.path) ? 'page' : undefined"
+          >
+            {{ item.title }}
+          </RouterLink>
 
-  <main id="main">
-    <RouterView />
-  </main>
+          <span class="top-user">
+            <span class="top-user-name">{{ user.name }}</span>
+            <button class="top-user-out" type="button" @click="onLogout">退出</button>
+          </span>
+        </nav>
+      </div>
+    </header>
 
-  <footer class="foot">
-    <div class="wrap foot-in">
-      <p class="foot-name">高校志愿服务时长认证与公益画像数据分析系统</p>
-      <p class="foot-meta">
-        {{ user.roleLabel }}端 · 数据为模拟数据<br />
-        <span class="foot-meta-actions">
-          <RouterLink :to="user.homePath">返回首页</RouterLink>
-          <button type="button" @click="onLogout">退出登录</button>
-        </span>
-      </p>
-    </div>
-  </footer>
+    <main id="main">
+      <RouterView />
+    </main>
+
+    <footer class="foot">
+      <div class="wrap foot-in">
+        <RouterLink class="foot-brand" :to="user.homePath">
+          <span class="seal" aria-hidden="true">志愿</span>
+          <span class="foot-brand-name">志愿服务数据志</span>
+        </RouterLink>
+
+        <nav class="foot-nav" aria-label="页脚导航">
+          <RouterLink v-for="item in navItems" :key="item.path" :to="item.path">
+            {{ item.title }}
+          </RouterLink>
+        </nav>
+
+        <p class="foot-copy">© 2026 · 高校志愿服务时长认证与公益画像数据分析系统</p>
+      </div>
+    </footer>
+  </div>
 </template>
 
 <style scoped>
+.student-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.student-shell > main {
+  flex: 1 0 auto;
+}
+
 .top-user {
   display: inline-flex;
   align-items: center;
@@ -104,21 +121,6 @@ async function onLogout() {
 .top-user-out:hover {
   color: var(--c-a2);
   border-bottom-color: var(--c-a2);
-}
-
-.foot-meta-actions {
-  display: inline-flex;
-  gap: 18px;
-  margin-top: 6px;
-}
-
-.foot-meta-actions button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: #fff;
-  border-bottom: 1px solid var(--c-a2);
-  font-size: 13px;
 }
 
 @media (max-width: 1000px) {

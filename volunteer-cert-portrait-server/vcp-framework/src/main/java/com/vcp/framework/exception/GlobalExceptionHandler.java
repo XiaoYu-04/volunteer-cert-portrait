@@ -10,12 +10,16 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
@@ -132,6 +136,39 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public R<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         return R.fail(ErrorCodeEnum.PARAM_ERROR, "请求参数格式不正确");
+    }
+
+    /**
+     * 上传文件超过 multipart 限制。
+     *
+     * @param e 文件过大异常
+     * @return 参数错误响应
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public R<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        return R.fail(ErrorCodeEnum.PARAM_ERROR, "图片大小不能超过 5MB");
+    }
+
+    /**
+     * multipart 请求缺少文件或格式损坏。
+     *
+     * @param e multipart 异常
+     * @return 参数错误响应
+     */
+    @ExceptionHandler({MissingServletRequestPartException.class, MultipartException.class})
+    public R<Void> handleMultipartException(Exception e) {
+        return R.fail(ErrorCodeEnum.PARAM_ERROR, "请上传有效的图片文件");
+    }
+
+    /**
+     * Content-Type 不受支持，通常是上传时没有使用 multipart/form-data。
+     *
+     * @param e 媒体类型异常
+     * @return 参数错误响应
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public R<Void> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException e) {
+        return R.fail(ErrorCodeEnum.PARAM_ERROR, "上传请求格式不正确");
     }
 
     /**

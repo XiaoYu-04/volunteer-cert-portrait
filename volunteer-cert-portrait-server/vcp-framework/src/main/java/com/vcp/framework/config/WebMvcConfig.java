@@ -3,8 +3,11 @@ package com.vcp.framework.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 /**
@@ -33,12 +36,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
     /** 允许的跨域来源模式；缺省 {@code *}，与改动前的硬编码取值一致 */
     private final String[] allowedOriginPatterns;
 
+    /** 上传文件根目录，静态资源映射到 /uploads/** */
+    private final Path uploadRoot;
+
+    /** 上传资源 URL 匹配模式，跟随 vcp.upload.public-prefix 配置 */
+    private final String uploadUrlPattern;
+
     /**
      * @param allowedOriginPatterns 配置项 {@code vcp.cors.allowed-origin-patterns}，逗号分隔，缺省 {@code *}
      * @throws IllegalStateException 配置值为空（或只有逗号、空白）时抛出，避免退化成无效的跨域配置
      */
-    public WebMvcConfig(@Value("${vcp.cors.allowed-origin-patterns:*}") String allowedOriginPatterns) {
+    public WebMvcConfig(@Value("${vcp.cors.allowed-origin-patterns:*}") String allowedOriginPatterns,
+                        @Value("${vcp.upload.dir:./uploads}") String uploadDir,
+                        @Value("${vcp.upload.public-prefix:/uploads}") String uploadPublicPrefix) {
         this.allowedOriginPatterns = splitOriginPatterns(allowedOriginPatterns);
+        this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.uploadUrlPattern = normalizeUploadPrefix(uploadPublicPrefix) + "/**";
         if (this.allowedOriginPatterns.length == 0) {
             throw new IllegalStateException("配置项 vcp.cors.allowed-origin-patterns 不能为空："
                     + "留空会让 Spring 退回 allowedOrigins=[\"*\"]，与 allowCredentials(true) 冲突，"
@@ -71,6 +84,36 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowCredentials(true);
+    }
+
+    /**
+     * 把上传目录暴露为只读静态资源。
+     *
+     * <p>数据库只保存 /uploads/... 形式的相对地址；开发环境和生产环境都由后端
+     * 直接提供图片。正式部署也可以在 Nginx 层直接 alias 该目录以获得更高吞吐。
+     *
+     * @param registry 静态资源注册器
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = uploadRoot.toUri().toString();
+        if (!location.endsWith("/")) {
+            location += "/";
+        }
+        registry.addResourceHandler(uploadUrlPattern)
+                .addResourceLocations(location)
+                .setCachePeriod(3600);
+    }
+
+    private static String normalizeUploadPrefix(String prefix) {
+        String value = prefix == null || prefix.isBlank() ? "/uploads" : prefix.trim();
+        if (!value.startsWith("/")) {
+            value = "/" + value;
+        }
+        while (value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 
     /**

@@ -99,7 +99,7 @@ async function submit() {
 async function remove(row) {
   const okToGo = await confirm({
     title: '删除分类',
-    message: `确定删除分类「${row.name}」吗？该操作不可恢复。`,
+    message: `删除「${row.name}」后不可恢复。`,
     tone: 'danger',
     confirmText: '删除',
   })
@@ -119,8 +119,7 @@ async function remove(row) {
 <template>
   <h1 class="console-title">活动分类管理</h1>
   <p class="console-sub">
-    活动分类决定活动的归类口径，也是公益画像标签的统计维度。分类下仍有活动时不可删除，
-    需先将活动调整到其他分类。
+    维护活动分类，分类下还有活动时不能删除。
   </p>
 
   <div class="stats">
@@ -183,7 +182,7 @@ async function remove(row) {
         <input v-model.trim="form.name" class="ink-input" type="text" placeholder="如 社区服务" />
       </InkField>
 
-      <InkField label="分类编码" hint="英文大写编码，用于接口与统计口径，留空由系统生成">
+      <InkField label="分类编码" hint="大写英文编码，留空由系统生成">
         <input v-model.trim="form.code" class="ink-input" type="text" placeholder="如 COMMUNITY" />
       </InkField>
 
@@ -195,7 +194,7 @@ async function remove(row) {
         <textarea
           v-model.trim="form.remark"
           class="ink-textarea"
-          placeholder="该分类的适用范围，例如：面向社区与居民的常态化服务"
+          placeholder="如 面向社区与居民的常态化服务"
         ></textarea>
       </InkField>
     </form>
