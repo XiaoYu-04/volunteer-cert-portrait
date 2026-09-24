@@ -1,8 +1,11 @@
 package com.vcp.framework.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.Arrays;
 
 /**
  * Web MVC 配置：目前只负责跨域。
@@ -15,10 +18,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 普通请求则先由它写入 Access-Control-Allow-Origin 等响应头再进鉴权，
  * 这意味着即使鉴权失败返回 20001，前端也能正常读到响应体并跳登录页。
  *
- * <p><b>开发期放开所有来源，上线前必须收紧。</b>
- * 当前允许任意来源且允许携带凭证，等同于对全网开放；
- * 正式部署时应把 {@code allowedOriginPatterns} 改成实际的前端域名白名单
- * （如 {@code https://vcp.example.edu.cn}），并按需收窄允许的方法与请求头。
+ * <p><b>允许来源已改由配置项 {@code vcp.cors.allowed-origin-patterns} 控制</b>（逗号分隔可填多个），
+ * 配置项缺失时回退为 {@code *}，与改动前写死的取值一致，因此默认（不激活 prod）行为不变。
+ * 正式部署由 application-prod.yml 收紧为实际前端域名白名单，见该文件顶部说明。
+ * 收紧不影响计划中的部署：方案是 Nginx 同源反代 {@code /api}，
+ * 同源请求本就不发预检、不需要 CORS 响应头。
  *
  * <p>Sa-Token 的拦截器注册在 {@code security/SaTokenConfig}，同属 WebMvcConfigurer，
  * 与本类并存、职责互不重叠。
@@ -26,10 +30,27 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    /** 允许的跨域来源模式；缺省 {@code *}，与改动前的硬编码取值一致 */
+    private final String[] allowedOriginPatterns;
+
+    /**
+     * @param allowedOriginPatterns 配置项 {@code vcp.cors.allowed-origin-patterns}，逗号分隔，缺省 {@code *}
+     * @throws IllegalStateException 配置值为空（或只有逗号、空白）时抛出，避免退化成无效的跨域配置
+     */
+    public WebMvcConfig(@Value("${vcp.cors.allowed-origin-patterns:*}") String allowedOriginPatterns) {
+        this.allowedOriginPatterns = splitOriginPatterns(allowedOriginPatterns);
+        if (this.allowedOriginPatterns.length == 0) {
+            throw new IllegalStateException("配置项 vcp.cors.allowed-origin-patterns 不能为空："
+                    + "留空会让 Spring 退回 allowedOrigins=[\"*\"]，与 allowCredentials(true) 冲突，"
+                    + "表现为每次跨域请求都抛 IllegalArgumentException。"
+                    + "请填入前端域名（逗号分隔），或显式写 \"*\" 表示放开所有来源。");
+        }
+    }
+
     /**
      * 注册全局跨域规则。
      *
-     * <p>两处细节：
+     * <p>三处细节：
      * <ul>
      *   <li>用 {@code allowedOriginPatterns} 而不是 {@code allowedOrigins}：
      *       后者填 {@code "*"} 时与 {@code allowCredentials(true)} 冲突，
@@ -37,6 +58,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
      *   <li>请求头放开为 {@code "*"}：前端除 {@code Authorization: Bearer xxx} 外，
      *       还固定发送 {@code Content-Type: application/json}，而它不属于 CORS 安全头，
      *       同样要出现在预检的允许列表里，否则业务请求会以跨域失败告终。</li>
+     *   <li>来源模式取自配置项，默认 {@code *}；若配置成空串，构造期即失败（见构造函数），
+     *       不会带着一份无效的跨域配置把应用起起来。</li>
      * </ul>
      *
      * @param registry 跨域规则注册器
@@ -44,9 +67,25 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(allowedOriginPatterns)
                 .allowedHeaders("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowCredentials(true);
+    }
+
+    /**
+     * 把逗号分隔的来源模式解析成数组，去掉首尾空白与空项。
+     *
+     * <p>{@code "*"} → {@code ["*"]}，与改动前的硬编码行为等价；
+     * {@code "https://a,https://b"} → {@code ["https://a", "https://b"]}。
+     *
+     * @param raw 原始配置值
+     * @return 来源模式数组，可能为空数组（由构造函数判为非法）
+     */
+    private static String[] splitOriginPatterns(String raw) {
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(pattern -> !pattern.isEmpty())
+                .toArray(String[]::new);
     }
 }
