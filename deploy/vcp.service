@@ -1,0 +1,70 @@
+# =============================================================
+# 后端服务单元（systemd）
+#
+# 放到 /etc/systemd/system/vcp.service，然后：
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now vcp
+#   sudo systemctl status vcp
+#   sudo journalctl -u vcp -f          # 看日志
+#
+# 本文件**不含任何口令**，可以入库。凭证走下面 EnvironmentFile 指的那个文件。
+# 完整部署步骤与验收清单见 docs/部署文档.md。
+# =============================================================
+
+[Unit]
+Description=高校志愿服务时长认证与公益画像数据分析系统（后端）
+Documentation=file:/opt/vcp/docs/部署文档.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vcp
+Group=vcp
+
+# jar 与它同级的 config/ 放这里。
+# 后端启动脚本默认从「启动目录」找 ./config/application-local.yml，
+# 见 application.yml 的 spring.config.import 第四条 —— 与 WorkingDirectory 配合生效。
+WorkingDirectory=/opt/vcp
+
+# 数据库凭证：VCP_DB_USERNAME / VCP_DB_PASSWORD 两行，文件权限建议 600、属主 vcp。
+# 这是**推荐做法** —— 比写 application-local.yml 更不容易被误提交进仓库。
+# 也可以改用 /opt/vcp/config/application-local.yml（application.yml 的 import 已支持），
+# 二者取其一即可；环境变量优先级更高。
+# 注意：口令在文件里要**加引号**，以 0 开头的数字串会被 YAML 当八进制解析（012345 → 5349）。
+EnvironmentFile=/opt/vcp/vcp.env
+
+# prod profile 做三处上线收口（见 application-prod.yml）：
+#   ① 跨域来源由 * 收紧为白名单  ② knife4j.enable=false，文档路径不再免登录
+#   ③ SQL 日志由 debug 调回 info
+# 不激活 prod 则三项一律不生效 —— 开发/演示行为与改动前一致。
+Environment="SPRING_PROFILES_ACTIVE=prod"
+
+# JDK 21（pom 的 <java.version>21</java.version>）。机器上若有多个 JDK，
+# 这里写绝对路径最稳，别依赖 PATH —— 实测有机器默认 java 指向 17，起不来。
+ExecStart=/usr/bin/java -jar /opt/vcp/vcp-boot-1.0.0.jar
+
+Restart=on-failure
+RestartSec=5s
+
+# JVM 参数按机器内存调整；演示数据量小，512m 起步够用。
+Environment="JAVA_OPTS=-Xms256m -Xmx512m -Duser.timezone=Asia/Shanghai"
+Environment="JAVA_TOOL_OPTIONS="
+
+# 优雅退出：SIGTERM 时 Spring 会先停内嵌 Tomcat 再退出
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vcp
+
+# ---------- 安全加固（可选，按需放开） ----------
+# 只允许写 /opt/vcp 与 /tmp，其余文件系统只读
+# ProtectSystem=full
+# ProtectHome=true
+# PrivateTmp=true
+# NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

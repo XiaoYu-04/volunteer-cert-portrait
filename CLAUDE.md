@@ -239,6 +239,17 @@ vcp-dependencies  独立 BOM
    是 `options.js` 的图表配置 + ECharts，rolldown 给那个 chunk 起了个 `options` 的名字，
    容易让人误以为是主包）。已用 `advancedChunks` 把两者拆开：`echarts` 653 kB + `options` 9.9 kB。
 
+10. **`utils/request.js` 里对 mock 必须用动态 `import()`，不能写成顶部静态 import**
+    静态 import 会让**整套 mock**（数据集 + 60 多个 handler，含演示账号明文口令）
+    **无条件打进产物**，连 `VITE_USE_MOCK=false` 的正式部署包也一样 ——
+    mock 模块顶层有副作用（`loadPersistedUsers()` 读写 `localStorage`），
+    tree-shaking 证明不了它无副作用，于是即使 `USE_MOCK` 被常量折叠成 `false` 也删不掉。
+    **这不会报错**：部署包里只是多带了 52 kB 用不到的假数据，只有 grep 产物才看得出来。
+    2026-09-24 实测：静态 import 时 `request` chunk 165.0 kB；改动态后 **113.0 kB**，
+    且 `VITE_USE_MOCK=false` 时**连 mock chunk 都不生成**（死分支连同动态 import 一起被消除）。
+    改完必须两条路径都验：mock 关 → `grep -rl "vcp_mock_extra_users" dist/` 应无输出；
+    mock 开 → `.tmp-shots/accept-mock-fixes.cjs` 与 `shoot.cjs` 都要重跑。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
@@ -289,6 +300,7 @@ A9（`sys_user.status` 类型）已拍板并落地（A9 三层天然对齐、实
 | `docs/前端进展与待办.md` | **前端现状、设计系统、关键决策、待办**（前端可脱离后端独立运行） |
 | `docs/下一步待办.md` | **下一次开工从哪开始**：P0/P1/P2 排序清单，每条带验收方式与「已销账」证据 |
 | `docs/会话记录.md` | **会话过程与证据**：每段时间做了什么、为什么这么选、环境怎么搭、踩过的坑 |
+| `docs/部署文档.md` | **部署步骤、验收清单、故障排查**（配套 `deploy/nginx.conf` + `deploy/vcp.service`）；末节逐条标明「哪些结论有实跑证据、哪些是照配置推的」 |
 | `docs/公益等级与标签规则方案.md` | 公益等级阈值与标签判定规则（**已确认**，含落地效果） |
 | `sql/README.md` | 脚本执行方式、设计约定、待拍板事项（原 9 项已全部拍板，留档备查） |
 | `docs/高校志愿服务时长认证与公益画像数据分析系统_开发计划与分工.md` | 原始开发计划 |

@@ -8,7 +8,6 @@
 
 import axios from 'axios'
 import { getToken, removeToken } from './auth'
-import { mockRequest } from '@/mock'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -69,12 +68,30 @@ function unwrap(response) {
 export function request(config) {
   if (USE_MOCK) {
     // mock 不走 axios 拦截器，这里手动把 Authorization 带上，
-    // 让 mock 侧能像真实后端一样识别当前登录用户
-    const token = getToken()
-    return mockRequest({
-      ...config,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    }).then(unwrap)
+    // 让 mock 侧能像真实后端一样识别当前登录用户。
+    //
+    // 【必须是动态 import，不能改成顶部静态 import】静态 import 会让整套 mock
+    // （数据集 + 60 多个 handler）**无条件打进产物**，连 VITE_USE_MOCK=false 的
+    // 正式部署包也一样 —— mock 模块顶层有副作用（loadPersistedUsers() 读写 localStorage），
+    // tree-shaking 证明不了它无副作用，于是即使 USE_MOCK 被常量折叠成 false 也删不掉。
+    //
+    // 2026-09-24 实测（都是 npm run build 后看产物，不是估算）：
+    //   · 静态 import + VITE_USE_MOCK=false：request chunk 165.0 kB，mock 全在里面
+    //     （grep 得到 'vcp_mock_extra_users'、'chenshiyuan@example.edu' 等）
+    //   · 动态 import + VITE_USE_MOCK=false：request chunk **113.0 kB**，
+    //     **连 mock chunk 都不生成** —— 死分支连同动态 import 一起被消除，省 52 kB
+    //     （gzip 60.1 → 42.9 kB）
+    //   · 动态 import + VITE_USE_MOCK=true：request 114.2 kB + mock 44.1 kB 独立懒加载 chunk，
+    //     整套端到端验收 7 项仍全过
+    return import('@/mock')
+      .then(({ mockRequest }) => {
+        const token = getToken()
+        return mockRequest({
+          ...config,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+      })
+      .then(unwrap)
   }
 
   return service(config)

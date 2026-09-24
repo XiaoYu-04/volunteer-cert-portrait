@@ -153,7 +153,8 @@ java -jar vcp-boot/target/vcp-boot-1.0.0.jar
 
 ## 生产部署
 
-完整步骤（含 Nginx 配置与验收清单）见 [docs/部署说明.md](docs/部署说明.md)，这里只强调**一条**：
+完整步骤（含 Nginx 配置、systemd 单元、验收清单与故障排查表）见
+[docs/部署文档.md](docs/部署文档.md) 与 [deploy/](deploy/)，这里只强调**一条**：
 
 ```bash
 # 生产启动必须带 prod profile，否则三项收紧全部不生效（且不会有任何报错提示）
@@ -162,6 +163,11 @@ java -jar vcp-boot/target/vcp-boot-1.0.0.jar --spring.profiles.active=prod
 
 不带 profile 时（开发口径）：`/doc.html` 免登录可访问、跨域允许所有来源、MyBatis 全量打印 SQL。
 `application-prod.yml` 会把这三项收口；它不激活就完全不生效。
+
+另有一条同样「不报错但会出错」的开关：前端 `volunteer-cert-portrait-web/.env.production` 的
+`VITE_USE_MOCK`。它当前是 `true`（纯前端独立演示，不依赖后端）；**部署到真后端前必须改成 `false`**，
+否则产物页面照常打开、只是根本不请求后端 —— 判据是看数据看板的数字（真实库 10,719 报名 /
+19,319.3 小时 vs mock 12,480 / 86,420）。
 
 ## 仓库结构
 
@@ -179,10 +185,14 @@ volunteer-cert-portrait/
 │   ├── vcp-analytics/               # ✅ 看板统计
 │   └── vcp-boot/                    # 启动模块，打包为唯一可执行 jar
 ├── sql/                             # 建表 + 初始化 + 演示数据 + 补列 + 演示数据放大脚本
+├── deploy/                          # 部署产物：nginx.conf（站点配置）+ vcp.service（systemd 单元）
 ├── docs/                            # 待办清单、下一步待办、会话记录、进展记录、规则方案、开发计划
+│   ├── 部署文档.md                   # 部署步骤、验收清单、故障排查（配套 deploy/ 下两个文件）
 │   └── 知识库已确认项目选题与技术背景.md   # 选题与技术选型依据
-└── bug/                             # 前端同学的缺陷笔记
 ```
+
+> `bug/` 目录曾用来放前端同学的缺陷笔记，笔记里的问题都已修（提交 `cb5141b`），
+> 两份笔记本身已随 `5ad6215` / `af7cc16` 删除，目录不再存在。
 
 ## 技术选型
 
