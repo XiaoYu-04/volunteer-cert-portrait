@@ -31,4 +31,12 @@ public class RegisterDTO implements Serializable {
     private String phone;
 
     private String email;
+
+    /**
+     * 学院，取值必须是 sys_dict 里 dict_type = 'college' 的字典项。
+     *
+     * <p>这里连 {@code @NotBlank} 都不加：非空判定要先查字典，注解表达不了这种规则，
+     * 提示文案也统一由 Service 产出（见类注释）。
+     */
+    private String college;
 }

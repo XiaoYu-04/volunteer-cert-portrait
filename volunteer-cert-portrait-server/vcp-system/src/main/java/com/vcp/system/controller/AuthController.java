@@ -7,6 +7,8 @@ import com.vcp.system.dto.LoginDTO;
 import com.vcp.system.dto.ProfileUpdateDTO;
 import com.vcp.system.dto.RegisterDTO;
 import com.vcp.system.service.AuthService;
+import com.vcp.system.service.DictService;
+import com.vcp.system.vo.DictItemVO;
 import com.vcp.system.vo.LoginVO;
 import com.vcp.system.vo.SessionVO;
 import jakarta.validation.Valid;
@@ -18,16 +20,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * 认证接口：登录、注册、退出、查改本人资料。
+ * 认证接口：登录、注册、退出、查改本人资料，外加注册页要用的学院下拉。
  *
  * <p>路径前缀是 {@code /api/v1/auth}。前端 axios 的 baseURL 配成 {@code /api}，
  * 各接口再写 {@code /v1/auth/xxx}，两者拼起来才是完整路径 ——
  * 后端这边没有配 {@code server.servlet.context-path}，前缀必须写在注解里，
  * 少写一段会表现为前端 404（且因为响应体不是统一外壳，页面提示会是"请求失败"而非具体文案）。
  *
- * <p>登录与注册两个接口在 {@code SaTokenConfig.EXCLUDE_PATHS} 里放行，否则
- * 永远拿不到第一个 token。路径若在这里改动，必须同步改那份放行清单。
+ * <p>登录、注册、学院下拉三个接口在 {@code SaTokenConfig.EXCLUDE_PATHS} 里放行：
+ * 前两个不放行就永远拿不到第一个 token，学院下拉则是注册页在登录之前就要用的数据。
+ * 路径若在这里改动，必须同步改那份放行清单。
  *
  * <p><b>登录、注册、修改密码三个 {@code @OperationLog} 都写了 {@code params = false}</b>：
  * 这三个请求体里带着明文密码，采集参数会把口令序列化进 {@code operation_log.params}
@@ -39,6 +44,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+
+    private final DictService dictService;
 
     /**
      * 账号密码登录。
@@ -62,6 +69,19 @@ public class AuthController {
     @OperationLog(module = "认证", action = "注册", params = false)
     public R<LoginVO> register(@Valid @RequestBody RegisterDTO dto) {
         return R.ok(authService.register(dto));
+    }
+
+    /**
+     * 取学院下拉选项，供注册页使用。
+     *
+     * <p>注册页此时还没有登录态，所以它跟登录、注册一起放行；
+     * 返回的只有字典里 college 类型的中文标签，不含任何用户数据。
+     *
+     * @return 学院列表，按 sort 升序
+     */
+    @GetMapping("/colleges")
+    public R<List<DictItemVO>> colleges() {
+        return R.ok(dictService.listByType("college"));
     }
 
     /**

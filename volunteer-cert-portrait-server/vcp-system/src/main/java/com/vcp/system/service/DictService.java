@@ -23,4 +23,15 @@ public interface DictService {
      * @return 字典类型 → 条目列表，按 {@code sort} 升序；无数据时返回空 Map
      */
     Map<String, List<DictItemVO>> listDicts();
+
+    /**
+     * 取指定类型的启用中字典项，按 sort 升序。
+     *
+     * <p>给只关心一个类型的调用方用：注册页的学院下拉、注册时对学院的合法性校验。
+     * 注册页还没有登录态、也拿不到 {@code /api/v1/system/dicts}，只能走这个入口。
+     *
+     * @param dictType 字典类型，如 "college"
+     * @return 条目列表；类型不存在时返回空列表（不抛异常）
+     */
+    List<DictItemVO> listByType(String dictType);
 }

@@ -6,6 +6,9 @@ export const login = (data) => post('/v1/auth/login', data)
 /** 注册（仅学生自助注册） */
 export const register = (data) => post('/v1/auth/register', data)
 
+/** 注册页的学院选项。免登录 —— 注册页本身在登录之前 */
+export const getColleges = () => get('/v1/auth/colleges')
+
 export const logout = () => post('/v1/auth/logout')
 
 /** 当前登录用户信息 */
