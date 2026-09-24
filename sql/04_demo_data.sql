@@ -278,13 +278,16 @@ SET public_welfare_level = CASE
         ELSE '普通志愿者'
     END;
 
--- 活动已报名人数：审核通过 + 已完成 占用名额（与"是否报满"判断一致）
+-- 活动已报名人数：报名即占名额 —— 未取消未驳回的报名都计入
+--   （PENDING / APPROVED / COMPLETED）；驳回与取消各释放一个，审核通过
+--   不再加。口径与运行期实现（vcp-volunteer 的 SignupServiceImpl）
+--   及前端 mock 一致（待办 B20-1 的结论）。
 UPDATE volunteer_activity va
 SET signed_count = (
         SELECT COUNT(*)
         FROM activity_signup sg
         WHERE sg.activity_id = va.id
-          AND sg.status IN ('APPROVED', 'COMPLETED')
+          AND sg.status IN ('PENDING', 'APPROVED', 'COMPLETED')
     );
 
 -- =============================================================

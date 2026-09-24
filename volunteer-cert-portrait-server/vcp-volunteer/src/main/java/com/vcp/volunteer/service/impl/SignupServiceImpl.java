@@ -49,10 +49,11 @@ import java.time.LocalDateTime;
  * 这个口径与前端 mock 完全一致（提交报名 enrolled + 1、驳回与取消 - 1、通过不变），
  * 也是 POST /signups 能返回 30006「名额已满」的前提。
  *
- * <p><b>与 04_demo_data.sql 的差异</b>：那份演示脚本把 signed_count 按
- * 「APPROVED + COMPLETED」回填，是脚本侧的取数口径；本模块运行期按「未取消未驳回的报名」
- * 维护。两者在演示数据上会差一个「待审核」的数量级，不影响任何判断逻辑
- * （是否报满只看这个计数与 max_count 的比较），已在待办 B17 中记录该冗余计数可能漂移。
+ * <p><b>与演示脚本口径一致</b>：04_demo_data.sql 与 07_demo_scale.sql 已按同一口径
+ * （「未取消未驳回的报名」，即 PENDING + APPROVED + COMPLETED）回填 signed_count，
+ * 脚本与实现之间不再有差异（待办 B20-1 的结论）。07_demo_scale.sql 的新活动名额下限是 46，
+ * 高于该脚本第五节的报名数上限 45，两侧共同保证 signed_count 不超过 max_count。
+ * 冗余计数在极端情况下仍可能与明细漂移，是否报满只看这个计数与 max_count 的比较。
  *
  * <h3>数据范围</h3>
  * <p>一律由登录态决定：学生只看自己的报名，组织管理员只看本组织活动的报名，
