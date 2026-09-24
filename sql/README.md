@@ -17,6 +17,7 @@
 | 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖） |
 | 6 | `06_backend_gap_fix2.sql` | 后端联调补列（第二批）：活动报名截止/联系方式、报名理由、分类编码、学生性别年级、时长证明与所属组织，并补齐签到聚合与外键列索引 | 必需（后端接口依赖） |
 | 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选 |
+| 8 | `08_password_bcrypt.sql` | 口令明文转 BCrypt 密文（增量，仅「先建库、后升级到加密版代码」的老库需要） | 老库必需 |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
 先跑 `02`，再依次跑 `03`、`04`；想要放大到答辩规模，在 `04` 之后再跑 `07`。
@@ -26,6 +27,14 @@
 
 `07_demo_scale.sql` 是**演示数据放大**脚本（增量，可选，仅供开发调试与答辩演示），性质与 `05`、`06` 相同：
 **纯增量、可重复执行**，**前置条件是先跑完 `01` → `06`**。
+
+`08_password_bcrypt.sql` 是**口令加密迁移**脚本（增量，可重复执行），只服务于老库：
+后端 B15 把口令校验从明文相等改成了 BCrypt 比对（`PasswordUtils.matches` 对明文记录一律返回 false），
+所以**升级代码前就已建好的库必须跑它**，否则所有账号都登录不了。
+`03` / `04` / `07` 的种子口令已同步换成密文，**新库不需要跑**。
+脚本只更新「口令恰好是明文 123456」的行（演示数据里全部账号都是这个口令），
+跑完会报出残留的明文账号数；若库里存在口令不是 123456 的明文账号，
+必须由管理员用「重置密码」接口（`PUT /api/v1/system/users/{id}/password`）单独处理。
 
 - **不重建库，`04` 的规模参数保持不动**：`04` 仍是「干净起步」的基线（8 组织 / 20 活动 / 31 学生 / 149 条报名），
   `07` 只在其之上做增量放大，已在联调的后端不需要重建数据库。
@@ -57,6 +66,8 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_d
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backend_gap_fix2.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
+# 仅老库需要（新库跳过）
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 08_password_bcrypt.sql
 ```
 
 ```bash
@@ -73,7 +84,8 @@ cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_ba
 
 ### 默认账号
 
-密码均为明文 `123456`。**接入 BCrypt 等加密后必须替换 `sys_user.password`，否则登录会失败。**
+登录口令均为 `123456`。库里 `sys_user.password` 存的是它的 **BCrypt 密文**（`$2a$10$` 开头的 60 字符），
+**明文口令不落库**；老库若还是明文，跑 `08_password_bcrypt.sql` 刷一遍。
 
 | 账号 | 角色 | 说明 |
 |---|---|---|

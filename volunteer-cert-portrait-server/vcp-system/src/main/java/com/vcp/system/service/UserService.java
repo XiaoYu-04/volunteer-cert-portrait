@@ -1,6 +1,7 @@
 package com.vcp.system.service;
 
 import com.vcp.common.result.PageResult;
+import com.vcp.system.dto.ResetPasswordDTO;
 import com.vcp.system.dto.StatusUpdateDTO;
 import com.vcp.system.dto.UserQuery;
 import com.vcp.system.dto.UserSaveDTO;
@@ -59,6 +60,22 @@ public interface UserService {
      *                                                    试图停用本人（10001）
      */
     void updateStatus(Long id, StatusUpdateDTO dto);
+
+    /**
+     * 管理员重置指定用户的口令。
+     *
+     * <p>与本人改密（{@code PUT /api/v1/auth/password}）是两个入口、两套口径：本人改密要校验旧口令，
+     * 且只踢其它会话、保留当前会话；管理员重置拿不到旧口令，成功后<b>踢掉该账号全部会话</b>，
+     * 旧 token 立即失效。两者语义不同，不能互相复用。
+     *
+     * <p>dto 里口令留空时重置为默认口令（与新增用户共用同一个常量），
+     * 策略校验统一走 {@code PasswordUtils.checkPolicy}。
+     *
+     * @param id  用户 id
+     * @param dto 新口令，留空则重置为默认口令
+     * @throws com.vcp.common.exception.BusinessException 用户不存在（10002）、口令不符合策略（10001）
+     */
+    void resetPassword(Long id, ResetPasswordDTO dto);
 
     /**
      * 删除用户（逻辑删除），并清掉角色关联。

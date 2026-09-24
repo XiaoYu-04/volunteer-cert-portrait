@@ -2,6 +2,7 @@ package com.vcp.system.controller;
 
 import com.vcp.common.result.R;
 import com.vcp.framework.log.OperationLog;
+import com.vcp.system.dto.ChangePasswordDTO;
 import com.vcp.system.dto.LoginDTO;
 import com.vcp.system.dto.ProfileUpdateDTO;
 import com.vcp.system.dto.RegisterDTO;
@@ -28,8 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>登录与注册两个接口在 {@code SaTokenConfig.EXCLUDE_PATHS} 里放行，否则
  * 永远拿不到第一个 token。路径若在这里改动，必须同步改那份放行清单。
  *
- * <p><b>登录与注册的 {@code @OperationLog} 都写了 {@code params = false}</b>：
- * 这两个请求体里带着明文密码，采集参数会把口令序列化进 {@code operation_log.params}
+ * <p><b>登录、注册、修改密码三个 {@code @OperationLog} 都写了 {@code params = false}</b>：
+ * 这三个请求体里带着明文密码，采集参数会把口令序列化进 {@code operation_log.params}
  * 永久留存。日志里保留"谁、什么时候、调了什么、成功还是失败"已经够用。
  */
 @RestController
@@ -94,5 +95,24 @@ public class AuthController {
     @OperationLog(module = "认证", action = "修改个人资料")
     public R<SessionVO> updateMe(@RequestBody ProfileUpdateDTO dto) {
         return R.ok(authService.updateProfile(dto));
+    }
+
+    /**
+     * 修改本人登录密码。
+     *
+     * <p>与 {@code /me} 分成两个接口：资料修改与口令修改的校验、错误码、
+     * 日志采集策略都不一样，合成一个会让"改资料失败"与"改密码失败"的提示混在一起。
+     *
+     * <p>{@code params = false} 是硬要求：请求体里带旧、新两个口令，
+     * 采集参数会把它们写进 {@code operation_log.params} 永久留存。
+     *
+     * @param dto 原密码与新密码
+     * @return 空响应
+     */
+    @PutMapping("/password")
+    @OperationLog(module = "认证", action = "修改密码", params = false)
+    public R<Void> changePassword(@Valid @RequestBody ChangePasswordDTO dto) {
+        authService.changePassword(dto);
+        return R.ok();
     }
 }

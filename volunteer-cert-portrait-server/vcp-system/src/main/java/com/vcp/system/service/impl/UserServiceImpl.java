@@ -1,5 +1,6 @@
 package com.vcp.system.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -11,6 +12,8 @@ import com.vcp.common.result.PageResult;
 import com.vcp.common.util.DateTimeUtils;
 import com.vcp.framework.security.AuthUtils;
 import com.vcp.framework.util.PageUtils;
+import com.vcp.framework.util.PasswordUtils;
+import com.vcp.system.dto.ResetPasswordDTO;
 import com.vcp.system.dto.StatusUpdateDTO;
 import com.vcp.system.dto.UserQuery;
 import com.vcp.system.dto.UserSaveDTO;
@@ -49,7 +52,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    /** 新增用户时的默认口令，与前端表单留空时的提示一致 */
+    /** 新增用户与重置口令共用的默认口令，与前端表单留空时的提示一致 */
     private static final String DEFAULT_PASSWORD = "123456";
 
     private final SysUserMapper userMapper;
@@ -127,13 +130,23 @@ public class UserServiceImpl implements UserService {
 
         SysRole role = requireRole(dto.getRole());
 
+        // 口令策略统一走 PasswordUtils.checkPolicy（6-32 位），返回的文案可直接回显给用户。
+        // 必须先校验再编码：超长明文喂给 BCrypt 编码器会被直接抛 IllegalArgumentException，
+        // 表现成 500，而不是管理员看得懂的提示。
+        String rawPassword = hasText(dto.getPassword()) ? dto.getPassword() : DEFAULT_PASSWORD;
+        String policyError = PasswordUtils.checkPolicy(rawPassword);
+        if (policyError != null) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, policyError);
+        }
+
         SysUser user = new SysUser();
         user.setUsername(username);
         user.setRealName(dto.getName().trim());
         user.setPhone(trimToNull(dto.getPhone()));
         user.setEmail(trimToNull(dto.getEmail()));
-        // 当前是明文存储（待办 B15）。接入加密后只改这一行。
-        user.setPassword(hasText(dto.getPassword()) ? dto.getPassword() : DEFAULT_PASSWORD);
+        // 口令以 BCrypt 密文入库，同一明文每次哈希结果都不同（盐随机），
+        // 因此库里既没有可被直接复用的明文，也无法从密文反推两个账号是否同口令。
+        user.setPassword(PasswordUtils.encode(rawPassword));
         user.setStatus(UserStatusEnum.ACTIVE.getDbValue());
         user.setDeleted(0);
         userMapper.insert(user);
@@ -166,6 +179,10 @@ public class UserServiceImpl implements UserService {
         // 手机号与邮箱允许清空，因此直接赋值（空串归一化成 null）
         patch.setPhone(trimToNull(dto.getPhone()));
         patch.setEmail(trimToNull(dto.getEmail()));
+        // password 字段在这里被显式忽略：修改资料不该顺带改口令。
+        // 改口令只有两个独立入口 —— 本人改密 PUT /api/v1/auth/password（要校验旧口令，
+        // 只踢其它会话）与管理员重置 PUT /api/v1/system/users/{id}/password（踢全部会话）。
+        // 在编辑资料里顺手写库，会把这两个入口该有的旧口令校验与会话处理全部绕过去。
         userMapper.updateById(patch);
 
         if (hasText(dto.getRole())) {
@@ -199,6 +216,42 @@ public class UserServiceImpl implements UserService {
         patch.setId(existing.getId());
         patch.setStatus(status.getDbValue());
         userMapper.updateById(patch);
+    }
+
+    /**
+     * 管理员重置指定用户的口令，并踢掉该账号全部会话。
+     *
+     * <p>与本人改密（{@code PUT /api/v1/auth/password}）是两套口径：本人改密要校验旧口令，
+     * 且只踢其它会话、保留当前会话（改完还得继续用）；管理员重置不需要也无法校验旧口令，
+     * 因此<b>必须踢掉该账号全部会话</b> —— 重置的典型场景就是口令外泄，旧 token 还能用
+     * 等于没重置。会话按登录 id 集中存储，一次 {@code StpUtil.logout(id)} 即清掉该账号所有端。
+     *
+     * @param id  用户 id
+     * @param dto 新口令，留空则重置为默认口令
+     * @throws BusinessException 用户不存在（10002）、口令不符合策略（10001）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(Long id, ResetPasswordDTO dto) {
+        SysUser existing = requireUser(id);
+
+        // 留空按"重置为默认口令"处理而不是报错：管理员代学生找回账号时前端本就允许不填，
+        // 报错只会逼管理员自己编一个口令再口头转达。
+        String rawPassword = (dto != null && hasText(dto.getPassword())) ? dto.getPassword() : DEFAULT_PASSWORD;
+        String policyError = PasswordUtils.checkPolicy(rawPassword);
+        if (policyError != null) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, policyError);
+        }
+
+        // 只 patch password 一个字段：updateById 只写非 null 列，
+        // 其余列留 null 就不会被回写，避免覆盖掉并发修改的资料。
+        SysUser patch = new SysUser();
+        patch.setId(existing.getId());
+        patch.setPassword(PasswordUtils.encode(rawPassword));
+        userMapper.updateById(patch);
+
+        // 放在写库之后：踢会话若抛异常，事务回滚，口令也一并撤销，不会出现"改了密码但旧会话还活着"。
+        StpUtil.logout(existing.getId());
     }
 
     /**

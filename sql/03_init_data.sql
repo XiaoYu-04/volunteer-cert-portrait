@@ -8,13 +8,16 @@
 --   角色、三个角色账号、学生档案、1 个已通过审核的组织、活动分类、数据字典
 -- 不含活动/报名/时长等业务演示数据 —— 那些在 04_demo_data.sql 里（可选）
 --
--- 默认账号（密码均为明文 123456，接入加密后请自行替换）：
+-- 默认账号（登录口令均为 123456）：
 --   学校管理员：admin      / 123456
 --   组织管理员：org_admin  / 123456
 --   学生：      student    / 123456
 --
--- ⚠️ 明文密码仅供本地开发与演示。接入 BCrypt 后，必须把 sys_user.password
---    换成加密后的密文，否则登录校验会失败。
+-- ⚠️ 下面 sys_user.password 写的是 123456 的 BCrypt 密文（$2a$10$ 开头的 60 字符），
+--    不是明文 —— 后端 B15 已改成 BCrypt 比对（vcp-framework 的 PasswordUtils），
+--    密文对不上就登不进去。三个账号共用同一串密文是刻意的：同一明文每次哈希结果都不同
+--    （盐随机），固定成同一个值只是为了让三个人的库完全一致、便于比对排查。
+--    代码升级前就已建好的库请执行 08_password_bcrypt.sql 刷密文。
 -- =============================================================
 
 SET client_encoding = 'UTF8';
@@ -31,9 +34,9 @@ INSERT INTO sys_role (id, role_code, role_name, remark) VALUES
 -- 二、账号（三个角色各一个）
 -- =============================================================
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status) VALUES
-(1, 'admin',     '123456', '学校管理员', '13800000001', 'admin@example.com',   1),
-(2, 'org_admin', '123456', '组织管理员', '13800000002', 'org@example.com',     1),
-(3, 'student',   '123456', '张同学',     '13800000003', 'student@example.com', 1);
+(1, 'admin',     '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '学校管理员', '13800000001', 'admin@example.com',   1),
+(2, 'org_admin', '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '组织管理员', '13800000002', 'org@example.com',     1),
+(3, 'student',   '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '张同学',     '13800000003', 'student@example.com', 1);
 
 INSERT INTO sys_user_role (user_id, role_id) VALUES
 (1, 3),   -- admin     → 学校管理员

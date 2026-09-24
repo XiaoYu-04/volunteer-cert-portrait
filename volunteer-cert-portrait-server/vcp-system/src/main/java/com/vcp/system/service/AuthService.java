@@ -1,5 +1,6 @@
 package com.vcp.system.service;
 
+import com.vcp.system.dto.ChangePasswordDTO;
 import com.vcp.system.dto.LoginDTO;
 import com.vcp.system.dto.ProfileUpdateDTO;
 import com.vcp.system.dto.RegisterDTO;
@@ -25,7 +26,8 @@ public interface AuthService {
      * @param dto 登录参数
      * @return token 与用户信息
      * @throws com.vcp.common.exception.BusinessException 用户名或密码错误（20001）、
-     *                                                    账号已停用（20002）
+     *                                                    账号已停用（20002）、
+     *                                                    连续失败超限被锁定（20004）
      */
     LoginVO login(LoginDTO dto);
 
@@ -38,7 +40,8 @@ public interface AuthService {
      *
      * @param dto 注册参数
      * @return token 与用户信息
-     * @throws com.vcp.common.exception.BusinessException 各项格式校验失败或用户名/手机号重复（10001）
+     * @throws com.vcp.common.exception.BusinessException 各项格式校验失败（含口令长度不合规）
+     *                                                    或用户名/手机号重复（10001）
      */
     LoginVO register(RegisterDTO dto);
 
@@ -65,4 +68,20 @@ public interface AuthService {
      * @throws com.vcp.common.exception.BusinessException 未登录（20001）
      */
     SessionVO updateProfile(ProfileUpdateDTO dto);
+
+    /**
+     * 修改本人登录密码。
+     *
+     * <p>只能改自己的：userId 取自登录态，请求体里没有 userId 字段，
+     * 管理员给他人重置口令走用户管理接口。
+     *
+     * <p>成功后踢掉该账号的其它会话、保留发起本次修改的会话 ——
+     * 口令泄露时这一步才是真正的止血，但把当前设备一起踢下线会让人误以为修改失败。
+     *
+     * @param dto 原密码与新密码
+     * @throws com.vcp.common.exception.BusinessException 未登录或账号已不存在（20001）、
+     *                                                    新密码不合规或与原密码相同（10001）、
+     *                                                    原密码不正确（20005）
+     */
+    void changePassword(ChangePasswordDTO dto);
 }

@@ -9,7 +9,7 @@
 
 | 部分 | 状态 |
 |---|---|
-| 前端 `volunteer-cert-portrait-web` | ✅ 28 个页面全部完成；接口层 62 个调用与后端全部对得上，**联调已完成（B12，2026-09-23 审计通过）**。dev server 代理可配置（`VITE_API_TARGET`，默认 `http://127.0.0.1:8080`） |
+| 前端 `volunteer-cert-portrait-web` | ✅ 28 个页面全部完成；接口层 64 个调用与后端全部对得上，**联调已完成（B12，2026-09-23 审计通过）**。dev server 代理可配置（`VITE_API_TARGET`，默认 `http://127.0.0.1:8080`） |
 | 后端 `volunteer-cert-portrait-server` | ✅ 基础设施 + **业务模块 6/6 全部落地**（2026-09-23）：`vcp-system`、`vcp-org`、`vcp-volunteer`、`vcp-certification`、`vcp-portrait`、`vcp-analytics`；`mvn package` 11 个模块全过，三个角色实打 20 个接口全部符合预期、日志零异常 |
 | 数据库脚本 `sql/` | ✅ 已完成：16 张表 + 初始化数据 + 演示数据 + 补列脚本 + 演示数据放大（`01`~`07`） |
 | 文档 `docs/` | ✅ 已完成：待办清单、前后端进展、公益等级与标签规则方案、ER 图、开发计划与分工、知识库 |
@@ -28,14 +28,17 @@
 `/api/v1/durations|duration-audits`（时长提交与审核）、
 `/api/v1/portraits/*`（公益画像、等级、标签）、
 `/api/v1/analytics/*`（看板 10 个聚合接口）。
-**接口规模**：OpenAPI 共 52 个路径 / 64 个「方法 + 路径」，前端 `src/api/` 的 62 个调用全部能对上，0 缺失。
+**接口规模**：OpenAPI 共 54 个路径 / 66 个「方法 + 路径」，前端 `src/api/` 的 64 个调用全部能对上，0 缺失。
+（2026-09-24 口令安全三件套新增 2 条：`PUT /api/v1/auth/password`、`PUT /api/v1/system/users/{id}/password`）
 **联调前提**：`sql/06_backend_gap_fix2.sql` 与 `sql/07_demo_scale.sql` 必须在库上执行（均已执行）。
 `07` 含 `activity_category.remark` 补列，执行后需**重启后端**，否则分类接口会查不存在的列报错。
 
 ## 下一步待办
 
-1. **收尾**：接入密码加密（B15，现在 `sys_user.password` 还是明文）、
-   表结构稳定后开启 Flyway（B14）。
+1. **收尾**：~~接入密码加密（B15）~~ ✅ 2026-09-24 已完成 —— 口令以 BCrypt 密文入库
+   （`PasswordUtils`），并配套做完「本人改密 / 管理员重置 / 登录失败锁定」三件套。
+   **老库需补跑 `sql/08_password_bcrypt.sql`**（把明文口令刷成密文；新库不用跑）。
+   **剩余**：表结构稳定后开启 Flyway（B14）。
 2. **修剩余的联调遗留**：`signed_count` 两处口径不一致（B20-1，需在「改实现」与
    「改 `04` 回填口径并重跑」之间二选一，改实现时 `sql/07` 的自检口径要同步改）；
    操作日志「操作对象」列恒空（B20-6，已在前端止血，根治要给 `@OperationLog` 加 `target` 属性）。
@@ -113,6 +116,9 @@ npm run dev
 | 组织管理员 | `org_admin` | `123456` |
 | 学校管理员 | `admin` | `123456` |
 
+> 表中的口令是**登录时输入的明文**；库里 `sys_user.password` 存的是它的 BCrypt 密文
+> （同一明文每次哈希结果都不同，所以三个账号在库里的密文并不相同，这是正常的）。
+
 ## 快速开始（后端）
 
 ```bash
@@ -120,9 +126,12 @@ npm run dev
 #    01_create_database.sql → 02_schema.sql → 03_init_data.sql
 #    → 04_demo_data.sql（演示数据，可选）→ 05_backend_gap_fix.sql（必执行）
 #    → 06_backend_gap_fix2.sql（必执行）→ 07_demo_scale.sql（演示数据放大，可选）
+#    → 08_password_bcrypt.sql（仅老库需要：把明文口令刷成 BCrypt 密文）
 #    注意：05、06 是后端接口的前置依赖，缺了 05 登录接口会直接报错
 #    07 是增量脚本（不重建库、可重复执行），含 activity_category.remark 补列，
 #    执行后需重启后端；它把演示数据放大到 1500 学生 / 386 活动 / 10719 条报名
+#    08 只服务于「先建库、后升级到加密版代码」的库：03/04/07 的种子口令已是密文，
+#    新库不必跑；反过来，老库不跑 08 就直接上加密版代码，所有账号都登不进去
 
 # 2) 编译并启动（默认端口 8080）
 cd volunteer-cert-portrait-server

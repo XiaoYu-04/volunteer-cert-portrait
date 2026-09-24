@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/user'
 
 import InkField from '@/components/common/InkField.vue'
 import InkButton from '@/components/common/InkButton.vue'
+import ChangePasswordDialog from '@/components/biz/ChangePasswordDialog.vue'
 
 const toast = useToast()
 const user = useUserStore()
@@ -21,6 +22,9 @@ const form = reactive({
 
 const errors = reactive({ name: '', phone: '', email: '' })
 const saving = ref(false)
+
+// 「账号安全」面板的改密弹窗开关
+const pwdOpen = ref(false)
 
 function validate() {
   errors.name = form.name ? '' : '请填写姓名'
@@ -144,6 +148,14 @@ const quickLinks = [
         </div>
       </div>
 
+      <div class="panel panel-gap">
+        <div class="panel-head">
+          <span class="panel-title">账号安全</span>
+        </div>
+        <p class="security-note">定期更换密码可以降低账号被他人使用的风险。</p>
+        <InkButton size="sm" @click="pwdOpen = true">修改密码</InkButton>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <span class="panel-title">快捷入口</span>
@@ -155,10 +167,23 @@ const quickLinks = [
         </div>
       </div>
     </section>
+
+    <ChangePasswordDialog v-model="pwdOpen" />
   </div>
 </template>
 
 <style scoped>
+.panel-gap {
+  margin-top: 36px;
+}
+
+.security-note {
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--c-ink-3);
+}
+
 .sec-detail {
   padding: 36px 0 72px;
 }

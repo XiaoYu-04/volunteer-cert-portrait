@@ -124,4 +124,35 @@ export default [
       return ok(toSession(user), '保存成功')
     },
   },
+
+  /* 修改当前登录用户的密码。
+     校验顺序照契约来：先原密码、再新密码格式、最后新旧是否相同 —— 原密码填错时
+     先报「原密码不正确」，用户才知道该改哪一栏，不会被格式提示带偏。
+
+     取舍：真实后端有「连续 5 次原密码错误锁定 15 分钟」，mock 故意不实现 ——
+     演示时被锁住只能去清 localStorage 才能继续，收益为负；mock 也不是安全边界，
+     没有防爆破的需求。所以这里只判单次原密码，不做失败计数与锁定。 */
+  {
+    method: 'put',
+    path: '/v1/auth/password',
+    handler: ({ headers, body }) => {
+      const id = currentUserId(headers)
+      const user = users.find((u) => u.id === id)
+      if (!user) return fail(20001, '登录已过期，请重新登录')
+      if (user.password !== body.oldPassword) {
+        return fail(20005, '原密码不正确')
+      }
+      const newPassword = String(body.newPassword || '')
+      if (newPassword.length < 6) return fail(10001, '密码至少 6 位')
+      if (newPassword.length > 32) return fail(10001, '密码最多 32 位')
+      // 走到这里 user.password 就是原密码，直接拿它比即可
+      if (newPassword === user.password) {
+        return fail(10001, '新密码不能与原密码相同')
+      }
+      // mock 不做哈希，直接存明文；真实后端存的是 BCrypt 密文，比对也发生在服务端。
+      // 明文是为了演示闭环：改成什么，就能当场用什么登进去验一遍。
+      user.password = newPassword
+      return ok(null)
+    },
+  },
 ]
