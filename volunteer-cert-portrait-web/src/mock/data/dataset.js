@@ -64,14 +64,17 @@ export const trend = [
  *
  * code 与 `sql/06_backend_gap_fix2.sql` 回填的编码一致，写在每项里而不是另起一个
  * 按下标对齐的数组 —— 下标对齐的数组在分类改名或调整顺序时会静默错位（B18 的脆弱点）。
+ *
+ * remark 逐字取自 `sql/07_demo_scale.sql` 第一节的回填（真库 6 条都有值），
+ * 让分类管理页的「说明」列在 mock 与真后端下看到的是同一套文案。
  */
 export const types = [
-  { name: '校园服务', code: 'CAMPUS', value: 54 },
-  { name: '社区服务', code: 'COMMUNITY', value: 96 },
-  { name: '环保公益', code: 'ENVIRONMENT', value: 74 },
-  { name: '大型赛事', code: 'EVENT', value: 58 },
-  { name: '助老服务', code: 'ELDERLY', value: 42 },
-  { name: '文化传播', code: 'CULTURE', value: 62 },
+  { name: '校园服务', code: 'CAMPUS', value: 54, remark: '校园内的日常服务：迎新、图书馆整理、校园导览、秩序维护等' },
+  { name: '社区服务', code: 'COMMUNITY', value: 96, remark: '面向周边社区的服务：便民维修、社区课堂、邻里互助等' },
+  { name: '环保公益', code: 'ENVIRONMENT', value: 74, remark: '环境保护类：河道清理、垃圾分类宣传、绿化养护、植树护绿等' },
+  { name: '大型赛事', code: 'EVENT', value: 58, remark: '大型赛事与活动的服务保障：马拉松、球类联赛、运动会等' },
+  { name: '助老服务', code: 'ELDERLY', value: 42, remark: '面向老年人的服务：敬老院陪伴、老年手机课堂、上门慰问等' },
+  { name: '文化传播', code: 'CULTURE', value: 62, remark: '文化传播类：非遗宣传、文化节讲解、博物馆导览、校史宣讲等' },
 ]
 
 export const colleges = [
@@ -160,7 +163,7 @@ export const categories = types.map((t, i) => ({
   activityCount: t.value,
   sort: i + 1,
   status: 'ACTIVE',
-  remark: '',
+  remark: t.remark,
 }))
 
 /**
@@ -623,7 +626,9 @@ export const orgList = orgs.map((o, i) => ({
   passRate: o.passRate,
   code: `ORG-2024-${String(i + 1).padStart(3, '0')}`,
   contact: ['李明', '王芳', '张伟', '刘洋', '陈静', '赵磊'][i] || '负责人',
-  phone: `138****${String(2201 + i * 111).slice(0, 4)}`,
+  // 存完整号码，不存脱敏串 —— 库里 org_info.phone 也是完整的（13800000002）。
+  // 脱敏串一旦被回填进可编辑表单就必然过不了 /^1\d{10}$/（C13 的成因）。
+  phone: `138${String(22000000 + i * 111).slice(0, 8)}`,
   college: colleges[i % colleges.length].college,
   memberCount: [186, 142, 118, 96, 74, 68][i] || 60,
   foundedAt: `20${14 + i}-09-01`,
@@ -668,7 +673,9 @@ export const students = Array.from({ length: 60 }, (_, i) => {
     major: MAJORS[i % MAJORS.length],
     grade: ['2022', '2023', '2024'][i % 3],
     className: `${CLASS_PREFIX[i % CLASS_PREFIX.length]}${2201 + (i % 3)}`,
-    phone: `138****${String(3300 + i * 173).slice(0, 4)}`,
+    // 完整 11 位号码，与库里 sys_user.phone（13800000003）同形态。
+    // 个人中心 / 用户管理都会把它预填进表单，脱敏串会被 /^1\d{10}$/ 拒掉（C13）。
+    phone: `138${String(33000000 + i * 173).slice(0, 8)}`,
     totalHours: 12 + ((i * 7) % 36) + (i % 2 ? 0.5 : 0),
     profileTag: profiles[i % profiles.length].tag,
   }
@@ -685,7 +692,7 @@ const seedUsers = [
     roleLabel: '学生',
     status: 'ACTIVE',
     studentId: 1,
-    phone: '138****3300',
+    phone: '13833000000',
     email: 'chenshiyuan@example.edu',
     createdAt: '2024-09-01 09:12:00',
     lastLoginAt: '2025-03-21 08:41:00',
@@ -699,7 +706,7 @@ const seedUsers = [
     roleLabel: '组织管理员',
     status: 'ACTIVE',
     orgId: 1,
-    phone: '138****2201',
+    phone: '13822000000',
     email: 'liming@example.edu',
     createdAt: '2024-08-20 14:30:00',
     lastLoginAt: '2025-03-21 09:05:00',
@@ -712,7 +719,7 @@ const seedUsers = [
     role: 'SCHOOL_ADMIN',
     roleLabel: '学校管理员',
     status: 'ACTIVE',
-    phone: '138****1100',
+    phone: '13811000000',
     email: 'zhaohuimin@example.edu',
     createdAt: '2024-08-01 10:00:00',
     lastLoginAt: '2025-03-21 07:58:00',
@@ -898,6 +905,13 @@ export const attendance = signups
   .map((s, i) => {
     // 46 条记录按 40 / 3 / 2 / 1 分布，四种状态都会出现，签到管理页才有东西可看
     const status = i < 40 ? 'SIGNED_OUT' : i < 43 ? 'SIGNED_IN' : i < 45 ? 'ABNORMAL' : 'ABSENT'
+    // 签到 / 签退 / 实得时长三者必须自洽：后端口径是 (签退 − 签到) / 3600
+    // （AttendancePolicy，封顶活动预计时长的 1.5 倍）。原先三处各写各的 ——
+    // 签到 08:45、签退 12:05（差 3 小时 20 分）却记 4 小时，答辩现场一减就露馅（C14）。
+    // 现在签退时刻由「签到时刻 + 活动时长」推出，恒等于 activities[0].hours，
+    // 聚合数字一个不动；分钟取同一个错位值，免得 40 行时间完全一样。
+    // 活动 09:00 开始，故取 08:55~08:59 到场（活动说明也要求提前 15 分钟）。
+    const inMinute = 55 + (i % 5)
     return {
       id: i + 1,
       signupId: s.id,
@@ -908,8 +922,8 @@ export const attendance = signups
       studentNo: s.studentNo,
       college: s.college,
       status,
-      signInAt: status === 'NOT_SIGNED' || status === 'ABSENT' ? '' : `${s.activityDate} 08:${String(45 + (i % 12)).padStart(2, '0')}:00`,
-      signOutAt: status === 'SIGNED_OUT' ? `${s.activityDate} 12:${String(5 + (i % 50)).padStart(2, '0')}:00` : '',
+      signInAt: status === 'NOT_SIGNED' || status === 'ABSENT' ? '' : `${s.activityDate} 08:${String(inMinute).padStart(2, '0')}:00`,
+      signOutAt: status === 'SIGNED_OUT' ? `${s.activityDate} ${String(8 + activities[0].hours).padStart(2, '0')}:${String(inMinute).padStart(2, '0')}:00` : '',
       hours: status === 'SIGNED_OUT' ? activities[0].hours : 0,
     }
   })

@@ -111,6 +111,48 @@ const orphan = D.durations
   .filter((id) => !demoSignupActs.has(id))
 check('演示账号每条时长都有对应报名', orphan.length === 0, orphan.length ? `孤立活动 ${orphan}` : '')
 
+/* ---------- 行内字段一致性（C13~C16 / 待办第 26 项）----------
+   上面那些断言覆盖的是**聚合之间**（学院合计 = 累计时长）与**枚举覆盖**
+   （四种签到状态都出现），但不覆盖**同一行内字段之间**的一致性 ——
+   所以「签到 08:45 → 签退 12:05 却记 4 小时」这类矛盾一直没被拦住。
+   这类问题的共同点是静态检查看不出来、真跑也不报错，只有断言能拦。 */
+
+const parseAt = (text) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(text || '')
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null
+}
+
+const inconsistentHours = D.attendance.filter((a) => {
+  if (a.status !== 'SIGNED_OUT') return false
+  const signIn = parseAt(a.signInAt)
+  const signOut = parseAt(a.signOutAt)
+  if (!signIn || !signOut) return true
+  return Math.abs((signOut - signIn) / 3600000 - a.hours) > 1e-6
+})
+check(
+  '已签退记录的实得时长 = (签退 − 签到) / 3600（后端口径，对应 C14）',
+  inconsistentHours.length === 0,
+  inconsistentHours.length
+    ? `${inconsistentHours.length} 条不自洽，如 ${inconsistentHours[0].signInAt} → ${inconsistentHours[0].signOutAt} 记 ${inconsistentHours[0].hours} 小时`
+    : `${D.attendance.filter((a) => a.status === 'SIGNED_OUT').length} 条`,
+)
+
+// 脱敏串一旦被回填进可编辑表单，就必然过不了 /^1\d{10}$/（C13 的成因）——
+// 个人中心与用户管理都会预填 phone。库里存的是完整号码，mock 也不该存脱敏串。
+const maskedPhones = [...D.users, ...D.students, ...D.orgList].filter((r) => /\*/.test(r.phone || ''))
+check(
+  'phone 存完整 11 位号码，不得是脱敏串（会被回填进可编辑表单，对应 C13）',
+  maskedPhones.length === 0,
+  maskedPhones.length ? `${maskedPhones.length} 处，如 ${maskedPhones[0].phone}` : '',
+)
+
+const noRemark = D.categories.filter((c) => !c.remark)
+check(
+  '分类说明非空（分类管理页「说明」列，对应 C15）',
+  noRemark.length === 0,
+  noRemark.length ? `${noRemark.length} 个分类缺说明` : `${D.categories.length} 个分类`,
+)
+
 /* ---------- 其他 ---------- */
 const attendanceStatuses = new Set(D.attendance.map((a) => a.status))
 check(
