@@ -344,7 +344,7 @@ function resetQuery() {
         </InkField>
 
         <InkField label="手机号">
-          <input v-model.trim="form.phone" class="ink-input" type="text" placeholder="如 138****3300" />
+          <input v-model.trim="form.phone" class="ink-input" type="text" placeholder="如 13800000003" />
         </InkField>
 
         <InkField label="邮箱">
