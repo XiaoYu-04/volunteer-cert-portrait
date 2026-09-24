@@ -136,7 +136,7 @@ COMMENT ON COLUMN student_info.college              IS '学院';
 COMMENT ON COLUMN student_info.major                IS '专业';
 COMMENT ON COLUMN student_info.class_name           IS '班级';
 COMMENT ON COLUMN student_info.total_duration       IS '累计有效志愿时长（小时）；由 service_duration 审核通过的数据汇总而来，是学院排名与画像的依据';
-COMMENT ON COLUMN student_info.public_welfare_level IS '公益等级；【档位与阈值尚未确定，见 sql/README.md 待定项】';
+COMMENT ON COLUMN student_info.public_welfare_level IS '公益等级；按累计有效时长分 6 档（2026-09-22 已拍板，演示尺度阈值，实际部署需上调）：<3 普通志愿者 / 3-6 一星志愿者 / 6-10 二星志愿者 / 10-20 三星志愿者 / 20-40 四星志愿者 / ≥40 五星志愿者；规则见 docs/公益等级与标签规则方案.md';
 COMMENT ON COLUMN student_info.deleted              IS '逻辑删除：0未删除，1已删除';
 
 -- -------------------------------------------------------------
@@ -466,9 +466,9 @@ CREATE TABLE student_profile (
 COMMENT ON TABLE  student_profile                     IS '学生公益画像表（每个学生一行，由定时/手动任务重算）';
 COMMENT ON COLUMN student_profile.student_id          IS '学生ID → student_info.id（唯一）';
 COMMENT ON COLUMN student_profile.total_activities    IS '参与活动次数（按已完成 COMPLETED 的报名计，即真的签到参加了，而非仅报名被批准）';
-COMMENT ON COLUMN student_profile.total_duration      IS '累计志愿时长（小时）；权威值在 student_info.total_duration，此处为画像快照，见 README 待定项';
+COMMENT ON COLUMN student_profile.total_duration      IS '累计志愿时长（小时）；权威值在 student_info.total_duration，此处为画像快照（2026-09-23 已拍板：以 student_info 为准，见 sql/README.md 第五节）';
 COMMENT ON COLUMN student_profile.category_preference IS '偏好活动类型（参与最多的分类名）';
-COMMENT ON COLUMN student_profile.tags                IS '公益标签，逗号分隔（如"热心志愿者,校园服务型"）；【判定规则尚未确定，见 README 待定项】';
+COMMENT ON COLUMN student_profile.tags                IS '公益标签，逗号分隔（如"热心志愿者,校园服务型"）；2026-09-22 已拍板：共 8 类（热心志愿者、长期坚持型 + 6 个分类类型标签：校园服务型/社区服务型/环保行动型/大型活动型/助老服务型/文化传播型），分类→标签按 activity_category.code 映射（CAMPUS/COMMUNITY/ENVIRONMENT/EVENT/ELDERLY/CULTURE），中文名只作兜底，类型标签不设参与次数下限；规则见 docs/公益等级与标签规则方案.md';
 COMMENT ON COLUMN student_profile.portrait_desc       IS '画像描述文本';
 
 
