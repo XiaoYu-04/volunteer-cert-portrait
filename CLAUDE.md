@@ -104,9 +104,15 @@ vcp-dependencies  独立 BOM
 
 4. **`knife4j.enable` 默认为 `false` 且没有 `matchIfMissing`**
    不显式开启则增强能力静默失效，但 `/doc.html` 仍能打开，极易误判为已接好。
+   **该开关还兼任「文档路径是否免登录」的总开关**，见下一条。
 
 5. **Sa-Token 拦截器覆盖 `/**` 后必须放行文档路径**
    `/doc.html`、`/webjars/**`、`/v3/api-docs/**`、`/knife4j/**`，否则文档页 401。
+   这四个路径自 2026-09-24 起**跟随 `knife4j.enable` 联动**（实现在 `SaTokenConfig.DOC_EXCLUDE_PATHS`）：
+   开关为 `true`（开发默认）时照旧免登录；`application-prod.yml` 把它设为 `false` 后不再放行，
+   文档页与 `/v3/api-docs` 一律要求登录态。登录 / 注册两个认证入口在任何 profile 下都无条件放行
+   （`SaTokenConfig.EXCLUDE_PATHS`）。新增放行项：无条件放行加到 `EXCLUDE_PATHS`，随开关联动加到
+   `DOC_EXCLUDE_PATHS`。
 
 6. **Boot 4 的父 pom 不再配置 `annotationProcessorPaths`**
    现在 Lombok 靠 classpath 自动发现能工作。将来加 MapStruct 时**必须显式配置**
@@ -166,7 +172,8 @@ vcp-dependencies  独立 BOM
     `VCP_DB_USERNAME` / `VCP_DB_PASSWORD`。
     **注意缺凭证不会启动失败**（实测：`@ConfigurationProperties` 绑定对解析不了的占位符不报错，
     会把它当普通字符串用），要到第一次访问数据库才报认证失败 —— 排查连不上库时先看这里。
-    另外本地构建会把 `application-local.yml` 打进 jar，别把本地构建的 jar 发给别人。
+    另外本地构建**不再**把 `application-local.yml` 打进 jar（2026-09-24 起由 `vcp-boot/pom.xml`
+    的 `<resources>` 精确排除，clean 重打后实测确认）；对外分发前仍建议自查一遍 jar 内容。
 
 18. **MyBatis 的 `returnInstanceForEmptyRow` 默认为 false：一行所有映射列都是 NULL 时，
     这一行不返回对象，而是往 `List` 里塞一个 `null`**
@@ -218,14 +225,22 @@ vcp-dependencies  独立 BOM
 20 个接口全部符合预期、日志零异常。OpenAPI 共 52 个路径 / 64 个「方法 + 路径」，
 前端 28 个页面与 `src/api/` 的 62 个调用已与后端契约对齐，0 缺失。
 
-**未完成 / 下一步**：主线是**与前端联调（B12）** —— 前端 `.env` 的 `VITE_USE_MOCK` 置为
-`false` 后逐页对接口（开发环境由 Vite 把 `/api` 代理到 8080，不重写路径）。收尾项：
-密码加密（B15）、Flyway（B14）、文件上传（C9）。集成时发现的 4 个问题里，前端侧 2 项
-（B20-3 画像等级色调、B20-4 标签「八类」）已改完，剩后端侧 2 项（B20-1 `signed_count` 口径、
-B20-2 `activity_category` 缺 `remark` 列）。
+**当前阶段**：开发计划**第九阶段（系统测试与数据完善）**。已完成：6 个业务模块全部落地、
+`mvn package` 11 个模块全过、`sql/07_demo_scale.sql` 已实跑、**前后端联调（B12）已于
+2026-09-23 审计通过**（前端 28 个页面、接口层 62 个调用与后端全部对上，0 缺失）。
+集成时发现的 4 个问题已闭环 3 个（前端 B20-3 / B20-4，后端 B20-2 已补上
+`activity_category.remark` 列并实跑通过），只剩 B20-1 待改。
 
-**待办**：总入口见 `docs/待办清单.md`。A1–A5、A7 已拍板并写进代码；仍未拍板的是
-A6（时间类型）、A8（演示数据尺度）、A9（`sys_user.status` 类型）。
+**未完成 / 下一步**：**P1 收尾**：安全（密码加密 B15、本人改密、登录失败锁定）、正确性
+（B20-1 `signed_count` 口径、`operation_log.target` 写入侧从不填）；**P2 交付物**：测试用例表、
+测试报告、系统截图、部署、论文与答辩材料。Flyway（B14）待表结构稳定后再开；文件上传
+（C9）**明确推迟**。
+
+**待办**：总入口见 `docs/待办清单.md`。**A 组已无剩余待定** —— A6 本次拍板：**不改**，
+继续用 `TIMESTAMP` + `LocalDateTime`。理由：单一部署、无跨时区需求；改成 `timestamptz`
+要动 16 张表 + 全部实体 + 前端渲染 + 演示数据重跑，收益与代价不匹配。A8（演示数据尺度）、
+A9（`sys_user.status` 类型）已拍板并落地（A9 三层天然对齐、实测通过）；A1–A5、A7 已拍板
+并写进代码。
 
 > ✅ 2026-09-23 **公开仓库凭证事件已闭环**：云数据库口令已轮换（旧口令实测被服务端拒绝），
 > 含明文口令的会话存档已从仓库删除并推送（提交 `f556683`）。只剩「通知另外两位同学
