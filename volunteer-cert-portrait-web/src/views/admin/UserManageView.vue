@@ -6,6 +6,7 @@ import {
   updateUser,
   updateUserStatus,
   deleteUser,
+  resetUserPassword,
   listRoles,
 } from '@/api/system'
 import { useTable } from '@/composables/useTable'
@@ -53,7 +54,7 @@ const columns = [
   { key: 'email', title: '邮箱' },
   { key: 'status', title: '状态', width: '100px' },
   { key: 'lastLoginAt', title: '最近登录', width: '160px' },
-  { key: 'actions', title: '操作', width: '190px', align: 'right', cellClass: 'col-actions' },
+  { key: 'actions', title: '操作', width: '250px', align: 'right', cellClass: 'col-actions' },
 ]
 
 /* ---------- 新增 / 编辑 ---------- */
@@ -125,6 +126,34 @@ async function submit() {
     }
     dialog.value.open = false
     await load()
+  } catch (err) {
+    toast.error(err.message)
+  }
+}
+
+/* ---------- 重置口令 ---------- */
+// 不复用新增/编辑的 form：重置只提交一个 password，
+// 混在同一份表单里容易把其它字段一起带出去
+const resetDialog = ref({ open: false, id: null, name: '', password: '', error: '' })
+
+function openReset(row) {
+  resetDialog.value = { open: true, id: row.id, name: row.name, password: '', error: '' }
+}
+
+async function submitReset() {
+  const item = resetDialog.value
+  const value = item.password.trim()
+  // 留空表示恢复默认口令 123456；填了则与本人改密保持同一套长度策略
+  if (value && (value.length < 6 || value.length > 32)) {
+    item.error = '密码长度需为 6–32 位'
+    return
+  }
+  item.error = ''
+
+  try {
+    await resetUserPassword(item.id, { password: value })
+    toast.success('密码已重置')
+    resetDialog.value.open = false
   } catch (err) {
     toast.error(err.message)
   }
@@ -270,6 +299,7 @@ function resetQuery() {
 
       <template #actions="{ row }">
         <InkButton size="sm" variant="ghost" @click="openEdit(row)">编辑</InkButton>
+        <InkButton size="sm" variant="ghost" @click="openReset(row)">重置密码</InkButton>
         <InkButton size="sm" variant="ghost" @click="toggleStatus(row)">
           {{ row.status === 'ACTIVE' ? '停用' : '启用' }}
         </InkButton>
@@ -325,9 +355,15 @@ function resetQuery() {
           v-if="dialog.mode === 'create'"
           label="初始密码"
           class="span-2"
-          hint="留空则使用默认密码 123456，首次登录后请提醒用户修改"
+          hint="留空则使用默认密码 123456，请提醒用户首次登录后自行修改"
         >
-          <input v-model.trim="form.password" class="ink-input" type="text" placeholder="默认 123456" />
+          <input
+            v-model.trim="form.password"
+            class="ink-input"
+            type="password"
+            autocomplete="new-password"
+            placeholder="默认 123456"
+          />
         </InkField>
       </div>
     </form>
@@ -339,11 +375,43 @@ function resetQuery() {
       </InkButton>
     </template>
   </InkDialog>
+
+  <!-- 重置口令单独一个弹窗：目标与编辑用户不同，也避免误改其它字段 -->
+  <InkDialog v-model="resetDialog.open" title="重置密码">
+    <form @submit.prevent="submitReset">
+      <InkField label="新密码" :error="resetDialog.error" hint="留空则重置为默认密码 123456">
+        <input
+          v-model.trim="resetDialog.password"
+          class="ink-input"
+          type="password"
+          autocomplete="new-password"
+          placeholder="默认 123456"
+        />
+      </InkField>
+      <p class="reset-note">
+        重置后「{{ resetDialog.name }}」的所有登录态会立即失效，需用新口令重新登录。
+      </p>
+    </form>
+
+    <template #footer>
+      <InkButton variant="ghost" @click="resetDialog.open = false">取消</InkButton>
+      <InkButton variant="primary" @click="submitReset">确认重置</InkButton>
+    </template>
+  </InkDialog>
 </template>
 
 <style scoped>
 .panel-gap {
   margin-top: 36px;
+}
+
+.reset-note {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--c-line);
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--c-ink-3);
 }
 
 .panel-note {

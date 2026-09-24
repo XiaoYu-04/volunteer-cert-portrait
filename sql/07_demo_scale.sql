@@ -165,7 +165,7 @@ WHERE rg.should_scale;
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status)
 SELECT user_id,
        'stu' || lpad((100000 + seq)::text, 6, '0'),
-       '123456',
+       '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa',
        -- 姓 + 名，两个数组各 10 个元素，按下标确定性组合
        (ARRAY['张','王','李','赵','刘','陈','杨','黄','周','吴'])[1 + (seq % 10)]
            || (ARRAY['伟','芳','娜','敏','静','强','磊','洋','艳','勇'])[1 + ((seq / 10) % 10)],

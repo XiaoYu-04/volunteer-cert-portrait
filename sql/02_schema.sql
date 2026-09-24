@@ -64,7 +64,7 @@ CREATE TABLE sys_user (
 
 COMMENT ON TABLE  sys_user             IS '用户表';
 COMMENT ON COLUMN sys_user.username    IS '用户名（登录账号，唯一）';
-COMMENT ON COLUMN sys_user.password    IS '密码；初始化数据为明文，接入加密后请替换';
+COMMENT ON COLUMN sys_user.password    IS '密码：BCrypt 密文（$2a$10$ 开头的 60 字符），明文口令不落库；比对见 vcp-framework 的 PasswordUtils';
 COMMENT ON COLUMN sys_user.real_name   IS '真实姓名';
 COMMENT ON COLUMN sys_user.phone       IS '手机号';
 COMMENT ON COLUMN sys_user.email       IS '邮箱';

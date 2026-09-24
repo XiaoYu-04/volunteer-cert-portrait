@@ -12,3 +12,6 @@ export const logout = () => post('/v1/auth/logout')
 export const getCurrentUser = () => get('/v1/auth/me')
 
 export const updateProfile = (data) => put('/v1/auth/me', data)
+
+/** 修改本人密码 */
+export const changePassword = (data) => put('/v1/auth/password', data)

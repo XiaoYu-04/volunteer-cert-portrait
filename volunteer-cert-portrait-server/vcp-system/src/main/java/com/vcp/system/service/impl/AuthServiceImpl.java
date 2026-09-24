@@ -8,6 +8,8 @@ import com.vcp.common.enums.UserStatusEnum;
 import com.vcp.common.exception.BusinessException;
 import com.vcp.common.exception.ErrorCodeEnum;
 import com.vcp.framework.security.AuthUtils;
+import com.vcp.framework.util.PasswordUtils;
+import com.vcp.system.dto.ChangePasswordDTO;
 import com.vcp.system.dto.LoginDTO;
 import com.vcp.system.dto.ProfileUpdateDTO;
 import com.vcp.system.dto.RegisterDTO;
@@ -33,14 +35,20 @@ import java.util.regex.Pattern;
 /**
  * 认证服务实现。
  *
- * <p>实现上要紧的三件事：
+ * <p>实现上要紧的四件事：
  * <ol>
  *   <li><b>登录态由 Sa-Token 的会话承载</b>，而权限判定所需的角色码、orgId、
  *       studentId 由本类在登录时写进会话。这三个键的读取方是
  *       {@link AuthUtils}，键名必须用它提供的常量，手写字符串一旦写错
  *       不会报错、只会表现为「能登录但查不到自己的数据」。</li>
- *   <li><b>密码当前是明文比对</b>（待办 B15）。接入加密时只需改本类的
- *       校验与写入两处，其它代码不用动。</li>
+ *   <li><b>口令走 BCrypt 单向哈希</b>（待办 B15 已完成）：校验只经
+ *       {@link PasswordUtils#matches}，写入只经 {@link PasswordUtils#encode}，
+ *       全工程就这两处。库里若还留着历史明文记录，matches 一律返回 false
+ *       （工具类刻意不做明文兜底），表现为「密码没错却登不进去」，
+ *       需要执行 {@code sql/08_password_bcrypt.sql} 刷一遍。</li>
+ *   <li><b>连续登录失败会锁账号</b>：计数与判定都在 {@link LoginAttemptGuard}，
+ *       且锁定检查必须排在查库与口令校验之前 —— 顺序一旦反过来，
+ *       「已锁定」与「口令错误」的响应耗时不同，锁定状态本身就成了可探测的旁路信息。</li>
  *   <li><b>Sa-Token 会话里只写 roleCode / orgId / studentId / username 四个键</b>，
  *       不放联系方式。返回给前端的 {@link com.vcp.system.vo.SessionVO} 另含
  *       phone / email，仅供个人资料页回显本人数据 —— 前端只把 token 写进
@@ -61,9 +69,6 @@ public class AuthServiceImpl implements AuthService {
     /** 邮箱规则 */
     private static final Pattern RE_EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
-    /** 密码最短长度 */
-    private static final int MIN_PASSWORD_LENGTH = 6;
-
     /**
      * 会话中存放用户名的键。
      *
@@ -79,6 +84,9 @@ public class AuthServiceImpl implements AuthService {
 
     private final RoleResolver roleResolver;
 
+    /** 登录失败计数与锁定判定，登录入口的第一道闸 */
+    private final LoginAttemptGuard loginAttemptGuard;
+
     /**
      * 组织信息查询端口。
      *
@@ -90,10 +98,27 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginVO login(LoginDTO dto) {
-        SysUser user = findByUsername(dto.getUsername());
+        String username = dto.getUsername() == null ? null : dto.getUsername().trim();
+
+        // 锁定判定必须排在查库与口令校验之前：BCrypt 一次约 50-100ms，若先校验口令
+        // 再判锁定，「已锁定」与「口令错误」两条路径的耗时不同，锁定状态本身
+        // 就成了可探测的旁路信息；何况锁定期间即使口令正确也必须拒绝。
+        if (loginAttemptGuard.isLocked(username)) {
+            throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(username));
+        }
+
+        SysUser user = findByUsername(username);
 
         // 用户不存在与密码错误返回同一个提示，避免被用来枚举系统里有哪些账号
-        if (user == null || !Objects.equals(user.getPassword(), dto.getPassword())) {
+        if (user == null || !PasswordUtils.matches(dto.getPassword(), user.getPassword())) {
+            // 不存在的用户名同样计数：否则「连续错 5 次会被锁」只对真实账号成立，
+            // 拿"锁没锁"一测就知道账号存不存在，上面那句防枚举就白写了
+            loginAttemptGuard.recordFailure(username);
+            // 这次失败刚好踩到阈值时给的是锁定文案而不是"用户名或密码错误"，
+            // 让「账号不存在」与「存在但密码错」两条路径的返回完全一致
+            if (loginAttemptGuard.isLocked(username)) {
+                throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(username));
+            }
             throw new BusinessException(ErrorCodeEnum.AUTH_FAILED, "用户名或密码错误");
         }
 
@@ -108,6 +133,11 @@ public class AuthServiceImpl implements AuthService {
             // 没有角色的账号无法判定权限，放进来会一路 20003，不如在入口说清楚
             throw new BusinessException(ErrorCodeEnum.NO_PERMISSION, "该账号未分配角色，请联系学校管理员");
         }
+
+        // 计数清零放在这两条"口令已通过但登不进去"的分支之后：停用与无角色都不算
+        // 认证失败，若在口令匹配处就清零，拿一个口令正确的停用账号反复登录
+        // 就能把该用户名的失败计数刷掉
+        loginAttemptGuard.clear(username);
 
         StudentInfo student = isStudent(role) ? findStudentByUserId(user.getId()) : null;
         Long orgId = isOrgAdmin(role) ? findOrgId(user.getId()) : null;
@@ -131,8 +161,11 @@ public class AuthServiceImpl implements AuthService {
         if (nullToEmpty(dto.getName()).isBlank()) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "姓名不能为空");
         }
-        if (nullToEmpty(dto.getPassword()).length() < MIN_PASSWORD_LENGTH) {
-            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "密码至少 6 位");
+        // 口令规则收敛到 PasswordUtils.checkPolicy：注册、改密、管理员新增/重置共用一套，
+        // 分散写迟早会在某个入口漏掉一条；它返回的文案可直接展示给用户
+        String policyMessage = PasswordUtils.checkPolicy(dto.getPassword());
+        if (policyMessage != null) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, policyMessage);
         }
         if (!RE_PHONE.matcher(nullToEmpty(dto.getPhone())).matches()) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请输入 11 位手机号");
@@ -155,7 +188,8 @@ public class AuthServiceImpl implements AuthService {
 
         SysUser user = new SysUser();
         user.setUsername(dto.getUsername());
-        user.setPassword(dto.getPassword());
+        // 入库的必须是密文：全工程只有 PasswordUtils 一处做哈希，明文不落库
+        user.setPassword(PasswordUtils.encode(dto.getPassword()));
         user.setRealName(dto.getName());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
@@ -217,6 +251,58 @@ public class AuthServiceImpl implements AuthService {
         StudentInfo student = isStudent(role) ? findStudentByUserId(userId) : null;
         Long orgId = isOrgAdmin(role) ? findOrgId(userId) : null;
         return buildSession(user, role, orgId, student);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordDTO dto) {
+        Long userId = AuthUtils.getUserId();
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            // 账号被删但 token 还没过期：与 currentUser 一样按登录失效处理
+            throw new BusinessException(ErrorCodeEnum.AUTH_FAILED);
+        }
+
+        String policyMessage = PasswordUtils.checkPolicy(dto.getNewPassword());
+        if (policyMessage != null) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, policyMessage);
+        }
+        // 拿提交上来的新旧明文直接比，而不是拿新明文去 matches 库里的密文：
+        // 契约就是「新密码不能与原密码相同」，这样比还省掉一次 BCrypt（约 50-100ms）
+        if (Objects.equals(dto.getNewPassword(), dto.getOldPassword())) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "新密码不能与原密码相同");
+        }
+        if (!PasswordUtils.matches(dto.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(ErrorCodeEnum.OLD_PASSWORD_ERROR);
+        }
+
+        // 只 patch password 一个字段：SysUser 其它字段留 null，updateById 默认跳过 null，
+        // 不会把并发改过的手机号、邮箱覆盖回旧值
+        SysUser patch = new SysUser();
+        patch.setId(userId);
+        patch.setPassword(PasswordUtils.encode(dto.getNewPassword()));
+        userMapper.updateById(patch);
+
+        // 改密后踢掉该账号的其它会话、保留当前会话：口令泄露时这一步才是真正的止血，
+        // 但把当前这台设备一起踢下线，用户会以为改密失败、甚至以为账号被盗
+        String currentToken = StpUtil.getTokenValue();
+        for (String token : StpUtil.getTokenValueListByLoginId(userId)) {
+            if (!Objects.equals(token, currentToken)) {
+                StpUtil.kickoutByTokenValue(token);
+            }
+        }
+    }
+
+    /**
+     * 拼锁定提示文案。
+     *
+     * <p>带上剩余分钟数而不是只给错误码的默认文案：用户看到「请 3 分钟后再试」会等，
+     * 看到「请稍后再试」会一直点，反而把锁定时间不断续上。
+     *
+     * @param username 用户名
+     * @return 可直接展示的文案
+     */
+    private String lockedMessage(String username) {
+        return "账号已被锁定，请 " + loginAttemptGuard.remainingMinutes(username) + " 分钟后再试";
     }
 
     /**

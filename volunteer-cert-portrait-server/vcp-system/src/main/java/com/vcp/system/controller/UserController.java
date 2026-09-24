@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.vcp.common.result.PageResult;
 import com.vcp.common.result.R;
 import com.vcp.framework.log.OperationLog;
+import com.vcp.system.dto.ResetPasswordDTO;
 import com.vcp.system.dto.StatusUpdateDTO;
 import com.vcp.system.dto.UserQuery;
 import com.vcp.system.dto.UserSaveDTO;
@@ -35,6 +36,9 @@ import org.springframework.web.bind.annotation.RestController;
  * 这两个接口的请求体 {@code UserSaveDTO} 带 password 字段，采集参数会把明文口令
  * 序列化进 {@code operation_log.params} 永久留存。日志里保留「谁、什么时候、调了什么、
  * 成功还是失败」已经够用。
+ *
+ * <p><b>重置口令接口同样必须 {@code params = false}</b>：请求体里放的就是新口令本身，
+ * 采集参数等于把口令原文写进 {@code operation_log.params} 永久留存。
  */
 @RestController
 @RequestMapping("/api/v1/system/users")
@@ -96,6 +100,21 @@ public class UserController {
     @OperationLog(module = "用户与权限", action = "启停账号")
     public R<Void> updateStatus(@PathVariable Long id, @RequestBody StatusUpdateDTO dto) {
         userService.updateStatus(id, dto);
+        return R.ok();
+    }
+
+    /**
+     * 重置用户口令。
+     *
+     * @param id  用户 id
+     * @param dto 新口令，留空则重置为默认口令
+     * @return 空响应
+     */
+    @PutMapping("/{id}/password")
+    @SaCheckPermission("system:user:update")
+    @OperationLog(module = "用户与权限", action = "重置密码", params = false)
+    public R<Void> resetPassword(@PathVariable Long id, @RequestBody ResetPasswordDTO dto) {
+        userService.resetPassword(id, dto);
         return R.ok();
     }
 

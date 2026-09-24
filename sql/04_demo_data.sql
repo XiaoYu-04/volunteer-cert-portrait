@@ -36,10 +36,11 @@ SET client_encoding = 'UTF8';
 -- 一、追加 7 个组织及其管理员账号
 --     组织 id 2..8，对应管理员账号 id 4..10（org_admin2..org_admin8）
 -- =============================================================
+-- 口令列写的是 123456 的 BCrypt 密文（与 03_init_data.sql 同一串，理由见该脚本头部）
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status)
 SELECT g + 2,
        'org_admin' || g,
-       '123456',
+       '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa',
        (ARRAY['李明','王芳','张伟','刘洋','陈静','杨磊','赵敏'])[g - 1],
        '139' || lpad(g::text, 8, '0'),
        'org' || g || '@example.com',
@@ -66,10 +67,11 @@ FROM generate_series(2, 8) AS g;
 -- =============================================================
 -- 二、追加 30 个学生账号（id 11..40）与学生档案（id 2..31）
 -- =============================================================
+-- 同上：口令为 123456 的 BCrypt 密文
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status)
 SELECT g + 10,
        'stu' || lpad(g::text, 4, '0'),
-       '123456',
+       '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa',
        (ARRAY['张','王','李','赵','刘','陈','杨','黄','周','吴'])[1 + (g % 10)]
            || (ARRAY['伟','芳','娜','敏','静','强','磊','洋','艳','勇'])[1 + (g % 10)],
        '137' || lpad(g::text, 8, '0'),

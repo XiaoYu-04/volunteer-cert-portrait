@@ -17,8 +17,9 @@ import java.time.LocalDateTime;
  * ACTIVE / DISABLED 字符串。转换统一由 UserStatusEnum 承担，
  * 实体这里保持数据库原样，不要在图省事的地方直接拼字符串。
  *
- * <p><b>password 当前是明文</b>（待办 B15）。本类不覆盖 toString，Lombok 生成的
- * toString() 会把密码一起打出来，因此禁止把本对象直接塞进日志；
+ * <p><b>password 存的是 BCrypt 密文</b>（B15 已落地，生成与比对见 vcp-framework 的
+ * {@code PasswordUtils}），明文口令不落库。本类不覆盖 toString，Lombok 生成的
+ * toString() 会把密文一起打出来，因此禁止把本对象直接塞进日志；
  * 对外一律用 UserVO。
  */
 @Data
@@ -32,7 +33,7 @@ public class SysUser extends BaseEntity {
     /** 登录账号，唯一 */
     private String username;
 
-    /** 密码，当前为明文（B15 接入加密后替换） */
+    /** 密码：BCrypt 密文（$2a$10$ 开头的 60 字符），不要往里写明文 */
     private String password;
 
     /** 真实姓名，前端字段名 name */

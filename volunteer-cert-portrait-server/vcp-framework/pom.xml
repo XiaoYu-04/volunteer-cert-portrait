@@ -50,6 +50,16 @@
             <artifactId>sa-token-spring-boot4-starter</artifactId>
         </dependency>
 
+        <!-- 口令哈希：只取 Spring Security 的 crypto 模块（BCryptPasswordEncoder）。
+             刻意不引 spring-boot-starter-security —— 登录鉴权由 Sa-Token 承担，
+             引入 starter 会额外装配一套过滤器链与默认登录页，与本工程的接口路由冲突。
+             版本由 spring-boot-starter-parent 的 BOM 管理（属性 spring-security.version），
+             因此 vcp-dependencies 里不需要再写一条 dependencyManagement。 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- PostgreSQL 驱动（运行时） -->
         <dependency>
             <groupId>org.postgresql</groupId>

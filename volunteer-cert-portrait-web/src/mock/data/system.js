@@ -69,6 +69,27 @@ export default [
       return ok(null, body.status === 'ACTIVE' ? '已启用' : '已停用')
     },
   },
+
+  /* 管理员重置口令。口令留空即重置为默认口令 123456，与后端 DTO 的可空语义一致。
+
+     真实后端有「连续 5 次密码错误锁定 15 分钟」，mock 故意不实现 —— 演示时被锁住
+     只能去清 localStorage 才能继续，收益为负；mock 也不是安全边界。
+     相应地，重置口令也不会顺带清空失败计数：mock 里没有这份状态。 */
+  {
+    method: 'put',
+    path: '/v1/system/users/:id/password',
+    handler: ({ params, body }) => {
+      const user = users.find((u) => u.id === Number(params.id))
+      if (!user) return fail(10002, '用户不存在')
+      const password = String(body.password || '')
+      if (password && password.length < 6) return fail(10001, '密码至少 6 位')
+      if (password.length > 32) return fail(10001, '密码最多 32 位')
+      // mock 不做哈希，直接存明文；真实后端存的是 BCrypt 密文，管理员也回显不出原口令。
+      // 明文是为了演示闭环：重置成默认口令后，能当场登进去验一遍。
+      user.password = password || '123456'
+      return ok(null)
+    },
+  },
   {
     method: 'delete',
     path: '/v1/system/users/:id',

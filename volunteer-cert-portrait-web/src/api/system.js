@@ -7,6 +7,9 @@ export const updateUser = (id, data) => put(`/v1/system/users/${id}`, data)
 export const updateUserStatus = (id, status) => put(`/v1/system/users/${id}/status`, { status })
 export const deleteUser = (id) => del(`/v1/system/users/${id}`)
 
+/** 管理员重置指定用户的口令 */
+export const resetUserPassword = (id, data) => put(`/v1/system/users/${id}/password`, data)
+
 export const listRoles = () => get('/v1/system/roles')
 
 /* ---------- 字典 ---------- */
