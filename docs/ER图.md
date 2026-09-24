@@ -1,6 +1,6 @@
 # 数据库 ER 图
 
-> 依据 `sql/02_schema.sql` + `sql/05` + `sql/06` 整理，反映 2026-09-23 的最终结构。
+> 依据 `sql/02_schema.sql` + `sql/05` + `sql/06` + `sql/07` 整理，反映 2026-09-24 的最终结构。
 > 共 16 张表。
 
 数据库：PostgreSQL（脚本标注 16+，当前环境 18.6），库名 `volunteer_cert_portrait`。
@@ -8,9 +8,10 @@
 - `sql/02_schema.sql` —— 基础结构：16 张表 + 表/字段注释 + 10 个命名索引
 - `sql/05_backend_gap_fix.sql` —— 补列 15 个 + 索引 4 个 + 部分唯一索引 1 个
 - `sql/06_backend_gap_fix2.sql` —— 补列 9 个 + 唯一约束 1 个 + 索引 11 个（另有 1 条是 05 已建索引的幂等重申）
+- `sql/07_demo_scale.sql` —— 补列 1 个（`activity_category.remark`）+ 演示数据放大（活动 386 / 学生 1500 / 报名 10719）
 
-即本图反映的是 **02 + 05 + 06 叠加后**的最终结构，不是单独 `02` 的样子。
-`sql/03_init_data.sql`、`sql/04_demo_data.sql` 只写数据、不改结构，不影响本图。
+即本图反映的是 **02 + 05 + 06 + 07 叠加后**的最终结构，不是单独 `02` 的样子。
+`sql/03_init_data.sql`、`sql/04_demo_data.sql`、`sql/08_password_bcrypt.sql` 只写数据、不改结构，不影响本图。
 
 ## 一、总览图
 
@@ -342,7 +343,9 @@ erDiagram
 | create_time | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
 | update_time | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | 更新时间 |
 | code | VARCHAR(50) | 06 补列, UK | 分类编码，如 CAMPUS / COMMUNITY |
+| remark | VARCHAR(255) | 07 补列 | 分类说明；前端分类管理页的「说明」列与编辑弹窗 |
 
+- 补列：`remark`（07 补列，见 `sql/07_demo_scale.sql`）—— 前端分类管理页的「说明」列与编辑弹窗
 - 唯一约束：`uk_category_code UNIQUE (code)`（06 用 DO 块幂等创建）
 - 注意：唯一约束是全量唯一（不含 `deleted = 0` 条件），软删除的行仍占着 code
 
@@ -642,5 +645,5 @@ erDiagram
 
 4. **从数据库反向生成（可选，用于核对）**
    用 DBeaver / pgAdmin 连上 `volunteer_cert_portrait` 库，选中全部表右键生成 ER 图。
-   这条路径反映的是**库里实际执行过 02 + 05 + 06 之后**的状态，
+   这条路径反映的是**库里实际执行过 02 + 05 + 06 + 07（老库还有 08）之后**的状态，
    与本文档的差异即为「脚本没跑全」，可作为上线前的核对手段。
