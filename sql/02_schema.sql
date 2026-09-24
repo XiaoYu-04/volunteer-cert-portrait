@@ -318,7 +318,7 @@ COMMENT ON COLUMN volunteer_activity.start_time   IS '开始时间';
 COMMENT ON COLUMN volunteer_activity.end_time     IS '结束时间';
 COMMENT ON COLUMN volunteer_activity.location     IS '活动地点';
 COMMENT ON COLUMN volunteer_activity.max_count    IS '人数上限；0 表示不限';
-COMMENT ON COLUMN volunteer_activity.signed_count IS '已报名人数（冗余计数，由报名审核通过/取消时维护，用于快速判断是否报满）';
+COMMENT ON COLUMN volunteer_activity.signed_count IS '已报名人数（冗余计数，报名即占名额：未取消未驳回的报名都计入，驳回与取消各释放一个，用于快速判断是否报满）';
 COMMENT ON COLUMN volunteer_activity.duration     IS '预计志愿时长（小时）';
 COMMENT ON COLUMN volunteer_activity.status       IS '活动状态：DRAFT草稿，PUBLISHED已发布，CLOSED已结束，CANCELED已取消';
 COMMENT ON COLUMN volunteer_activity.cover        IS '封面图地址';
