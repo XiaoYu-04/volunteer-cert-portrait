@@ -22,6 +22,7 @@ import com.vcp.system.entity.SysUser;
 import com.vcp.system.entity.SysUserRole;
 import com.vcp.system.mapper.SysUserMapper;
 import com.vcp.system.mapper.SysUserRoleMapper;
+import com.vcp.system.service.DictService;
 import com.vcp.system.service.UserService;
 import com.vcp.system.vo.UserVO;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +47,8 @@ import java.util.Objects;
  *   <li><b>新增用户按角色决定建不建档案</b>：学生角色会顺手建一行 {@code student_info}
  *       （占位学号的口径见 {@link StudentArchiveRegistrar}），管理员角色不建 ——
  *       档案列表与画像重算都按 {@code student_info} 认人，给管理员建档等于把管理员算成学生。
- *       表单里仍没有学号与学院，档案里这两项由系统占位或留空，等管理员补录
- *       （补录页面还没做）。</li>
+ *       学院由表单提交并校验（与注册接口同一条规则），学号仍由系统占位 ——
+ *       学号是学籍信息，管理端表单不收，等有补录页面时再补。</li>
  * </ol>
  */
 @Slf4j
@@ -58,6 +59,9 @@ public class UserServiceImpl implements UserService {
     /** 新增用户与重置口令共用的默认口令，与前端表单留空时的提示一致 */
     private static final String DEFAULT_PASSWORD = "123456";
 
+    /** 学院字典的类型码，与注册接口用的是同一个（sys_dict.dict_type） */
+    private static final String DICT_TYPE_COLLEGE = "college";
+
     private final SysUserMapper userMapper;
 
     private final SysUserRoleMapper userRoleMapper;
@@ -66,6 +70,9 @@ public class UserServiceImpl implements UserService {
     private final StudentArchiveRegistrar studentArchiveRegistrar;
 
     private final RoleResolver roleResolver;
+
+    /** 校验学院是否命中启用中的字典项，注册接口走的是同一处判定 */
+    private final DictService dictService;
 
     /**
      * 分页查询用户列表。
@@ -136,6 +143,18 @@ public class UserServiceImpl implements UserService {
 
         SysRole role = requireRole(dto.getRole());
 
+        // 学生必须带学院：学院是「按学院统计」的分组键，缺了就落进空分组，
+        // 而档案一旦建好，本接口没有补录入口（编辑用户只 patch sys_user，不碰 student_info），
+        // 所以这里必须挡住，不能像以前那样静默写 null。规则与注册接口同一条，
+        // 判定收敛在 DictService.containsEnabled 一处，免得两边漂移出「注册能选、这里不能选」。
+        String college = null;
+        if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
+            college = trimToNull(dto.getCollege());
+            if (college == null || !dictService.containsEnabled(DICT_TYPE_COLLEGE, college)) {
+                throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请选择学院");
+            }
+        }
+
         // 口令策略统一走 PasswordUtils.checkPolicy（6-32 位），返回的文案可直接回显给用户。
         // 必须先校验再编码：超长明文喂给 BCrypt 编码器会被直接抛 IllegalArgumentException，
         // 表现成 500，而不是管理员看得懂的提示。
@@ -163,9 +182,7 @@ public class UserServiceImpl implements UserService {
         // 顺手建了会让档案列表与画像重算把他们也算成学生。
         // 与上面的插入同处一个事务，建档失败会连账号一起回滚。
         if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
-            // 刻意只传 userId（学院为 null）：管理员新增用户的表单里没有学院下拉框，
-            // B30 只修了注册链路，这条路径保持原样，等管理员补录。
-            studentArchiveRegistrar.ensureArchive(user.getId());
+            studentArchiveRegistrar.ensureArchive(user.getId(), college);
         }
     }
 

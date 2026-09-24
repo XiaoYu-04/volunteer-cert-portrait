@@ -124,7 +124,7 @@ INSERT INTO sys_dict (dict_type, dict_key, dict_value, sort) VALUES
 
 -- 附件业务类型（原脚本遗漏）
 INSERT INTO sys_dict (dict_type, dict_key, dict_value, sort) VALUES
-('attachment_biz_type', 'ACTIVITY', '活动封面', 1),
+('attachment_biz_type', 'ACTIVITY', '活动图片', 1),
 ('attachment_biz_type', 'ORG',      '组织资质', 2),
 ('attachment_biz_type', 'AVATAR',   '用户头像', 3);
 

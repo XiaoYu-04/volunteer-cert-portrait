@@ -14,8 +14,8 @@ import lombok.Getter;
 @Getter
 public enum AttachmentBizTypeEnum {
 
-    /** 活动封面：biz_id 为 volunteer_activity.id */
-    ACTIVITY("ACTIVITY", "活动封面"),
+    /** 活动图片：biz_id 为 volunteer_activity.id */
+    ACTIVITY("ACTIVITY", "活动图片"),
     /** 组织资质：biz_id 为 org_info.id */
     ORG("ORG", "组织资质"),
     /** 用户头像：biz_id 为 sys_user.id */

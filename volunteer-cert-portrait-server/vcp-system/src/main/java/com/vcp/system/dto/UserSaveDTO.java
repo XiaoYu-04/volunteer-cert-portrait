@@ -29,6 +29,18 @@ public class UserSaveDTO implements Serializable {
 
     private String email;
 
+    /**
+     * 学院名，仅「新增用户 + 角色为学生」时使用。
+     *
+     * <p>取值必须命中 {@code sys_dict} 里 {@code dict_type = 'college'} 的启用项，
+     * 由 Service 校验 —— 与注册接口同一条规则，不接受自由文本：同一学院一旦有第二种
+     * 写法，「按学院统计」就会把它算成另一个学院。
+     *
+     * <p>修改用户时忽略本字段：{@code updateUser} 只 patch {@code sys_user}，
+     * 学院落在 {@code student_info} 上，改它属于另一条写路径（补录学生档案）。
+     */
+    private String college;
+
     /** 初始密码，仅新增时使用；留空则用默认密码 */
     private String password;
 }

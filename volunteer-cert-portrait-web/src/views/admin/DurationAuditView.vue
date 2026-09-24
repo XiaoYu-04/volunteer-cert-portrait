@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { listDurations, auditDuration, batchAuditDurations, getAuditSummary } from '@/api/certification'
+import { getColleges } from '@/api/auth'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -25,6 +26,10 @@ const { rows, total, loading, query, search, load } = useTable(listDurations, {
 
 const summary = ref(null)
 const selected = ref([])
+
+// 学院下拉选项：数据源与注册页同一份（字典里 dict_type='college' 的启用项）。
+// 刻意不做前端兜底列表 —— 学院是管理员可增删的字典数据，写死等于造第二份真相。
+const colleges = ref([])
 
 /** 驳回率由三态分布算出，与通过率互补但不等于 100-通过率（还有待审核那一档） */
 const rejectRate = computed(() => {
@@ -74,7 +79,11 @@ function toggleOne(id, checked) {
 
 onMounted(async () => {
   dict.load()
+  // 学院下拉与三态概览互不依赖，并发取：下拉慢或挂了都不该拖住概览的渲染。
+  // catch 挂在 Promise 上而不是 await 外面，是为了不让它在 await 之前变成未处理拒绝。
+  const collegesPromise = getColleges().catch(() => [])
   summary.value = await getAuditSummary()
+  colleges.value = await collegesPromise
 })
 
 /* ---------- 单条审核 ---------- */
@@ -110,7 +119,7 @@ async function batchAudit() {
   }
   const okToGo = await confirm({
     title: '批量通过',
-    message: `确定要通过选中的 ${selected.value.length} 条服务时长记录吗？通过后将计入学生公益画像。`,
+    message: `通过后选中的 ${selected.value.length} 条记录计入学生公益画像。`,
   })
   if (!okToGo) return
 
@@ -129,7 +138,7 @@ async function batchAudit() {
 <template>
   <h1 class="console-title">服务时长审核</h1>
   <p class="console-sub">
-    组织提交服务时长后由学校管理员审核。通过后计入学生公益画像，驳回须填写理由并通知提交组织。
+    审核组织提交的服务时长，驳回须填写理由。
   </p>
 
   <!-- 审核三态概览 -->
@@ -156,7 +165,10 @@ async function batchAudit() {
       </InkField>
 
       <InkField label="学院">
-        <input v-model.trim="query.college" class="ink-input" type="text" placeholder="如 计算机学院" />
+        <select v-model="query.college" class="ink-select">
+          <option value="">全部学院</option>
+          <option v-for="c in colleges" :key="c.value" :value="c.value">{{ c.label }}</option>
+        </select>
       </InkField>
 
       <div class="ink-filter-actions">
@@ -259,17 +271,16 @@ async function batchAudit() {
         v-if="dialog.mode === 'REJECT'"
         label="驳回理由"
         required
-        hint="将随审核结果一并通知提交组织"
         class="audit-field"
       >
         <textarea
           v-model.trim="dialog.remark"
           class="ink-textarea"
-          placeholder="请说明驳回原因，例如：服务时长与签到记录不符"
+          placeholder="请说明驳回原因"
         ></textarea>
       </InkField>
       <p v-else class="ink-dialog-text audit-field">
-        通过后该学生的累计志愿时长将增加 <b>{{ dialog.row.hours }}</b> 小时，并计入公益画像。
+        通过后该学生的累计志愿时长增加 <b>{{ dialog.row.hours }}</b> 小时，计入公益画像。
       </p>
     </template>
 

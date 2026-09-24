@@ -8,6 +8,7 @@ import {
   deleteUser,
   resetUserPassword,
   listRoles,
+  listColleges,
 } from '@/api/system'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
@@ -33,12 +34,24 @@ const { rows, total, loading, query, search, load } = useTable(listUsers, {
 
 const roles = ref([])
 
+// 学院下拉：只在「新增学生」时用得上。
+// 数据源取管理端这份列表并自行筛启用项，而不是复用注册页那份 /v1/auth/colleges ——
+// 管理端就该走管理端接口；两者读的是同一份字典，停用项在两边都选不到。
+const colleges = ref([])
+
 onMounted(async () => {
   dict.load()
   try {
     roles.value = await listRoles()
   } catch (err) {
     toast.error(err.message)
+  }
+  try {
+    colleges.value = (await listColleges()).filter((c) => c.status !== 0)
+  } catch {
+    // 拉不到就只影响「新增学生」这一条路径，其余功能照常，因此不弹错误提示；
+    // 真要新增学生会因为选不到学院被 validate() 拦下，不会静默建出没有学院的档案。
+    colleges.value = []
   }
 })
 
@@ -59,8 +72,24 @@ const columns = [
 
 /* ---------- 新增 / 编辑 ---------- */
 const dialog = ref({ open: false, mode: 'create' })
-const form = ref({ id: null, username: '', name: '', role: 'STUDENT', phone: '', email: '', password: '' })
+const form = ref({
+  id: null,
+  username: '',
+  name: '',
+  role: 'STUDENT',
+  college: '',
+  phone: '',
+  email: '',
+  password: '',
+})
 const errors = ref({})
+
+/**
+ * 学生档案挂在学院下，所以只有「新增学生」才要求选学院 —— 后端 UserServiceImpl
+ * 是同一个条件、同一句文案。编辑不带这个字段：改角色不改档案，学院落在
+ * student_info 上，那条写路径是补录学生档案，不在这个表单里。
+ */
+const needCollege = computed(() => dialog.value.mode === 'create' && form.value.role === 'STUDENT')
 
 function openCreate() {
   form.value = {
@@ -68,6 +97,7 @@ function openCreate() {
     username: '',
     name: '',
     role: 'STUDENT',
+    college: '',
     phone: '',
     email: '',
     password: '',
@@ -82,6 +112,8 @@ function openEdit(row) {
     username: row.username,
     name: row.name,
     role: row.role,
+    // 用户列表不返回学院（它在 student_info 上），编辑态也不提交它
+    college: '',
     phone: row.phone,
     email: row.email,
     password: '',
@@ -96,6 +128,7 @@ function validate() {
   if (dialog.value.mode === 'create' && !item.username.trim()) next.username = '请填写用户名'
   if (!item.name.trim()) next.name = '请填写姓名'
   if (!item.role) next.role = '请选择角色'
+  if (needCollege.value && !item.college) next.college = '请选择学院'
   errors.value = next
   return !Object.keys(next).length
 }
@@ -110,6 +143,8 @@ async function submit() {
         username: item.username.trim(),
         name: item.name.trim(),
         role: item.role,
+        // 非学生不带这个字段：后端只在学生角色下读它
+        college: needCollege.value ? item.college : undefined,
         phone: item.phone.trim(),
         email: item.email.trim(),
         password: item.password.trim() || undefined,
@@ -165,7 +200,7 @@ async function toggleStatus(row) {
   if (next === 'DISABLED') {
     const okToGo = await confirm({
       title: '停用账号',
-      message: `停用后「${row.name}」将无法登录系统，确定继续吗？`,
+      message: `停用后「${row.name}」无法登录。`,
       tone: 'danger',
       confirmText: '停用',
     })
@@ -185,7 +220,7 @@ async function toggleStatus(row) {
 async function remove(row) {
   const okToGo = await confirm({
     title: '删除用户',
-    message: `确定删除账号「${row.username}」吗？该操作不可恢复。`,
+    message: `删除「${row.username}」后不可恢复。`,
     tone: 'danger',
     confirmText: '删除',
   })
@@ -213,7 +248,7 @@ function resetQuery() {
 <template>
   <h1 class="console-title">用户管理</h1>
   <p class="console-sub">
-    维护学生、组织管理员与学校管理员三类账号。停用账号将立即失去登录能力，但历史服务记录与画像数据不受影响。
+    维护三类账号的资料与启用状态。
   </p>
 
   <div class="stats">
@@ -343,6 +378,13 @@ function resetQuery() {
           </select>
         </InkField>
 
+        <InkField v-if="needCollege" label="学院" required :error="errors.college">
+          <select v-model="form.college" class="ink-select">
+            <option value="">请选择学院</option>
+            <option v-for="c in colleges" :key="c.id" :value="c.name">{{ c.name }}</option>
+          </select>
+        </InkField>
+
         <InkField label="手机号">
           <input v-model.trim="form.phone" class="ink-input" type="text" placeholder="如 13800000003" />
         </InkField>
@@ -355,7 +397,7 @@ function resetQuery() {
           v-if="dialog.mode === 'create'"
           label="初始密码"
           class="span-2"
-          hint="留空则使用默认密码 123456，请提醒用户首次登录后自行修改"
+          hint="留空则使用默认密码 123456"
         >
           <input
             v-model.trim="form.password"
@@ -389,7 +431,7 @@ function resetQuery() {
         />
       </InkField>
       <p class="reset-note">
-        重置后「{{ resetDialog.name }}」的所有登录态会立即失效，需用新口令重新登录。
+        重置后「{{ resetDialog.name }}」的登录态立即失效，需用新口令重新登录。
       </p>
     </form>
 

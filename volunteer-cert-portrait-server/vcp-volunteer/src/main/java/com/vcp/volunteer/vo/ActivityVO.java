@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 活动响应对象，字段名与前端契约（{@code src/mock/data/dataset.js} 的 activities）逐项对齐。
@@ -67,4 +68,10 @@ public class ActivityVO implements Serializable {
 
     /** 活动简介 */
     private String description;
+
+    /** 封面图地址 */
+    private String cover;
+
+    /** 活动图文说明，列表接口通常为空，详情接口返回 */
+    private List<ActivityImageVO> images;
 }

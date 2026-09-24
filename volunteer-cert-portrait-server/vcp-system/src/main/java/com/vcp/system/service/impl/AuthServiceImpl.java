@@ -185,8 +185,10 @@ public class AuthServiceImpl implements AuthService {
         }
         // 学院：去空格后非空，且必须命中字典（dict_type = 'college'）的启用项。
         // 不接受自由文本 —— 同一学院一旦有第二种写法，「按学院统计」就会把它算成另一个学院。
+        // 学院清单不写死在代码里（学院的增删是数据维护动作，写死意味着加一个学院要发版），
+        // 判定收敛在 DictService.containsEnabled 一处：管理员新增学生那条路径用的是同一个方法。
         String college = dto.getCollege() == null ? null : dto.getCollege().trim();
-        if (!hasText(college) || !isCollegeInDict(college)) {
+        if (!hasText(college) || !dictService.containsEnabled(DICT_TYPE_COLLEGE, college)) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请选择学院");
         }
         if (findByUsername(dto.getUsername()) != null) {
@@ -441,20 +443,6 @@ public class AuthServiceImpl implements AuthService {
             return false;
         }
         return userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getPhone, phone.trim()));
-    }
-
-    /**
-     * 判断学院名是否是字典里启用中的学院。
-     *
-     * <p>学院清单不写死在代码里：学院的增删是数据维护动作，写死意味着加一个学院要发版；
-     * 注册下拉框取的是同一份字典，两边不会各说各话。
-     *
-     * @param college 已去空格的学院名
-     * @return 命中启用项时返回 true
-     */
-    private boolean isCollegeInDict(String college) {
-        return dictService.listByType(DICT_TYPE_COLLEGE).stream()
-                .anyMatch(item -> college.equals(item.getValue()));
     }
 
     private StudentInfo findStudentByUserId(Long userId) {

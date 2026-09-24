@@ -47,4 +47,6 @@ public class ActivityRow implements Serializable {
     private String contact;
 
     private String description;
+
+    private String cover;
 }

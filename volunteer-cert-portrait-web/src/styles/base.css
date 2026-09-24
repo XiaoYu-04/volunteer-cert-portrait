@@ -21,7 +21,10 @@ body {
 h1, h2, h3, h4, p, ul, ol, figure, dl, dd, dt { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
 a { color: inherit; text-decoration: none; }
-button { font: inherit; color: inherit; cursor: pointer; }
+/* 按钮统一剥掉浏览器默认外观（灰底 ButtonFace + 2px outset 边框 + 1px 6px 内边距）。
+   外观一律由 .btn / .ink-* 这些类给；没挂类的文字按钮（如侧边栏的「修改密码」）
+   就不会突然渲染成一个灰方块。 */
+button { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; padding: 0; appearance: none; }
 img, svg { display: block; max-width: 100%; }
 table { border-collapse: collapse; width: 100%; }
 [hidden] { display: none !important; }

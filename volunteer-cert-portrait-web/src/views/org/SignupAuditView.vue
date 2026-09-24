@@ -118,7 +118,7 @@ async function batchApprove() {
 
   const okToGo = await confirm({
     title: '批量通过报名',
-    message: `确定通过选中的 ${selected.value.length} 条报名吗？通过后学生将收到通知并可参加现场签到。`,
+    message: `通过后学生将收到通知，可参加现场签到。`,
   })
   if (!okToGo) return
 
@@ -138,9 +138,7 @@ async function batchApprove() {
 
 <template>
   <h1 class="console-title">报名审核</h1>
-  <p class="console-sub">
-    审核本组织活动收到的报名申请。通过后学生可参加现场签到；驳回须填写理由，将随审核结果通知学生。
-  </p>
+  <p class="console-sub">审核本组织活动收到的报名申请，驳回须填写理由。</p>
 
   <section class="panel">
     <form class="ink-filter" @submit.prevent="search">
@@ -262,22 +260,14 @@ async function batchApprove() {
         </div>
       </dl>
 
-      <InkField
-        v-if="dialog.mode === 'REJECT'"
-        label="驳回理由"
-        required
-        hint="将随审核结果一并通知学生，请说明具体原因"
-        class="audit-field"
-      >
+      <InkField v-if="dialog.mode === 'REJECT'" label="驳回理由" required class="audit-field">
         <textarea
           v-model.trim="dialog.remark"
           class="ink-textarea"
-          placeholder="请说明驳回原因，例如：本次活动要求连续四周在岗，与你的时间安排冲突"
+          placeholder="请说明驳回原因"
         ></textarea>
       </InkField>
-      <p v-else class="ink-dialog-text audit-field">
-        通过后该学生将占用 1 个名额，并可在活动现场扫码签到。活动名额已满时请先核对剩余名额。
-      </p>
+      <p v-else class="ink-dialog-text audit-field">通过后占用 1 个名额，可在活动现场签到。</p>
     </template>
 
     <template #footer>

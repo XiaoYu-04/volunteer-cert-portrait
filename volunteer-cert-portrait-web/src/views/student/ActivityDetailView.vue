@@ -38,7 +38,8 @@ const disabledReason = computed(() => {
   if (signed.value) {
     return `你已报名该活动，当前状态：${dict.label('signup_status', mySignup.value.status)}`
   }
-  if (!isOpen.value) return `活动${dict.label('activity_status', activity.value.status)}，不再接受报名`
+  if (!isOpen.value)
+    return `活动${dict.label('activity_status', activity.value.status)}，不再接受报名`
   if (isFull.value) return '名额已满，可浏览同类型的其他活动'
   return ''
 })
@@ -117,6 +118,10 @@ async function submitSignup() {
       <p v-if="disabledReason" class="signup-tip">{{ disabledReason }}</p>
     </header>
 
+    <figure v-if="!loading && activity?.cover" class="activity-cover">
+      <img :src="activity.cover" :alt="`${activity.title}活动封面`" />
+    </figure>
+
     <section class="sec-detail">
       <div v-if="loading" class="panel" aria-busy="true">
         <span class="ink-skeleton ink-skeleton-row"></span>
@@ -124,11 +129,7 @@ async function submitSignup() {
         <span class="ink-skeleton ink-skeleton-row"></span>
       </div>
 
-      <InkEmpty
-        v-else-if="!activity"
-        text="活动不存在或已下线"
-        hint="请返回活动列表查看其他志愿活动"
-      />
+      <InkEmpty v-else-if="!activity" text="活动不存在或已下线" hint="返回活动列表查看其他活动" />
 
       <div v-else class="grid-2">
         <div class="panel">
@@ -189,9 +190,28 @@ async function submitSignup() {
               驳回理由：{{ mySignup.rejectReason }}
             </p>
           </template>
-          <p v-else class="signup-none">你还没有报名本活动，报名结果将由组织管理员审核后通知。</p>
+          <p v-else class="signup-none">你还没有报名本活动。</p>
         </div>
       </div>
+
+      <section v-if="!loading && activity?.images?.length" class="activity-gallery">
+        <div class="gallery-head">
+          <h2>活动图集</h2>
+          <span class="num">{{ activity.images.length }} 张</span>
+        </div>
+        <div class="gallery-grid">
+          <figure v-for="(image, index) in activity.images" :key="image.id || image.fileUrl">
+            <img
+              :src="image.fileUrl"
+              :alt="image.caption || `${activity.title}图片 ${index + 1}`"
+              loading="lazy"
+            />
+            <figcaption>
+              {{ image.caption || image.fileName || `活动图片 ${index + 1}` }}
+            </figcaption>
+          </figure>
+        </div>
+      </section>
     </section>
   </div>
 
@@ -203,11 +223,11 @@ async function submitSignup() {
         {{ formatHours(activity.hours) }}
       </p>
 
-      <InkField label="报名理由" hint="可选，供组织管理员审核时参考">
+      <InkField label="报名理由" hint="可选">
         <textarea
           v-model.trim="reason"
           class="ink-textarea"
-          placeholder="例如：希望参与社区服务，积累实践经验"
+          placeholder="如 参与社区敬老服务"
         ></textarea>
       </InkField>
     </template>
@@ -224,6 +244,17 @@ async function submitSignup() {
 <style scoped>
 .sec-detail {
   padding: 36px 0 72px;
+}
+
+.activity-cover {
+  border-bottom: 1px solid var(--c-ink);
+  background: var(--c-line-2);
+}
+
+.activity-cover img {
+  width: 100%;
+  max-height: 520px;
+  object-fit: cover;
 }
 
 .signup-tip {
@@ -283,5 +314,62 @@ async function submitSignup() {
   margin: 8px 0 24px;
   font-size: 13px;
   color: var(--c-ink-3);
+}
+
+.activity-gallery {
+  margin-top: 56px;
+}
+
+.gallery-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--c-ink);
+}
+
+.gallery-head h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+.gallery-head span {
+  font-size: 12px;
+  color: var(--c-ink-3);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 24px;
+  margin-top: 24px;
+}
+
+.gallery-grid figure {
+  min-width: 0;
+}
+
+.gallery-grid img {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid var(--c-line);
+  background: var(--c-line-2);
+}
+
+.gallery-grid figcaption {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--c-ink-2);
+}
+
+@media (max-width: 760px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

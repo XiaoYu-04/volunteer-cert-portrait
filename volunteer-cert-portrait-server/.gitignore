@@ -18,3 +18,7 @@ application-local.yml
 application-local.yaml
 application-local.properties
 *.local.yml
+
+# ===== 本地上传文件 =====
+# 用户上传的运行时图片不进入版本库；demo 目录随仓库交付，供 12 号脚本引用。
+uploads/activities/

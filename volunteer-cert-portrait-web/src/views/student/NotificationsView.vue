@@ -68,9 +68,7 @@ async function onMarkRead(row) {
     <header class="page-head">
       <span class="hero-kicker">通知公告</span>
       <h1>通知公告</h1>
-      <p class="page-head-sub">
-        报名审核结果、时长审核结果与系统通知都会送达这里。打开详情即视为已读，也可以直接标记已读。
-      </p>
+      <p class="page-head-sub">报名审核、时长审核与系统通知，打开详情即视为已读。</p>
     </header>
 
     <section class="sec-list">
@@ -104,7 +102,7 @@ async function onMarkRead(row) {
         :rows="rows"
         :loading="loading"
         empty-text="没有符合条件的通知"
-        empty-hint="换个关键字或类型再试试"
+        empty-hint="换一个关键字或类型再试"
       >
         <template #title="{ row }">
           <RouterLink class="notice-link" :class="{ 'is-unread': !row.read }" :to="`/student/notifications/${row.id}`">

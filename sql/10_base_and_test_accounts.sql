@@ -176,12 +176,19 @@ ON CONFLICT DO NOTHING;
 -- 学院（新类；以上 7 类都是「英文码 → 中文」的状态字典，这一类不是）
 --   dict_key 与 dict_value 都填学院名：student_info.college 与 org_info.college 存的就是
 --   学院名本身，这类数据没有英文码，硬造一套 COLLEGE_01 只会让字典与实际取值对不上。
---   调用方是学生注册流程：注册页的学院下拉取 GET /api/v1/auth/colleges（免登录接口），
---   注册时后端再拿学院名去比对字典里的启用项。字典为空则下拉为空、学生注册不了，
---   所以这一类与角色一样属于「系统跑起来必需」，不是可有可无的展示配置。
+--   调用方有两处：学生注册流程（注册页的学院下拉取 GET /api/v1/auth/colleges，免登录接口，
+--   注册时后端再拿学院名去比对字典里的启用项），以及学校管理端的「学院管理」页
+--   （GET / POST /api/v1/system/colleges、PUT /api/v1/system/colleges/{id}/status、
+--   DELETE /api/v1/system/colleges/{id}，权限码 system:college:manage）。
+--   字典为空则注册页下拉为空、学生注册不了，所以这一类与角色一样属于
+--   「系统跑起来必需」，不是可有可无的展示配置。
 --   下面 5 个学院取自 04_demo_data.sql 与 07_demo_scale.sql 一致使用的取值；
 --   07 里写明「college 取值必须落在 student_info 实际用到的学院里，否则按学院筛选组织
---   与按学院筛选学生两处会对不上」，因此本清单不得增删改，顺序也固定。
+--   与按学院筛选学生两处会对不上」，因此这份清单**只是初始种子、顺序按它固定** ——
+--   2026-09-24 起学院的增删启停是运行时动作，走管理端「学院管理」页，不必回头改本脚本；
+--   本脚本只在清库重灌时把这 5 条补回来（库里多出来的学院不会被删，重跑也不覆盖已有的行，
+--   见上面的 ON CONFLICT 说明）。
+--   要与演示数据（04 / 07）保持一致，新增学院请沿用它们用到的学院名。
 INSERT INTO sys_dict (dict_type, dict_key, dict_value, sort, status) VALUES
 ('college', '计算机学院',   '计算机学院',   1, 1),
 ('college', '电子信息学院', '电子信息学院', 2, 1),

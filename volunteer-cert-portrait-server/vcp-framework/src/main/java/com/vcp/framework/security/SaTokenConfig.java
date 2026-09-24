@@ -68,11 +68,16 @@ public class SaTokenConfig implements WebMvcConfigurer {
     /** 接口文档开关，对应配置项 {@code knife4j.enable}；缺省 false，与 Knife4j 约定一致 */
     private final boolean knife4jEnabled;
 
+    /** 上传资源 URL 匹配模式，跟随 vcp.upload.public-prefix 配置 */
+    private final String uploadUrlPattern;
+
     /**
      * @param knife4jEnabled 配置项 {@code knife4j.enable}，缺省 {@code false}
      */
-    public SaTokenConfig(@Value("${knife4j.enable:false}") boolean knife4jEnabled) {
+    public SaTokenConfig(@Value("${knife4j.enable:false}") boolean knife4jEnabled,
+                         @Value("${vcp.upload.public-prefix:/uploads}") String uploadPublicPrefix) {
         this.knife4jEnabled = knife4jEnabled;
+        this.uploadUrlPattern = normalizeUploadPrefix(uploadPublicPrefix) + "/**";
     }
 
     /**
@@ -96,12 +101,24 @@ public class SaTokenConfig implements WebMvcConfigurer {
      * @return 放行路径数组
      */
     private String[] excludePaths() {
-        if (!knife4jEnabled) {
-            return EXCLUDE_PATHS;
+        int docCount = knife4jEnabled ? DOC_EXCLUDE_PATHS.length : 0;
+        String[] paths = new String[docCount + EXCLUDE_PATHS.length + 1];
+        if (knife4jEnabled) {
+            System.arraycopy(DOC_EXCLUDE_PATHS, 0, paths, 0, DOC_EXCLUDE_PATHS.length);
         }
-        String[] paths = new String[DOC_EXCLUDE_PATHS.length + EXCLUDE_PATHS.length];
-        System.arraycopy(DOC_EXCLUDE_PATHS, 0, paths, 0, DOC_EXCLUDE_PATHS.length);
-        System.arraycopy(EXCLUDE_PATHS, 0, paths, DOC_EXCLUDE_PATHS.length, EXCLUDE_PATHS.length);
+        System.arraycopy(EXCLUDE_PATHS, 0, paths, docCount, EXCLUDE_PATHS.length);
+        paths[paths.length - 1] = uploadUrlPattern;
         return paths;
+    }
+
+    private static String normalizeUploadPrefix(String prefix) {
+        String value = prefix == null || prefix.isBlank() ? "/uploads" : prefix.trim();
+        if (!value.startsWith("/")) {
+            value = "/" + value;
+        }
+        while (value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 }

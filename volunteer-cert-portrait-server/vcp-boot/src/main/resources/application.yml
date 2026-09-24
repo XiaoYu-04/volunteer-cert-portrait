@@ -8,6 +8,10 @@ server:
 spring:
   application:
     name: volunteer-cert-portrait
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   # 【凭证一律外置，不得写回本文件】仓库是公开仓库，明文口令进过 git 历史，删掉文件也删不掉历史。
   # 读取优先级：环境变量 → application-local.yml（已在 .gitignore 中）。
   # 三条 import 按序尝试，文件不存在不报错（optional:）；模板见同目录 application-local.yml.example。
@@ -119,6 +123,11 @@ knife4j:
 vcp:
   cors:
     allowed-origin-patterns: "*"
+  upload:
+    # 文件本体放这里；jar 从 volunteer-cert-portrait-server/ 启动时即该目录下 uploads/
+    dir: ./uploads
+    # 数据库存 /uploads/...，开发期由后端静态资源映射，生产可由 Nginx alias
+    public-prefix: /uploads
 
 logging:
   level:

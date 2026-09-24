@@ -31,8 +31,7 @@ const totalPerms = computed(() =>
 <template>
   <h1 class="console-title">角色管理</h1>
   <p class="console-sub">
-    系统采用三角色固定权限模型，角色不可新增或删除。权限标识遵循「模块:资源:动作」三段式，
-    由后端在接口层校验，前端据此控制菜单与按钮的可见性。
+    查看三个角色的权限清单，角色不可增删。
   </p>
 
   <div class="stats">
@@ -60,7 +59,7 @@ const totalPerms = computed(() =>
     </ul>
   </section>
 
-  <p v-if="!loading && !roles.length" class="role-empty">暂无可展示的角色</p>
+  <p v-if="!loading && !roles.length" class="role-empty">暂无角色</p>
 </template>
 
 <style scoped>

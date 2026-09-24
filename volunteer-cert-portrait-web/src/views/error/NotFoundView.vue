@@ -13,7 +13,7 @@ const user = useUserStore()
       <h1 class="err-title">页面不存在</h1>
       <p class="err-desc">
         你访问的地址没有对应的页面，可能是链接已失效或输入有误。<br />
-        可以返回首页继续浏览志愿活动。
+        可返回首页重新进入。
       </p>
       <div class="err-actions">
         <InkButton :to="user.isLogin ? user.homePath : '/login'" variant="primary">

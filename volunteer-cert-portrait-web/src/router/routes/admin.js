@@ -50,6 +50,12 @@ export default {
       meta: { title: '角色管理', menu: true, group: '系统管理' },
     },
     {
+      path: 'colleges',
+      name: 'AdminColleges',
+      component: () => import('@/views/admin/CollegeManageView.vue'),
+      meta: { title: '学院管理', menu: true, group: '系统管理' },
+    },
+    {
       path: 'notices',
       name: 'AdminNotices',
       component: () => import('@/views/admin/NoticeManageView.vue'),

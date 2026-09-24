@@ -60,7 +60,7 @@ onMounted(() => {
 async function onCancel(row) {
   const okToGo = await confirm({
     title: '取消报名',
-    message: `确定取消「${row.activityTitle}」的报名吗？取消后如需参加需要重新报名。`,
+    message: `取消「${row.activityTitle}」后如需参加需要重新报名。`,
     confirmText: '确定取消',
     tone: 'danger',
   })
@@ -81,9 +81,7 @@ async function onCancel(row) {
     <header class="page-head">
       <span class="hero-kicker">我的</span>
       <h1>我的报名</h1>
-      <p class="page-head-sub">
-        这里汇总你提交过的全部报名申请。待审核与已通过的报名可以取消，驳回原因与审核结果同步展示。
-      </p>
+      <p class="page-head-sub">你提交过的全部报名申请，待审核与已通过的可以取消。</p>
     </header>
 
     <section class="sec-list">
@@ -110,7 +108,7 @@ async function onCancel(row) {
         :rows="rows"
         :loading="loading"
         empty-text="还没有报名记录"
-        empty-hint="去活动列表挑选一场志愿活动报名吧"
+        empty-hint="在活动列表中选择活动报名"
       >
         <template #activityTitle="{ row }">
           <RouterLink class="row-link" :to="`/student/activities/${row.activityId}`">

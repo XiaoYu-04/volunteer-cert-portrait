@@ -92,7 +92,7 @@ async function submit() {
 async function remove(row) {
   const okToGo = await confirm({
     title: '删除公告',
-    message: `确定删除公告「${row.title}」吗？删除后学生端将不再显示。`,
+    message: `删除「${row.title}」后学生端不再显示。`,
     tone: 'danger',
     confirmText: '删除',
   })
@@ -111,7 +111,7 @@ async function remove(row) {
 <template>
   <h1 class="console-title">通知公告管理</h1>
   <p class="console-sub">
-    发布面向全校的通知公告。置顶公告在学生端排在最前；发布后学生端可见，删除后立即下线。
+    发布与删除面向全校的通知公告。
   </p>
 
   <section class="panel">
@@ -187,16 +187,16 @@ async function remove(row) {
         />
       </InkField>
 
-      <InkField label="公告正文" hint="学生端公告详情页会显示正文；留空则只发标题">
+      <InkField label="公告正文" hint="留空则只发标题">
         <textarea
           v-model="form.content"
           class="ink-textarea"
           rows="4"
-          placeholder="请填写公告正文…"
+          placeholder="请填写公告正文"
         ></textarea>
       </InkField>
 
-      <InkField label="通知类型" hint="审核结果类通知会与时长审核流程联动">
+      <InkField label="通知类型">
         <select v-model="form.type" class="ink-select">
           <option v-for="t in typeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
         </select>

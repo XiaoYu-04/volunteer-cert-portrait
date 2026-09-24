@@ -19,7 +19,9 @@
 | 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选 |
 | 8 | `08_password_bcrypt.sql` | 口令明文转 BCrypt 密文（增量，仅「先建库、后升级到加密版代码」的老库需要） | 老库必需 |
 | 9 | `09_consistency_check.sql` | **一致性自检（20 项）**：外键悬空 6 / 汇总字段与明细不符 4 / 状态与审核字段矛盾 4 / 学院专业错配 1 / 时间异常 2 / 演示数据完整性 3，输出 **20 行 + 1 行汇总**（`check_no = 99`），**违规数全 0 即通过**（2026-09-24 云库实跑，违规合计 0） | 可选（**只读，不改变数据**，可重复执行） |
-| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + 新增 `college` 学院字典 5 条），**不含演示数据、也不含 `student` 账号**（学生走自助注册） | 可选（**清库后重建基础数据时用**，可重复执行） |
+| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + 新增 `college` 学院字典 5 条），**不含演示数据、也不含 `student` 账号**（学生走自助注册）；学院字典 5 条只是**初始种子**，运行时增删启停走学校管理端的「学院管理」页 | 可选（**清库后重建基础数据时用**，可重复执行） |
+| 11 | `11_activity_images.sql` | 活动图片增量字段：`attachment.content_type` / `caption` / `sort_order` 与业务排序索引 | 联调必需（增量、可重复执行） |
+| 12 | `12_activity_images_demo.sql` | 少量图文演示：5 个账号（3 学生 + 1 组织管理员 + 1 学校管理员）、1 个组织、3 个已发布活动及 3 张 GPT-Image2 图片元数据 | 演示可选（增量、可重复执行） |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
 先跑 `02`，再依次跑 `03`、`04`；想要放大到答辩规模，在 `04` 之后再跑 `07`。
@@ -33,6 +35,11 @@
 `08_password_bcrypt.sql` 是**口令加密迁移**脚本（增量，可重复执行），只服务于老库：
 后端 B15 把口令校验从明文相等改成了 BCrypt 比对（`PasswordUtils.matches` 对明文记录一律返回 false），
 所以**升级代码前就已建好的库必须跑它**，否则所有账号都登录不了。
+
+`12_activity_images_demo.sql` 引用的 3 张图片位于
+`volunteer-cert-portrait-server/uploads/demo/activities/`。部署到服务器时，请把整个
+`uploads/demo/` 同步到后端的 `./uploads/demo/`（systemd 示例对应 `/opt/vcp/uploads/demo/`），
+否则演示活动会显示图片 404。
 `03` / `04` / `07` 的种子口令已同步换成密文，**新库不需要跑**。
 脚本只更新「口令恰好是明文 123456」的行（演示数据里全部账号都是这个口令），
 跑完会报出残留的明文账号数；若库里存在口令不是 123456 的明文账号，
@@ -64,6 +71,17 @@
 > ③ 新增「十之二」节定向给高活跃学生补记录，否则 40 小时以上无人能达到。
 > 另外第十节与第十之二节原先缺 `should_scale` 幂等守卫，已补。（脚本由 `0a668d7` 新增，缺陷修复与实跑见 `1138eaa`。）
 
+`10_base_and_test_accounts.sql` 是**清库后的基础数据脚本**（可重复执行：每条 `INSERT` 都带 `ON CONFLICT DO NOTHING`）：
+16 张表被 `TRUNCATE` 之后，用它一次灌回「系统跑起来必需」的基础数据 —— 3 个角色 / 2 个测试管理员
+（`admin`、`org_admin`，口令 `123456` 的 BCrypt 密文）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典
+（7 类状态字典 + `college` 学院字典 5 条）。**不含演示数据，也不建 `student` 账号**（学生走自助注册）。
+其中**学院字典 5 条只是初始种子**：2026-09-24 起学院可以在学校管理端的「学院管理」页增删启停
+（`GET` / `POST /api/v1/system/colleges`、`PUT /api/v1/system/colleges/{id}/status`、
+`DELETE /api/v1/system/colleges/{id}`，权限码 `system:college:manage`），运行时改学院**不必回头改本脚本**；
+脚本重跑只补齐缺失的行，不覆盖库里已有的行。
+⚠️ 清库会连带清掉 `05` / `06` 回填到行上的值（字典 `tone`、`activity_category.code` 等），
+跑完本脚本请按 `05` → `06` 的顺序再跑一遍（脚本头部也写了这一条）。
+
 ## 二、执行方式
 
 ```bash
@@ -77,12 +95,16 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backen
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
 # 仅老库需要（新库跳过）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 08_password_bcrypt.sql
+# 活动图片字段 + 少量图文演示数据
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 11_activity_images.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 12_activity_images_demo.sql
 ```
 
 ```bash
 # 方式二：一次跑完
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
 cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql 07_demo_scale.sql \
+  11_activity_images.sql 12_activity_images_demo.sql \
   | psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait
 ```
 

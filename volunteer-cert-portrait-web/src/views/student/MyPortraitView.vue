@@ -45,9 +45,7 @@ const dimLabel = computed(() =>
     <header class="page-head">
       <span class="hero-kicker">公益画像</span>
       <h1>我的公益画像</h1>
-      <p class="page-head-sub">
-        系统依据你参与活动的类型、频次与时长自动归类，画像每日 02:00 更新，各项维度满分 100 分。
-      </p>
+      <p class="page-head-sub">按活动类型、频次与时长自动归类，各项维度满分 100 分。</p>
     </header>
 
     <section class="sec-list">
@@ -60,7 +58,7 @@ const dimLabel = computed(() =>
       <InkEmpty
         v-else-if="!portrait"
         text="画像尚未生成"
-        hint="参与志愿活动并完成服务时长审核后，系统会自动为你生成公益画像"
+        hint="参与活动并完成服务时长审核后自动生成"
       />
 
       <template v-else>
@@ -136,7 +134,7 @@ const dimLabel = computed(() =>
             :label="`公益画像维度得分柱状图：${dimLabel}`"
           />
           <figcaption class="fig-cap">
-            <b>图一</b>画像各维度得分（满分 100），服务时长与活动场次越高，画像等级提升越快。
+            <b>图一</b>画像各维度得分（满分 100）。
           </figcaption>
         </figure>
       </template>

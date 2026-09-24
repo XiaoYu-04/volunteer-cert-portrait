@@ -59,7 +59,8 @@ function actionsOf(row) {
   const list = []
   if (row.status === 'DRAFT') list.push({ label: '发布', to: 'PUBLISHED' })
   if (row.status === 'PUBLISHED') list.push({ label: '结束', to: 'CLOSED' })
-  if (row.status === 'DRAFT' || row.status === 'PUBLISHED') list.push({ label: '取消', to: 'CANCELED' })
+  if (row.status === 'DRAFT' || row.status === 'PUBLISHED')
+    list.push({ label: '取消', to: 'CANCELED' })
   return list
 }
 
@@ -67,7 +68,7 @@ async function changeStatus(row, status) {
   if (status === 'CANCELED') {
     const okToGo = await confirm({
       title: '取消活动',
-      message: `确定取消「${row.title}」吗？取消后学生端不再展示该活动，已通过的报名记录仍会保留。`,
+      message: `取消「${row.title}」后学生端不再展示，已通过的报名记录仍保留。`,
       confirmText: '确认取消',
       tone: 'danger',
     })
@@ -95,14 +96,17 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
 
 <template>
   <h1 class="console-title">活动管理</h1>
-  <p class="console-sub">
-    管理本组织发布的志愿活动：草稿发布后学生方可报名，活动结束后及时置为「已结束」，取消则不再对外展示。
-  </p>
+  <p class="console-sub">管理本组织发布的志愿活动，仅已发布的活动对学生开放报名。</p>
 
   <section class="panel">
     <form class="ink-filter" @submit.prevent="search">
       <InkField label="关键字">
-        <input v-model.trim="query.keyword" class="ink-input" type="search" placeholder="活动名称" />
+        <input
+          v-model.trim="query.keyword"
+          class="ink-input"
+          type="search"
+          placeholder="活动名称"
+        />
       </InkField>
 
       <InkField label="活动类型">
@@ -134,7 +138,10 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
 
     <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="本组织暂无活动">
       <template #title="{ row }">
-        <span class="cell-strong">{{ row.title }}</span>
+        <span class="cell-activity">
+          <img v-if="row.cover" class="cell-cover" :src="row.cover" :alt="`${row.title}封面`" />
+          <span class="cell-strong">{{ row.title }}</span>
+        </span>
       </template>
 
       <template #type="{ row }">
@@ -163,7 +170,9 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
             {{ action.label }}
           </InkButton>
         </template>
-        <InkButton size="sm" variant="ghost" :to="`/org/signups?activityId=${row.id}`">报名</InkButton>
+        <InkButton size="sm" variant="ghost" :to="`/org/signups?activityId=${row.id}`"
+          >报名</InkButton
+        >
       </template>
     </InkTable>
 
@@ -181,5 +190,20 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
 .cell-strong {
   font-family: var(--font-display);
   color: var(--c-ink);
+}
+
+.cell-activity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cell-cover {
+  flex: none;
+  width: 48px;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border: 1px solid var(--c-line);
 }
 </style>

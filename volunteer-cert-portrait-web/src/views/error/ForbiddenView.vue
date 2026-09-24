@@ -12,8 +12,8 @@ const user = useUserStore()
       <p class="err-code num">403</p>
       <h1 class="err-title">无权访问该页面</h1>
       <p class="err-desc">
-        当前登录角色为「{{ user.roleLabel || '未登录' }}」，该页面不在你的权限范围内。<br />
-        如需访问，请联系学校管理员调整角色。
+        当前登录角色为「{{ user.roleLabel || '未登录' }}」。<br />
+        如需访问该页面，请联系学校管理员调整角色。
       </p>
       <div class="err-actions">
         <InkButton :to="user.isLogin ? user.homePath : '/login'" variant="primary">

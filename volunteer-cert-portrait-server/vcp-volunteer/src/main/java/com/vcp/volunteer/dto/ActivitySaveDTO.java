@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 活动新增 / 修改请求（POST /api/v1/activities、PUT /api/v1/activities/{id}）。
@@ -52,6 +53,12 @@ public class ActivitySaveDTO implements Serializable {
 
     /** 活动简介 */
     private String description;
+
+    /** 封面图地址；null 表示修改时不更新，空串表示清空 */
+    private String cover;
+
+    /** 图文说明；null 表示修改时不更新，空数组表示清空 */
+    private List<ActivityImageSaveDTO> images;
 
     /** 发布组织 id：组织管理员忽略该值，一律用登录态里的 orgId */
     private Long orgId;

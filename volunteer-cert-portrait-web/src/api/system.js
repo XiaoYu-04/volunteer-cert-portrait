@@ -12,6 +12,20 @@ export const resetUserPassword = (id, data) => put(`/v1/system/users/${id}/passw
 
 export const listRoles = () => get('/v1/system/roles')
 
+/* ---------- 学院 ---------- */
+/**
+ * 学院不是独立表，是 `sys_dict` 里 `dict_type = 'college'` 的字典行。
+ * 这组接口给学校管理端的学院管理页用；注册页那份下拉走的是免登录的
+ * `GET /v1/auth/colleges`（见 api/auth.js），两者读的是同一份数据。
+ *
+ * 列表**不过滤停用项** —— 管理页要能看到并重新启用它们；注册页那份只取启用项。
+ */
+export const listColleges = () => get('/v1/system/colleges')
+export const createCollege = (data) => post('/v1/system/colleges', data)
+export const deleteCollege = (id) => del(`/v1/system/colleges/${id}`)
+export const updateCollegeStatus = (id, status) =>
+  put(`/v1/system/colleges/${id}/status`, { status })
+
 /* ---------- 字典 ---------- */
 export const listDicts = () => get('/v1/system/dicts')
 
