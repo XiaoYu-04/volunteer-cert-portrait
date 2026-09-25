@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "backend": "native",
+  "rasterEngine": "libreoffice",
+  "source": "saved",
+  "inputPath": "C:\\Users\\lsy04\\Documents\\Project\\volunteer-cert-portrait\\docs\\论文\\论文初稿.docx",
+  "sourceSha256": "5d0e571cf9ae199d421afc51a87fb493849a3166cf1d89d4ecd0a212bf3681c5",
+  "dpi": 110,
+  "pageCount": 164,
+  "images": [
+    {
+      "index": 1,
+      "page": 1,
+      "path": "C:\\Users\\lsy04\\Documents\\Project\\volunteer-cert-portrait\\docs\\论文\\preview-v1\\page-0001.png",
+      "width": 935,
+      "height": 1210,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 816,
+        "height": 1056
+      },
+      "byteLength": 204036
+    },
+    {
+      "index": 2,
+      "page": 2,
+      "path": "C:\\Users\\lsy04\\Documents\\Project\\volunteer-cert-portrait\\docs\\论文\\preview-v1\\page-0002.png",
+      "width": 935,
+      "height": 1210,
+      "rectangle": {
+        "x": 0,
+        "y": 0,
+        "width": 816,
+        "height": 1056
+      },
+      "byteLength": 147407
+    }
+  ],
+  "missingFonts": [
+    "Courier"
+  ]
+}
