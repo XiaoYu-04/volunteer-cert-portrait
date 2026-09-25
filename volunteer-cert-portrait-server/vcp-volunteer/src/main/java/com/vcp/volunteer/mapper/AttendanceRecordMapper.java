@@ -82,8 +82,9 @@ public interface AttendanceRecordMapper extends BaseMapper<AttendanceRecord> {
      *
      * <p>与 {@link #invalidateBySignupId} 是同一条语义，只是一个报名、一个学生。
      * 学生名下报名可能有多条，逐条调用是 N 次往返；这里一条语句按 {@code signup_id}
-     * 子查询收敛。子查询不过滤 {@code activity_signup.deleted}：报名行在销档时已被逻辑删除，
-     * 带上过滤会一条都匹配不到（顺序见 {@code StudentSignupPurgePort} 的口径说明）。
+     * 子查询收敛。子查询**不过滤** {@code activity_signup.deleted}，因此放在
+     * 「逻辑删除报名行」之前或之后调用都成立（销档的调用顺序见
+     * {@code StudentSignupPurgePortImpl}）。
      *
      * @param studentId 学生档案 id
      * @return 影响行数
