@@ -178,12 +178,21 @@ public interface PortraitAggregateMapper {
      * 拆分成单个标签后累加由 Service 负责；{@code tags IS NULL} 的学生（还没有任何标签）
      * 不产生分布项，故在 SQL 里直接排除。
      *
+     * <p><b>必须 JOIN {@code student_info} 并过滤 {@code si.deleted = 0}</b>（2026-09-25 补，
+     * 待办 B31 的同族缺口）：{@code student_profile} 没有 {@code deleted} 列，是整表重算的
+     * 派生快照，账号被删除后快照行仍留在库里。此前本查询不 JOIN 档案表，被删账号会继续
+     * 计入标签分布（实测删一个学生后「热心志愿者」从 1471 变成 1472，而学生总数已经减 1，
+     * 两个数字互相打架且不报任何错）。同 Mapper 的
+     * {@link #selectPortraitPage} / {@link #selectPortrait} / {@link #selectStudentStats}
+     * 一直都是这么过滤的，本方法此前漏了，属于口径不一致。
+     *
      * @return 每个不同的标签串一行，行数等于不同标签组合的个数（远小于学生数）
      */
     @Select("""
             SELECT sp.tags            AS tags,
                    COUNT(*)           AS profile_count
             FROM student_profile sp
+            JOIN student_info si ON si.id = sp.student_id AND si.deleted = 0
             WHERE sp.tags IS NOT NULL
             GROUP BY sp.tags
             """)

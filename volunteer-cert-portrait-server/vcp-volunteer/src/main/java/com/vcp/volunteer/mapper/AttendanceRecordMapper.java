@@ -76,4 +76,20 @@ public interface AttendanceRecordMapper extends BaseMapper<AttendanceRecord> {
     @Update("UPDATE attendance_record SET deleted = 1, update_time = NOW() "
             + "WHERE signup_id = #{signupId} AND deleted = 0")
     int invalidateBySignupId(@Param("signupId") Long signupId);
+
+    /**
+     * 账号被删除时批量作废该学生名下全部签到记录。
+     *
+     * <p>与 {@link #invalidateBySignupId} 是同一条语义，只是一个报名、一个学生。
+     * 学生名下报名可能有多条，逐条调用是 N 次往返；这里一条语句按 {@code signup_id}
+     * 子查询收敛。子查询不过滤 {@code activity_signup.deleted}：报名行在销档时已被逻辑删除，
+     * 带上过滤会一条都匹配不到（顺序见 {@code StudentSignupPurgePort} 的口径说明）。
+     *
+     * @param studentId 学生档案 id
+     * @return 影响行数
+     */
+    @Update("UPDATE attendance_record SET deleted = 1, update_time = NOW() "
+            + "WHERE deleted = 0 AND signup_id IN ("
+            + "       SELECT id FROM activity_signup WHERE student_id = #{studentId})")
+    int invalidateByStudentId(@Param("studentId") Long studentId);
 }

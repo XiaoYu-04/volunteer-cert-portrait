@@ -49,6 +49,8 @@ import java.util.Objects;
  *       档案列表与画像重算都按 {@code student_info} 认人，给管理员建档等于把管理员算成学生。
  *       学院由表单提交并校验（与注册接口同一条规则），学号仍由系统占位 ——
  *       学号是学籍信息，管理端表单不收，等有补录页面时再补。</li>
+ *   <li><b>删除用户走销档</b>：不只是删账号，还要级联清理该学生的档案与业务数据
+ *       （见 {@link StudentArchivePurger} 与 {@link #deleteUser(Long)}）。</li>
  * </ol>
  */
 @Slf4j
@@ -68,6 +70,9 @@ public class UserServiceImpl implements UserService {
 
     /** 建档入口：新增用户被赋予学生角色时补一行 student_info */
     private final StudentArchiveRegistrar studentArchiveRegistrar;
+
+    /** 销档入口：删除用户时级联清理该账号的学生档案、报名、签到与服务时长（待办 B31） */
+    private final StudentArchivePurger studentArchivePurger;
 
     private final RoleResolver roleResolver;
 
@@ -287,11 +292,18 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * 删除用户（逻辑删除）并清掉角色关联。
+     * 删除用户（逻辑删除）并级联清掉该账号的全部业务数据。
      *
      * <p>{@code sys_user_role} 按物理删除设计（无 deleted 列），这里显式清掉关联，
      * 避免留下一批指向已删用户的孤儿行 —— 它们会让"按角色筛用户"的 IN 集合
      * 白查一批 id，也会让角色人数统计的口径越来越依赖 {@code u.deleted = 0} 这个补丁。
+     *
+     * <p><b>学生档案与业务数据由 {@link StudentArchivePurger} 级联处理</b>（待办 B31）：
+     * 此前本方法只置 {@code sys_user.deleted = 1}，该账号的 {@code student_info}、
+     * 报名、签到、服务时长全部留在库里并<b>继续计入看板</b>（实测跑一轮端到端脚本，
+     * 看板就从 1503 学生 / 10719 报名 / 19319.3 小时漂到 1504 / 10720 / 19321.8）。
+     * 三张表分属三个模块，跨模块动作走两个端口，本方法只负责把它们与删账号
+     * 放进同一个事务：任何一步失败都整体回滚，不会留下"删了一半"的账号。
      *
      * @param id 用户 id
      */
@@ -305,6 +317,10 @@ public class UserServiceImpl implements UserService {
         userMapper.deleteById(existing.getId());
         userRoleMapper.delete(Wrappers.<SysUserRole>lambdaQuery()
                 .eq(SysUserRole::getUserId, existing.getId()));
+        // 放在账号删除之后：销档要按 user_id 反查档案，而它读的是 student_info，与账号状态无关，
+        // 顺序上两者等价；放在最后是为了让"账号已删"这件事在日志里先出现，
+        // 出问题时一眼能看出是哪一步没走完（回滚后库里两者都还在）。
+        studentArchivePurger.purgeByUserId(existing.getId());
     }
 
     /**
