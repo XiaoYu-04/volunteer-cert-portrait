@@ -197,11 +197,22 @@ SELECT sg.id, sg.activity_id, sg.student_id, sg.status, sg.deleted AS sg_deleted
 
 | 项 | 值 |
 |---|---|
-| 8080 上跑的 jar | `volunteer-cert-portrait-server/vcp-boot/target/vcp-boot-1.0.0.jar`，**42,747,861 B / 17:20:29**（开发口径未带 prod profile） |
-| 8080 pid | **45644**（17:27:29 起进程、17:27:33 完成启动 4.199 秒；监听 `::8080`） |
+| 8080 上跑的 jar | `volunteer-cert-portrait-server/vcp-boot/target/vcp-boot-1.0.0.jar`，**42,747,861 B / 17:45:55**（开发口径未带 prod profile） |
+| 8080 pid | **46760**（17:46:06 起进程、17:46:10 完成启动 4.321 秒；监听 `::8080`） |
 | 8081 prod 临时实例 | pid 46504，**已停**（`Get-NetTCPConnection -LocalPort 8081` 已无监听；见 3.6 末尾） |
 | 库口径 | **1503 学生 / 389 活动 / 10719 报名 / 19319.3 小时**（`student_info`/`activity_signup`/`service_duration`/`attendance_record` 的 `deleted = 1` 行数全为 0）—— 最后成功查库时间 **2026-09-25 17:22–17:23** |
 | `sql/09` | 检查项总数 20，**违规合计 0**（最后成功实跑 17:23） |
+
+> **关于「17:45:55 又打了一次包」**：回归验证（`verify.ps1` × 2 轮、整库重建、`sql/09`）跑的是
+> **17:20:29 那一版构建**（pid 45644）。之后我复查新代码，发现 `StudentArchivePurger` 里有一条
+> 注释把三步顺序写反了（写成「释放 `signed_count` 必须在逻辑删报名之前」，而按 ⑦ 项口径**重算**
+> 恰恰必须在逻辑删报名**之后**），另修正 `AttendanceRecordMapper.invalidateByStudentId` 的一处
+> 括号说明。**这两处改动纯属注释/文档，不含任何逻辑或 SQL 变更**（`git diff` 可核），
+> 改完重新 `mvn -B package -DskipTests`（**11 模块 BUILD SUCCESS / 10.784 s**，留档
+> `.tmp-b31/mvn-package-2.log`）并重启 8080（**pid 46760**）。
+> 因此：**验证结论适用于当前 jar**（差异仅在注释与调试行号），但「同一份字节码既跑过回归又在上线」
+> 这句话**不成立** —— 如实说明，供主会话判断是否需要再跑一轮回归（库恢复后跑一次 `verify.ps1` 即可，
+> 期望仍是 1503 / 10719 / 19319.3）。
 
 **「8080 跑的确实是新构建」的独立校验**（不靠时间戳推断）：直接读 jar 内嵌的模块 jar，
 确认本轮新增的 5 个类都在里面 ——

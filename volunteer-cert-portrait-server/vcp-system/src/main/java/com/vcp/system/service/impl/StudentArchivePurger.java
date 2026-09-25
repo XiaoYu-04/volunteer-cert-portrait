@@ -84,7 +84,9 @@ public class StudentArchivePurger {
         }
 
         Long studentId = archive.getId();
-        // 顺序不可换：释放 signed_count 需要读报名行当前的状态，必须在报名行被逻辑删除之前完成
+        // 三个动作的顺序：活动域（内部还有自己的三步，见 StudentSignupPurgePortImpl：
+        // 先作废签到 → 再逻辑删报名 → 最后按 sql/09 第 ⑦ 项口径重算 signed_count）
+        // → 时长域 → 软删档案。三步都在调用方的事务里，任一步抛异常整体回滚。
         signupPurgePort.purgeByStudentId(studentId);
         durationPurgePort.purgeByStudentId(studentId);
         // 档案最后删：它是另外两张表的定位键（student_id 就是本表主键），先删只是换个顺序，
