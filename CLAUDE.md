@@ -45,11 +45,19 @@ java -jar vcp-boot/target/vcp-boot-1.0.0.jar
 # 接口文档
 open http://localhost:8080/doc.html
 
-# 重建数据库（会清空数据）
+# 重建数据库（会清空数据）—— 顺序不能换：04 是 07 的硬前置、10 供学院字典、12 放最后
 cd sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backend_gap_fix2.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 10_base_and_test_accounts.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 11_activity_images.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 12_activity_images_demo.sql
+# 老库另需 08_password_bcrypt.sql（把明文口令刷成 BCrypt 密文；新库不用）
+# 整链实测约 16 秒；动 DDL 前先清 idle in transaction 陈旧会话（见「踩过的坑」第 19 条）
 
 # 一致性自检（只读、可重复执行，前置条件 01~06；20 项违规数全 0 即通过）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
@@ -189,6 +197,30 @@ vcp-dependencies  独立 BOM
     既避开这个坑又少传行。别去开全局的 `return-instance-for-empty-row`：
     那是全局开关，会改变所有模块的行为。
 
+19. **云库动 DDL 前先清 `idle in transaction` 陈旧会话**（2026-09-25 实测，一次白等 618 秒）
+    `sql/02_schema.sql` 的 `DROP TABLE` 一开始**卡了 618 秒** —— 既不是脚本慢、也不是云库卡：
+    上一次会话遗留的两个 `idle in transaction` 连接（pid 5798 / 5801，已挂 18 小时 52 分，
+    来自上一轮的 JDBC 只读工具）持有 `attachment_id_seq` 的锁，把 `DROP TABLE` 挡在锁后面。
+    **排查链**：`pg_stat_activity` 看 `state` 与 `wait_event`（`wait_event_type = 'Lock'` 即被锁）→
+    `pg_locks` **自连接**找 `NOT granted` 的阻塞者（`blocked.pid` → `blocking.pid`）→
+    `pg_terminate_backend(<blocking pid>)`。清掉 4 个陈旧会话（另两个是
+    `idle in transaction (aborted)`）后 DROP **立刻完成**；整链重跑时 `02` 只花 **208 ms**、
+    全链约 **16 秒**。**整库重建 / 动 DDL 之前先清陈旧会话**，否则极易误判成「脚本慢」。
+
+20. **脚本依赖：`04` 是 `07` 的硬前置、学院字典只在 `10` 里**（2026-09-25 更正）
+    - `sql/README.md:16` 曾把 `04_demo_data.sql` 标成「可选」，那是**错的**：`07` 的新活动按
+      `org_id = 1 + (g % 6)` 取组织，要求 `org_info` 里存在 id 1~6，而 **id 2~8 全部由 `04` 创建**。
+      跳过 `04` 直接跑 `07`，新活动的组织外键就会落错。
+      （2026-09-25 已修正 `sql/README.md` 的标注：`:16` 改为「跑 `07` 时必需」、`:19` 加「必须先执行 `04`」、
+      `:22` 的 `10` 改为「新环境必需」、执行方式两段补上 `10` 与只读的 `09`。）
+    - 5 条学院字典（`dict_type = 'college'`）**不在** `03_init_data.sql` 里，只在
+      `10_base_and_test_accounts.sql` 里；新环境**必须跑到 `10`**，否则注册页下拉为空、
+      注册必被拒（「请选择学院」）。
+    - `12_activity_images_demo.sql` 要**放最后**：它给三场图文演示活动定的名额是 **20 / 35 / 18**，
+      先跑 `12` 再跑 `07` 的话，`07` 的「名额下限 < 46 一律抬到 46」回填会把这几个数改掉。
+    - 完整顺序（整链实测约 16 秒）：`02 → 03 → 04 → 05 → 06 → 07 → 10 → 11 → 12`，
+      最后**只读**跑 `09` 复验（检查项总数 20、违规合计 0）。见「常用命令」一节。
+
 ### 前端（`volunteer-cert-portrait-web/`）
 
 1. **Vue 3.5 的模板解析器只在属性值含分号时才按「多语句」解析**
@@ -255,6 +287,11 @@ vcp-dependencies  独立 BOM
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
 （`sql/` 脚本在 PostgreSQL 18.6 实跑，**20 项一致性自检全部为 0**；已固化为
 `sql/09_consistency_check.sql`，2026-09-24 云库实跑违规合计 0）；
+**2026-09-25 云库已整库重建并回灌全量演示数据**（`02 → 03 → 04 → 05 → 06 → 07 → 10 → 11 → 12`，
+随后 `09` 复跑：检查项总数 20、违规合计 0）—— `07` 口径 **1500 学生 / 386 活动 / 10719 报名 /
+19319.3 小时**，叠加 `12` 后 **1503 学生 / 389 活动**（报名与时长不变；**两组数字别混用**）；
+后端已重新打包（11 模块 BUILD SUCCESS）并重启（**pid 32936**，8080 监听，开发口径即未带 prod profile），
+三角色冒烟全过（`/activities` 389、`/analytics/dashboard` 报名 10719 / 时长 19319.3 / 签到率 90.1%）；
 接口文档可用。**6 个业务模块全部落地**（2026-09-23）：`vcp-system` / `vcp-org` /
 `vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`，三个角色实打
 20 个接口全部符合预期、日志零异常。OpenAPI 共 59 个路径 / 72 个「方法 + 路径」，
@@ -275,7 +312,11 @@ vcp-dependencies  独立 BOM
 口令以 BCrypt 密文入库（`PasswordUtils`），新增 `PUT /api/v1/auth/password`（本人改密，踢其它会话）
 与 `PUT /api/v1/system/users/{id}/password`（管理员重置，踢全部会话），登录连续 5 次失败锁 15 分钟；
 **老库需补跑 `sql/08_password_bcrypt.sql`**，新库不用。**剩余正确性**：`operation_log.target` 写入侧从不填
-（见 B20-6）；**P2 交付物**：测试用例表、测试报告、系统截图、部署、论文与答辩材料。
+（见 B20-6）；**2026-09-25 新发现 B31**：**删除用户不级联** —— `DELETE /api/v1/system/users/{id}`
+只置 `sys_user.deleted = 1`，其 `student_info` / 报名 / 时长仍留在库里并**继续计入看板**
+（实测 1503→1505 学生、10719→10721 报名、19319.3→19321.8 小时，而 `sql/09` 的 20 项抓不到），**未修**；
+修法二选一（要写清口径）：删用户时同事务软删档案并处理报名 / 时长，或统计侧一律 JOIN `sys_user`
+过滤 `deleted = 0`。**P2 交付物**：测试用例表、测试报告、系统截图、部署、论文与答辩材料。
 Flyway（B14）待表结构稳定后再开；**活动图片上传已完成**，
 组织资质材料与用户头像上传仍未接入。
 

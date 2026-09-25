@@ -13,24 +13,42 @@
 | 1 | `01_create_database.sql` | 创建数据库 `volunteer_cert_portrait` | 必需 |
 | 2 | `02_schema.sql` | 建表脚本：16 张表 + 表/字段注释 + 索引 | 必需 |
 | 3 | `03_init_data.sql` | 基础初始化数据：角色、账号、学生档案、组织、活动分类、数据字典 | 必需 |
-| 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | 可选（开发与答辩演示用） |
+| 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | **跑 `07` 时必需**（`07` 的硬前置，见下方说明）；只做接口联调、不跑 `07` 时可跳过 |
 | 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖） |
 | 6 | `06_backend_gap_fix2.sql` | 后端联调补列（第二批）：活动报名截止/联系方式、报名理由、分类编码、学生性别年级、时长证明与所属组织，并补齐签到聚合与外键列索引 | 必需（后端接口依赖） |
-| 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选 |
+| 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选（**跑之前必须先执行 `04`**，见下方说明） |
 | 8 | `08_password_bcrypt.sql` | 口令明文转 BCrypt 密文（增量，仅「先建库、后升级到加密版代码」的老库需要） | 老库必需 |
 | 9 | `09_consistency_check.sql` | **一致性自检（20 项）**：外键悬空 6 / 汇总字段与明细不符 4 / 状态与审核字段矛盾 4 / 学院专业错配 1 / 时间异常 2 / 演示数据完整性 3，输出 **20 行 + 1 行汇总**（`check_no = 99`），**违规数全 0 即通过**（2026-09-24 云库实跑，违规合计 0） | 可选（**只读，不改变数据**，可重复执行） |
-| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + 新增 `college` 学院字典 5 条），**不含演示数据、也不含 `student` 账号**（学生走自助注册）；学院字典 5 条只是**初始种子**，运行时增删启停走学校管理端的「学院管理」页 | 可选（**清库后重建基础数据时用**，可重复执行） |
+| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + 新增 `college` 学院字典 5 条），**不含演示数据、也不含 `student` 账号**（学生走自助注册）；学院字典 5 条只是**初始种子**，运行时增删启停走学校管理端的「学院管理」页 | **新环境必需**（`college` 学院字典的**唯一来源**，缺了注册页下拉为空、注册必被拒；可重复执行） |
 | 11 | `11_activity_images.sql` | 活动图片增量字段：`attachment.content_type` / `caption` / `sort_order` 与业务排序索引 | 联调必需（增量、可重复执行） |
 | 12 | `12_activity_images_demo.sql` | 少量图文演示：5 个账号（3 学生 + 1 组织管理员 + 1 学校管理员）、1 个组织、3 个已发布活动及 3 张 GPT-Image2 图片元数据 | 演示可选（增量、可重复执行） |
 
-`02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成演示数据：
-先跑 `02`，再依次跑 `03`、`04`；想要放大到答辩规模，在 `04` 之后再跑 `07`。
+`02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成一套完整的演示数据，
+**顺序不能换**（2026-09-25 云库整库重建实测，整链约 **16 秒**）：
+
+```text
+02_schema.sql → 03_init_data.sql → 04_demo_data.sql → 05_backend_gap_fix.sql
+→ 06_backend_gap_fix2.sql → 07_demo_scale.sql → 10_base_and_test_accounts.sql
+→ 11_activity_images.sql → 12_activity_images_demo.sql
+（最后只读跑 09_consistency_check.sql 验收：检查项总数 20、违规合计 0）
+```
+
+三条容易踩的顺序理由（详见 `CLAUDE.md` 的「踩过的坑」第 20 条）：
+
+- **`04` 是 `07` 的硬前置**：`07` 的新活动按 `org_id = 1 + (g % 6)` 取组织，要求 `org_info` 里存在 id 1~6，
+  而 **id 2~8 全部由 `04` 创建** —— 跳过 `04` 直接跑 `07`，新活动的组织外键就会落错。
+- **学院字典只在 `10` 里**（`03` 的 8 类字典没有 `college`）：新环境必须跑到 `10`，否则注册必被拒。
+- **`12` 放最后**：它给三场图文演示活动定的名额是 20 / 35 / 18，先跑 `12` 再跑 `07` 的话，
+  `07` 的「名额 < 46 一律抬到 46」回填会把这几个数改掉。
+- ⚠️ 动 `02` 这种 DDL 前，先清掉库里 `idle in transaction` 的陈旧会话，否则 `DROP TABLE` 会一直等锁
+  （2026-09-25 实测白等 618 秒；排查与处理见 `CLAUDE.md` 同一条）。
 
 `05`、`06` 是**纯增量、可重复执行**的补列脚本：已有库（含已导入演示数据的库）直接按序号接着执行即可，
 不必重跑 `02`；重跑也不会改坏数据（只建缺失的列/索引，回填只填 NULL 行）。
 
 `07_demo_scale.sql` 是**演示数据放大**脚本（增量，可选，仅供开发调试与答辩演示），性质与 `05`、`06` 相同：
-**纯增量、可重复执行**，**前置条件是先跑完 `01` → `06`**。
+**纯增量、可重复执行**，**前置条件是先跑完 `01` → `06`**；其中 **`04` 是硬前置**
+（`07` 的新活动按 `org_id = 1 + (g % 6)` 取组织，id 2~8 全部由 `04` 创建）。
 
 `08_password_bcrypt.sql` 是**口令加密迁移**脚本（增量，可重复执行），只服务于老库：
 后端 B15 把口令校验从明文相等改成了 BCrypt 比对（`PasswordUtils.matches` 对明文记录一律返回 false），
@@ -95,17 +113,22 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backen
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
 # 仅老库需要（新库跳过）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 08_password_bcrypt.sql
-# 活动图片字段 + 少量图文演示数据
+# 学院字典（新环境必需）+ 活动图片字段 + 少量图文演示数据
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 10_base_and_test_accounts.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 11_activity_images.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 12_activity_images_demo.sql
+# 只读验收（可重复执行；期望「检查项总数 20，违规合计 0」）
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
 ```
 
 ```bash
 # 方式二：一次跑完
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
 cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql 07_demo_scale.sql \
-  11_activity_images.sql 12_activity_images_demo.sql \
+  10_base_and_test_accounts.sql 11_activity_images.sql 12_activity_images_demo.sql \
   | psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait
+# 再单独跑一次只读自检（它不改变数据，也可以随时单独执行）
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
 ```
 
 也可以用 DBeaver / pgAdmin 等图形工具依次打开执行。
