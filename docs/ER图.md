@@ -5,11 +5,15 @@
 
 数据库：PostgreSQL（脚本标注 16+，当前环境 18.6），库名 `volunteer_cert_portrait`。
 
-- `sql/02_schema.sql` —— 基础结构：16 张表 + 表/字段注释 + 10 个命名索引
+- `sql/02_schema.sql` —— 基础结构：16 张表 + 表/字段注释 + 11 个命名索引
 - `sql/05_backend_gap_fix.sql` —— 补列 15 个 + 索引 4 个 + 部分唯一索引 1 个
 - `sql/06_backend_gap_fix2.sql` —— 补列 9 个 + 唯一约束 1 个 + 索引 11 个（另有 1 条是 05 已建索引的幂等重申）
 - `sql/07_demo_scale.sql` —— 补列 1 个（`activity_category.remark`）+ 演示数据放大（活动 386 / 学生 1500 / 报名 10719）
 - `sql/11_activity_images.sql` —— `attachment` 补 3 个图片元数据列 + 1 个排序索引
+  ⚠️ **口径更正（2026-09-25 逐行核对 `sql/02_schema.sql:220-222` 与 `:505` 后）**：这 3 个列与
+  `idx_attachment_biz_sort` **在 `02_schema.sql` 的建表语句里就已经存在**，所以 `sql/11` 对**新建库是幂等的空操作**
+  （对老库补列、对新库只是重申）。因此**全库真实「补列」总数是 25，不是 28**
+  （`05` 补 15 + `06` 补 9 + `07` 补 1）；`02` 的命名索引是 **11 条**（本文件此前写 10 个，已更正）。
 
 即本图反映的是 **02 + 05 + 06 + 07 + 11 叠加后**的最终结构，不是单独 `02` 的样子。
 `sql/03_init_data.sql`、`sql/04_demo_data.sql`、`sql/08_password_bcrypt.sql` 只写数据、不改结构，不影响本图。
@@ -67,9 +71,9 @@ erDiagram
         varchar biz_type "ACTIVITY / ORG / AVATAR"
         bigint biz_id "多态业务ID，无物理外键"
         varchar file_url "访问地址"
-        varchar content_type "MIME 类型，11 补列"
-        varchar caption "图片说明，11 补列"
-        int sort_order "展示顺序，11 补列"
+        varchar content_type "MIME 类型（02 建表已含；11 幂等重申）"
+        varchar caption "图片说明（02 建表已含；11 幂等重申）"
+        int sort_order "展示顺序（02 建表已含；11 幂等重申）"
     }
 
     org_info {
