@@ -93,6 +93,70 @@
 .ink-act-count{flex:none; font-size:13px; color:var(--c-ink-3); white-space:nowrap; font-family:var(--font-mono)}
 .ink-act-count-num{color:var(--c-ink); font-weight:700}
 
+/* ---------- 活动卡片 · 网格版（浏览志愿活动页） ----------
+   结构与参考稿一致：封面在上 → 标题 → 底栏「日期 + 指标」。
+   视觉仍走水墨风令牌（零圆角、细墨线、纸白底），不引入圆角与投影。
+   注意与上面的 .ink-act-card 是两套：首页「本期志愿活动」仍用竖排键值那套。 */
+.act-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px}
+.ink-agc{
+  position:relative; display:flex; flex-direction:column;
+  background:var(--c-panel); border:1px solid var(--c-line);
+  transition:border-color .2s ease;
+}
+.ink-agc:hover{border-color:var(--c-ink)}
+.ink-agc-cover{
+  position:relative; display:block; aspect-ratio:16 / 9; overflow:hidden;
+  border-bottom:1px solid var(--c-line-2); background:var(--c-line-2);
+}
+.ink-agc-cover img{display:block; width:100%; height:100%; object-fit:cover; transition:transform .45s ease}
+.ink-agc:hover .ink-agc-cover img{transform:scale(1.04)}
+/* 无封面时的印章式占位。演示库里 39 场已发布活动只有 3 场有封面，
+   占位样式是多数卡片的第一眼观感，不能留成一块死灰。
+   底色取纸白 --c-bg 而不是 --c-line-2：后者整片压下来太重，
+   与水墨风「大量留白」的基调相反。 */
+.ink-agc-fallback{
+  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%; background:var(--c-bg);
+}
+.ink-agc-seal{
+  display:flex; align-items:center; justify-content:center;
+  width:54px; height:54px; background:#fff;
+  font-family:var(--font-display); font-size:24px; line-height:1;
+  color:var(--tone, var(--c-a2)); border:1px solid var(--tone, var(--c-a2));
+}
+.ink-agc-type{
+  position:absolute; top:0; left:0; padding:3px 10px;
+  font-family:var(--font-display); font-size:12px; letter-spacing:.1em;
+  color:#fff; background:var(--c-a3);
+}
+/* 状态标签压在封面右上角。StatusTag 是子组件，scoped 样式够不到它的根元素，
+   所以这条必须留在全局 ink.css 里。 */
+.ink-agc-cover .ink-status{position:absolute; top:8px; right:8px}
+.ink-agc-body{flex:1 1 auto; padding:18px 18px 0}
+.ink-agc-title{
+  font-family:var(--font-display); font-size:17px; line-height:1.5; letter-spacing:.02em;
+  color:var(--c-ink); overflow:hidden; min-height:3em;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+}
+.ink-agc-title a{color:inherit}
+/* 去掉「详情」按钮后整卡可点，靠标题转朱砂给出可点提示 */
+.ink-agc:hover .ink-agc-title a{color:var(--c-a2)}
+/* 拉伸链接：标题上的链接铺满整张卡片，点封面、点留白都能进详情。
+   卡片本身是 position:relative，最近的定位祖先是 .ink-agc 而不是封面。 */
+.ink-agc-title a::after{content:""; position:absolute; inset:0}
+.ink-agc-sub{
+  margin-top:10px; font-size:13px; color:var(--c-ink-3);
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+}
+.ink-agc-foot{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px;
+  margin-top:16px; padding:12px 18px; border-top:1px solid var(--c-line-2);
+  font-family:var(--font-mono); font-size:12px; color:var(--c-ink-3);
+}
+.ink-agc-stats{display:flex; align-items:center; gap:14px}
+.ink-agc-foot-num{color:var(--c-ink); font-weight:700}
+.ink-agc-sk-cover{display:block; width:100%; aspect-ratio:16 / 9}
+
 /* ---------- 印章式画像标签 ---------- */
 /* 4 列而不是原型的 6 列：标签由 6 类改为 8 类后（对齐后端 PortraitTagEnum），
    6 列会排成「6 + 2」并在第二行留 4 个空位。8 项正好两行各 4 项。 */
@@ -482,6 +546,8 @@
   .ink-stat-card:nth-child(3n){border-right:1px solid var(--c-line)}
   .ink-stat-card:nth-child(2n){border-right:0}
   .grid-2, .grid-3{grid-template-columns:1fr; gap:44px}
+  /* 活动卡片三列在平板宽度会挤成窄条，这里退两列而不是直接掉到一列 */
+  .act-grid{grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px}
   .tags{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ink-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ink-form-grid{grid-template-columns:1fr}
@@ -512,6 +578,7 @@
   .stats{grid-template-columns:1fr}
   .ink-stat-card{border-right:0 !important}
   .tags{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .act-grid{grid-template-columns:1fr}
   .ink-flow{grid-template-columns:1fr}
   .ink-flow-step{padding-left:0 !important; border-right:0}
   .top-nav{gap:16px}
