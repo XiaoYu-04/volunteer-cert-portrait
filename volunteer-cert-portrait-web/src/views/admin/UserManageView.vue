@@ -77,6 +77,7 @@ const form = ref({
   username: '',
   name: '',
   role: 'STUDENT',
+  studentNo: '',
   college: '',
   phone: '',
   email: '',
@@ -91,12 +92,26 @@ const errors = ref({})
  */
 const needCollege = computed(() => dialog.value.mode === 'create' && form.value.role === 'STUDENT')
 
+/**
+ * 学号与学院同理：只有「新增学生」才收，且是必填。
+ *
+ * 与学院的区别在于学号**可以**在建档时指定（学院也可以），但学号还要查重 ——
+ * 后端 UserServiceImpl 用的是同一条件（学生角色）、同一句文案。
+ * 编辑态不收学号，理由与学院完全一样：这次写路径只 patch sys_user，
+ * 而 student_no 落在 student_info 上，表单里放一个改了不生效的字段只会误导。
+ */
+const needStudentNo = needCollege
+
+/** 学号规则：纯数字 4-20 位。与后端及注册页同一条 */
+const RE_STUDENT_NO = /^[0-9]{4,20}$/
+
 function openCreate() {
   form.value = {
     id: null,
     username: '',
     name: '',
     role: 'STUDENT',
+    studentNo: '',
     college: '',
     phone: '',
     email: '',
@@ -112,7 +127,8 @@ function openEdit(row) {
     username: row.username,
     name: row.name,
     role: row.role,
-    // 用户列表不返回学院（它在 student_info 上），编辑态也不提交它
+    // 用户列表不返回学院与学号（两者都在 student_info 上），编辑态也不提交它们
+    studentNo: '',
     college: '',
     phone: row.phone,
     email: row.email,
@@ -128,6 +144,9 @@ function validate() {
   if (dialog.value.mode === 'create' && !item.username.trim()) next.username = '请填写用户名'
   if (!item.name.trim()) next.name = '请填写姓名'
   if (!item.role) next.role = '请选择角色'
+  if (needStudentNo.value && !RE_STUDENT_NO.test(item.studentNo.trim())) {
+    next.studentNo = item.studentNo.trim() ? '学号为 4-20 位数字' : '请填写学号'
+  }
   if (needCollege.value && !item.college) next.college = '请选择学院'
   errors.value = next
   return !Object.keys(next).length
@@ -143,7 +162,8 @@ async function submit() {
         username: item.username.trim(),
         name: item.name.trim(),
         role: item.role,
-        // 非学生不带这个字段：后端只在学生角色下读它
+        // 学号与学院都只在学生角色下带：后端也只在学生角色下读它们
+        studentNo: needStudentNo.value ? item.studentNo.trim() : undefined,
         college: needCollege.value ? item.college : undefined,
         phone: item.phone.trim(),
         email: item.email.trim(),
@@ -376,6 +396,22 @@ function resetQuery() {
               {{ role.name }}
             </option>
           </select>
+        </InkField>
+
+        <InkField
+          v-if="needStudentNo"
+          label="学号"
+          required
+          :error="errors.studentNo"
+          hint="4-20 位数字"
+        >
+          <input
+            v-model.trim="form.studentNo"
+            class="ink-input"
+            type="text"
+            inputmode="numeric"
+            placeholder="如 20230001"
+          />
         </InkField>
 
         <InkField v-if="needCollege" label="学院" required :error="errors.college">

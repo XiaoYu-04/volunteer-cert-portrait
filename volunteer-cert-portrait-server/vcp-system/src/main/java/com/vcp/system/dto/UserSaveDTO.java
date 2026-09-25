@@ -41,6 +41,21 @@ public class UserSaveDTO implements Serializable {
      */
     private String college;
 
+    /**
+     * 学号，仅「新增用户 + 角色为学生」时使用，此时必填。
+     *
+     * <p>取值必须是 4-20 位纯数字，由 Service 校验 —— 与注册接口同一条规则。
+     * 刻意不写死位数：库内现有学号三种形态并存（{@code 20230001} 八位 /
+     * {@code 2023100001} 十位 / {@code S000011} 占位），固定位数会把扩量数据判成非法。
+     *
+     * <p>非学生角色忽略本字段（与 {@code college} 的处理方式一致）：
+     * 学校/组织管理员在 {@code student_info} 里没有对应行，建档只在学生分支发生。
+     *
+     * <p>修改用户时同样忽略：{@code updateUser} 只 patch {@code sys_user}，
+     * 学号落在 {@code student_info} 上，改它属于另一条写路径（补录学生档案）。
+     */
+    private String studentNo;
+
     /** 初始密码，仅新增时使用；留空则用默认密码 */
     private String password;
 }

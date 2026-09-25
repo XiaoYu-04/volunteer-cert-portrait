@@ -4,6 +4,10 @@ import { ok, fail, currentUserId, nextId, now, persistUser } from './_helpers'
 /* 注册校验。前端已拦一道，这里再拦一道 —— 客户端校验只是体验优化，
    不能当成数据守门人，真实后端同样必须自行校验。 */
 const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
+/* 学号：4-20 位纯数字。注册的格式校验与登录的「纯数字 ⇒ 当学号查」共用这一条，
+   system.js 新增学生那条 handler 也 import 它 —— 两处各写一份的话，改了位数区间
+   就会出现「注册能收下、登录却认不出」。 */
+export const RE_STUDENT_NO = /^[0-9]{4,20}$/
 const RE_PHONE = /^1[3-9]\d{9}$/
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -50,11 +54,27 @@ export default [
     handler: () => ok(collegeOptions()),
   },
 
+  /* 登录：请求体字段仍叫 username，语义是「用户名**或**学号」（契约冻结，别改名）。
+     识别规则与后端 AuthServiceImpl 完全一致：trim 后是纯数字就当学号查，
+     否则当用户名查 —— 判据只用「形态」，不看这个字符串是否真的存在的账号，
+     所以「纯数字但不存在」与「字母开头但不存在」两条路径返回的是同一句话。
+
+     纯数字走学号路径时还带一次兜底：按学号查不到，再按用户名查一次。
+     学号与用户名是两个命名空间（前者在 students.studentNo，后者在 users.username），
+     完全可能撞在一起 —— 少了这次兜底，「用户名叫 20230001」的人就只能改用户名。 */
   {
     method: 'post',
     path: '/v1/auth/login',
     handler: ({ body }) => {
-      const user = users.find((u) => u.username === body.username)
+      const account = String(body.username == null ? '' : body.username).trim()
+      // 学号路径：studentNo → student.id → user.studentId，两次索引缺一不可。
+      // 只按 studentNo 找 student 是不够的：账号那一行认的是 students.id。
+      const matchedStudent = RE_STUDENT_NO.test(account)
+        ? students.find((s) => s.studentNo === account)
+        : null
+      const user =
+        (matchedStudent && users.find((u) => u.studentId === matchedStudent.id)) ||
+        users.find((u) => u.username === account)
       if (!user || user.password !== body.password) {
         return fail(20001, '用户名或密码错误')
       }
@@ -79,6 +99,17 @@ export default [
       if (!String(body.name || '').trim()) {
         return fail(10001, '姓名不能为空')
       }
+      /* 学号：格式必须合法，必填。位置紧跟姓名 —— 与后端 AuthServiceImpl.register
+         逐行对齐（那边也是 username → name → studentNo → password → …），
+         同时与前端注册表单的字段顺序（用户名 / 姓名 / 学号 / 学院）一致，
+         出错时高亮的正是用户眼里从上往下第一个没填对的框。
+         空着不填与格式写错给同一条提示：对用户来说是同一件事。
+         查重不在这里，排在下面那组查重里 —— 顺序反了的话，一个格式非法的输入
+         会先报「已被注册」，把人引到错误的修改方向。 */
+      const studentNo = String(body.studentNo == null ? '' : body.studentNo).trim()
+      if (!RE_STUDENT_NO.test(studentNo)) {
+        return fail(10001, '学号为 4-20 位数字')
+      }
       // 学院必须命中字典里的启用项，不接受自由文本 —— 同一学院一旦有第二种写法，
       // 「按学院统计」就会把它算成另一个学院（与后端 AuthServiceImpl.register 同口径）。
       // 这条也保证「管理端删掉一个学院后，注册页再提交它一定被拒」。
@@ -101,18 +132,31 @@ export default [
       if (users.some((u) => u.phone === body.phone)) {
         return fail(10001, '该手机号已被注册')
       }
+      /* 学号查重与后端 register 同序，排在那两条查重之后（用户名 → 手机号 → 学号）。
+         文案「该学号已被注册」与后端一字不差。
+         学号是登录凭据之一（登录支持用户名或学号），撞号等于两个人抢同一个登录名。
+         库里 student_no 上有 UNIQUE 约束兜底，mock 里就靠这条内存查重。
+         注意它只查 students：mock 没有「逻辑删除」概念，档案删掉就是真删，
+         因此不存在后端那种「已被逻辑删除的学号查不出、却仍会撞库级唯一约束」的残留路径。 */
+      if (students.some((s) => s.studentNo === studentNo)) {
+        return fail(10001, '该学号已被注册')
+      }
       const id = nextId(users)
 
       /* 建档：会话里的 college / studentNo 都从 students 里取，漏建就会出现
          「注册成功、个人资料页却没有学院」。顺序也照后端 register 来 —— 先建档再建会话。
-         学号写占位值「S + 六位零填充的用户 id」：注册表单不收学号，而档案里这一项必填，
-         由主键派生既保证唯一，也和后端 StudentArchiveRegistrar 的口径一致。
+         学号写用户填的那个值。这里原来写的是「S + 六位零填充的用户 id」占位值，
+         理由是「注册表单不收学号」—— 表单现在收了，那条理由不再成立；
+         占位值还带来一个真实缺陷：学号形态是纯数字，S 开头的占位串永远登不进去，
+         「学号也能登录」对自助注册的账号就是空话。
+         唯一性由上面那条查重保证（与 student_no 的唯一约束同口径）。
          注意 students 不落盘（_helpers 只持久化账号），刷新后这份档案随 mock 重置，
-         与「注册后刷新仍能登录」的既有取舍保持一致。 */
+         与「注册后刷新仍能登录」的既有取舍保持一致 —— 也就是说刷新后 user.studentId
+         指向的档案行没了，个人资料页的学院与学号会空，账号本身仍能登。 */
       const student = {
         id: nextId(students),
         name: body.name,
-        studentNo: `S${String(id).padStart(6, '0')}`,
+        studentNo,
         // 注册表单未采集的档案字段留空，等管理员在用户管理里补全
         gender: '',
         college: body.college,

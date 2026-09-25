@@ -29,7 +29,7 @@ import java.math.BigDecimal;
  * 两个调用点各写一遍只会多两处漏写的可能。
  *
  * <p><b>刻意不做的两件事</b>：不写 {@code student_profile}（画像快照由 vcp-portrait
- * 的重算任务生成），不写 {@code public_welfare_level}（理由见 {@link #ensureArchive(Long, String)}）。
+ * 的重算任务生成），不写 {@code public_welfare_level}（理由见 {@link #ensureArchive(Long, String, String)}）。
  */
 @Slf4j
 @Component
@@ -53,9 +53,14 @@ public class StudentArchiveRegistrar {
      *
      * <p><b>四个字段的口径</b>：
      * <ul>
-     *   <li>{@code student_no} 写占位学号 {@code S + 六位零填充的 userId}（userId=42 → S000042）。
-     *       注册表单不收集学号，而该列 NOT NULL UNIQUE 必须给值；由主键派生可保证唯一、
-     *       不必额外查重，也不会与种子数据的 8 位数字学号冲突。</li>
+     *   <li>{@code student_no} 优先写调用方传入的学号：两条调用路径（学生自助注册
+     *       {@code AuthServiceImpl.register}、管理员新增用户
+     *       {@code UserServiceImpl.createUser}）现在都收学号，且各自在调用前校验过格式
+     *       （{@code ^[0-9]{4,20}$}）与唯一性，这里不再重复判。
+     *       <b>传空时退回占位学号 {@code S + 六位零填充的 userId}</b>（userId=42 → S000042）：
+     *       该列 NOT NULL UNIQUE 必须给值，而由主键派生可保证唯一、不必额外查重，
+     *       也不会与种子数据的纯数字学号冲突。这条兜底路径服务于历史调用与将来可能出现的
+     *       「系统内部建号」场景 —— 那种场合没有人能提供学号，硬要求必填只会把建档整条断掉。</li>
      *   <li>{@code total_duration} 写 0：它是累计时长的权威值，只由 vcp-certification
      *       在时长审核通过时累加，建号时不该有别的初值。</li>
      *   <li>{@code public_welfare_level} <b>留空</b>：等级阈值枚举 PublicWelfareLevelEnum
@@ -71,13 +76,15 @@ public class StudentArchiveRegistrar {
      *       真要收下 null，说明上游漏了校验，属于该修上游的 bug，不该靠建档层静默兜住。</li>
      * </ul>
      *
-     * @param userId  用户 id（{@code sys_user.id}）
-     * @param college 学院名，来自注册表单或管理员新增用户表单
-     * @return 该用户的档案实体（含 id 与占位学号，调用方拿去写会话）；已有档案时返回库里那一行
-     * @throws BusinessException 用户 id 为空（10001）、或该账号已有档案（10000）
+     * @param userId    用户 id（{@code sys_user.id}）
+     * @param college   学院名，来自注册表单或管理员新增用户表单
+     * @param studentNo 学号，来自注册表单或管理员新增用户表单；<b>允许为空</b>，
+     *                  为空时按 {@code S + 六位零填充的 userId} 生成占位学号
+     * @return 该用户的档案实体（含 id 与学号，调用方拿去写会话）；已有档案时返回库里那一行
+     * @throws BusinessException 用户 id 为空（10001）、该账号已有档案或学号已被占用（10000）
      */
     @Transactional(rollbackFor = Exception.class)
-    public StudentInfo ensureArchive(Long userId, String college) {
+    public StudentInfo ensureArchive(Long userId, String college, String studentNo) {
         if (userId == null) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "建档缺少用户 id");
         }
@@ -85,6 +92,9 @@ public class StudentArchiveRegistrar {
         // 先查后插：历史数据（老账号没档案、之后才补）与重复调用都在这里复用，不指望唯一约束兜。
         // 查询自带 @TableLogic 的 deleted = 0，逻辑删除过的档案查不出来、会落到下面的插入分支，
         // 那是预期行为：行还在，UNIQUE(user_id) 挡住重复插入并转成可读提示（见 catch）。
+        // 已有档案时直接返回，**不把新学号覆盖上去**：本接口是建档不是补录，
+        // 覆盖会绕过调用方的学号查重（不匹配时直接撞库里的唯一约束，用户拿到的是系统错误），
+        // 也会让「改学号」这个动作从一条可审计的补录路径变成建档的副作用。补录入口另开。
         StudentInfo existing = findByUserId(userId);
         if (existing != null) {
             return existing;
@@ -92,7 +102,7 @@ public class StudentArchiveRegistrar {
 
         StudentInfo archive = new StudentInfo();
         archive.setUserId(userId);
-        archive.setStudentNo(placeholderStudentNo(userId));
+        archive.setStudentNo(hasText(studentNo) ? studentNo.trim() : placeholderStudentNo(userId));
         archive.setCollege(college);
         archive.setTotalDuration(BigDecimal.ZERO);
         try {
@@ -103,8 +113,10 @@ public class StudentArchiveRegistrar {
             // 回查只会再抛一次 25P02，盖掉真正的原因。
             // 原始异常进日志（约束名在里面，能区分撞的是 user_id 还是 student_no），
             // 对外只给可读文案，不把数据库异常抛到接口上。
-            log.warn("[建档] 唯一约束冲突，userId={}", userId, e);
-            throw new BusinessException(ErrorCodeEnum.SYSTEM_ERROR, "该账号已有学生档案，请联系学校管理员核对数据");
+            // 撞 student_no 时这句文案同样成立：唯一约束就是「一人一号」的最终守门人，
+            // 能把并发下两个请求同时通过上游查重、抢同一个学号的情况接住。
+            log.warn("[建档] 唯一约束冲突，userId={}, studentNo={}", userId, archive.getStudentNo(), e);
+            throw new BusinessException(ErrorCodeEnum.SYSTEM_ERROR, "该账号已有学生档案或学号已被占用，请联系学校管理员核对数据");
         }
         return archive;
     }
@@ -129,5 +141,19 @@ public class StudentArchiveRegistrar {
         return studentInfoMapper.selectOne(Wrappers.<StudentInfo>lambdaQuery()
                 .eq(StudentInfo::getUserId, userId)
                 .last("LIMIT 1"));
+    }
+
+    /**
+     * 判断学号是否给了值。
+     *
+     * <p>这里只判空、不做格式校验：学号的格式与唯一性由各自的上游负责
+     * （见 {@link #ensureArchive(Long, String, String)} 里 student_no 那段），
+     * 建档层再判一遍只会在两处留下可能漂移的规则。
+     *
+     * @param value 学号，允许为 null
+     * @return 非 null 且非空白时为 true
+     */
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

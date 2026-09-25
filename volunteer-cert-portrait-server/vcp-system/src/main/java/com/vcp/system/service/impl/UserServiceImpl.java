@@ -17,9 +17,11 @@ import com.vcp.system.dto.ResetPasswordDTO;
 import com.vcp.system.dto.StatusUpdateDTO;
 import com.vcp.system.dto.UserQuery;
 import com.vcp.system.dto.UserSaveDTO;
+import com.vcp.system.entity.StudentInfo;
 import com.vcp.system.entity.SysRole;
 import com.vcp.system.entity.SysUser;
 import com.vcp.system.entity.SysUserRole;
+import com.vcp.system.mapper.StudentInfoMapper;
 import com.vcp.system.mapper.SysUserMapper;
 import com.vcp.system.mapper.SysUserRoleMapper;
 import com.vcp.system.service.DictService;
@@ -33,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * 用户管理服务实现。
@@ -45,10 +48,9 @@ import java.util.Objects;
  *   <li><b>角色列一次批量补齐</b>：分页查出几十条后再用 {@link RoleResolver#byUserIds}
  *       一次性取角色，避免逐条查造成 N+1。</li>
  *   <li><b>新增用户按角色决定建不建档案</b>：学生角色会顺手建一行 {@code student_info}
- *       （占位学号的口径见 {@link StudentArchiveRegistrar}），管理员角色不建 ——
+ *       （学号与学院的口径见 {@link StudentArchiveRegistrar}），管理员角色不建 ——
  *       档案列表与画像重算都按 {@code student_info} 认人，给管理员建档等于把管理员算成学生。
- *       学院由表单提交并校验（与注册接口同一条规则），学号仍由系统占位 ——
- *       学号是学籍信息，管理端表单不收，等有补录页面时再补。</li>
+ *       学院与学号都由表单提交并校验（与注册接口同一条规则），非学生角色两列都忽略。</li>
  *   <li><b>删除用户走销档</b>：不只是删账号，还要级联清理该学生的档案与业务数据
  *       （见 {@link StudentArchivePurger} 与 {@link #deleteUser(Long)}）。</li>
  * </ol>
@@ -64,9 +66,26 @@ public class UserServiceImpl implements UserService {
     /** 学院字典的类型码，与注册接口用的是同一个（sys_dict.dict_type） */
     private static final String DICT_TYPE_COLLEGE = "college";
 
+    /**
+     * 学号规则：4-20 位纯数字，与注册接口（{@code AuthServiceImpl.RE_STUDENT_NO}）
+     * 和前端 {@code RegisterView} 的校验一字不差。
+     *
+     * <p>刻意不写死位数：库内现有学号三种形态并存（{@code 20230001} 八位 /
+     * {@code 2023100001} 十位 / {@code S000011} 占位），固定位数会把扩量数据判成非法。
+     */
+    private static final Pattern RE_STUDENT_NO = Pattern.compile("^[0-9]{4,20}$");
+
     private final SysUserMapper userMapper;
 
     private final SysUserRoleMapper userRoleMapper;
+
+    /**
+     * 学生档案 Mapper：仅用于新增学生前的学号查重。
+     *
+     * <p>建档本身仍走 {@link StudentArchiveRegistrar}，不在这里直接 insert ——
+     * 那是建档规则的唯一落点。
+     */
+    private final StudentInfoMapper studentInfoMapper;
 
     /** 建档入口：新增用户被赋予学生角色时补一行 student_info */
     private final StudentArchiveRegistrar studentArchiveRegistrar;
@@ -152,11 +171,29 @@ public class UserServiceImpl implements UserService {
         // 而档案一旦建好，本接口没有补录入口（编辑用户只 patch sys_user，不碰 student_info），
         // 所以这里必须挡住，不能像以前那样静默写 null。规则与注册接口同一条，
         // 判定收敛在 DictService.containsEnabled 一处，免得两边漂移出「注册能选、这里不能选」。
+        // 学号与学院同进同出：非学生角色两列都保持 null（与下面建档只在学生分支调用是同一套口径）。
         String college = null;
+        String studentNo = null;
         if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
             college = trimToNull(dto.getCollege());
             if (college == null || !dictService.containsEnabled(DICT_TYPE_COLLEGE, college)) {
                 throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "请选择学院");
+            }
+
+            // 学号格式校验放 Service 而不是 DTO 的注解上，与注册接口口径一致：
+            // 注解的 message 拼装不出前端定死的文案，放这里两边提示才能一字不差。
+            studentNo = trimToNull(dto.getStudentNo());
+            if (studentNo == null || !RE_STUDENT_NO.matcher(studentNo).matches()) {
+                throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "学号为 4-20 位数字");
+            }
+
+            // 学号查重：student_no 上有唯一约束，不先查一次的话撞库只能给出"系统繁忙"，
+            // 管理员根本不知道自己填的学号已被占用。
+            // 注意查询自带 @TableLogic 的 deleted = 0：逻辑删除过的学号查不出来，
+            // 那种学号会一路走到插入、被数据库的唯一约束挡下（约束不认 deleted），
+            // 拿到的文案不如这里直白。这是既有取舍，与用户名查重的口径一致，保持一致即可。
+            if (existsStudentNo(studentNo)) {
+                throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "该学号已存在");
             }
         }
 
@@ -186,8 +223,10 @@ public class UserServiceImpl implements UserService {
         // 只有学生角色才建档：学校/组织管理员在 student_info 里本来就没有对应行，
         // 顺手建了会让档案列表与画像重算把他们也算成学生。
         // 与上面的插入同处一个事务，建档失败会连账号一起回滚。
+        // 学号传上面校验过、且已查过重的那一个。上面的查重与本方法是两个独立动作，
+        // 两次请求同时通过查重的窗口由 student_no 的唯一约束兜底（见 StudentArchiveRegistrar）。
         if (RoleCodeEnum.STUDENT.getCode().equals(role.getRoleCode())) {
-            studentArchiveRegistrar.ensureArchive(user.getId(), college);
+            studentArchiveRegistrar.ensureArchive(user.getId(), college, studentNo);
         }
     }
 
@@ -388,6 +427,20 @@ public class UserServiceImpl implements UserService {
         return userMapper.selectOne(Wrappers.<SysUser>lambdaQuery()
                 .eq(SysUser::getUsername, username)
                 .last("LIMIT 1"));
+    }
+
+    /**
+     * 学号是否已被某个学生档案占用。
+     *
+     * <p>用 {@code exists} 而不是 {@code selectOne} + 判空：这里只关心"有没有"，
+     * 不需要把整行拉回来（student_info 若干列可能很大）。
+     *
+     * @param studentNo 学号，调用方已保证非空
+     * @return 已存在时为 true
+     */
+    private boolean existsStudentNo(String studentNo) {
+        return studentInfoMapper.exists(Wrappers.<StudentInfo>lambdaQuery()
+                .eq(StudentInfo::getStudentNo, studentNo));
     }
 
     private List<Long> idsOf(List<SysUser> users) {
