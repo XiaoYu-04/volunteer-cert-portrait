@@ -1,5 +1,5 @@
 import { users, roles, students, notices, logs, collegeDict, orgList } from './dataset'
-import { collegeOptions } from './auth'
+import { collegeOptions, RE_STUDENT_NO } from './auth'
 import { DICT_DEFS } from '@/stores/dict'
 import { ok, fail, paginate, like, eq, nextId, now } from './_helpers'
 
@@ -67,6 +67,27 @@ export default [
         }
       }
 
+      // 学号：学生角色必填，非学生角色整个字段忽略 —— 与上面 college 同一套处理
+      // （后端 UserServiceImpl.createUser 里两者同在 `if (STUDENT)` 分支内，
+      //  非学生角色两列都保持 null）。忽略而不是报错：管理端的表单在学生角色下
+      // 才渲染学号输入框，切换角色后残留的值不该让一次合法的提交失败。
+      //
+      // 查重必须排在格式校验之后：格式非法的输入若先报「该学号已存在」，
+      // 管理员会去改学号，而真正的问题是位数不对。
+      let studentNo = null
+      if (role === 'STUDENT') {
+        studentNo = String(body.studentNo == null ? '' : body.studentNo).trim()
+        if (!RE_STUDENT_NO.test(studentNo)) {
+          return fail(10001, '学号为 4-20 位数字')
+        }
+        // 文案与注册的「该学号已被注册」刻意不同：这里的主语是管理员正在录入的
+        // 一条新档案，后端 UserServiceImpl 用的也是「该学号已存在」这一句。
+        // 同样只查 students —— mock 无逻辑删除，不存在后端那种残留学号的兜底路径。
+        if (students.some((s) => s.studentNo === studentNo)) {
+          return fail(10001, '该学号已存在')
+        }
+      }
+
       const id = nextId(users)
       const user = {
         id,
@@ -74,7 +95,8 @@ export default [
         password: body.password || '123456',
         name: body.name,
         role,
-        roleLabel: { STUDENT: '学生', ORG_ADMIN: '组织管理员', SCHOOL_ADMIN: '学校管理员' }[role] || '学生',
+        roleLabel:
+          { STUDENT: '学生', ORG_ADMIN: '组织管理员', SCHOOL_ADMIN: '学校管理员' }[role] || '学生',
         status: 'ACTIVE',
         studentId: null,
         orgId: body.orgId || null,
@@ -85,16 +107,17 @@ export default [
       }
       users.push(user)
 
-      // 后端建的是 student_info 那一行（学号用 S + 六位零填充的 userId 占位）。
-      // mock 里同样补一行：学院管理页的学生数是现算的，不补的话
-      // 「刚建的学生不算在学院占用里」，删学院时就会放行一个本该被拦的删除。
+      // 后端建的是 student_info 那一行。mock 里同样补一行：学院管理页的学生数是现算的，
+      // 不补的话「刚建的学生不算在学院占用里」，删学院时就会放行一个本该被拦的删除。
+      // 学号写管理员填的那个值（原来派生自 userId 的「S + 六位零填充」占位值，
+      // 现在表单会收，占位值反而让新增的学生无法用学号登录 —— 学号形态是纯数字）。
       if (role === 'STUDENT') {
         const studentId = nextId(students)
         user.studentId = studentId
         students.push({
           id: studentId,
           name: body.name,
-          studentNo: `S${String(id).padStart(6, '0')}`,
+          studentNo,
           // 表单未采集的档案字段留空，与 /v1/auth/register 建档的写法一致
           gender: '',
           college,

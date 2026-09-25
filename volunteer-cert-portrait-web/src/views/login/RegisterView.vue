@@ -13,6 +13,7 @@ const toast = useToast()
 const form = reactive({
   username: '',
   name: '',
+  studentNo: '',
   college: '',
   password: '',
   confirm: '',
@@ -23,6 +24,7 @@ const form = reactive({
 const errors = reactive({
   username: '',
   name: '',
+  studentNo: '',
   college: '',
   password: '',
   confirm: '',
@@ -36,6 +38,10 @@ const loading = ref(false)
 const colleges = ref([])
 
 const RE_USERNAME = /^[a-zA-Z0-9_]{4,20}$/
+/** 学号只限「纯数字 + 长度区间」，刻意不写死位数：库内现有形态实测三种并存
+    （20230001 八位 / 2023100001 十位 / S000011 占位），
+    固定位数会把扩量数据判成非法。 */
+const RE_STUDENT_NO = /^[0-9]{4,20}$/
 /** 中国大陆手机号：11 位，1 开头，第二位 3-9 */
 const RE_PHONE = /^1[3-9]\d{9}$/
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -43,6 +49,7 @@ const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function validate() {
   errors.username = RE_USERNAME.test(form.username) ? '' : '用户名为 4-20 位字母、数字或下划线'
   errors.name = form.name.trim() ? '' : '请输入姓名'
+  errors.studentNo = RE_STUDENT_NO.test(form.studentNo) ? '' : '学号为 4-20 位数字'
   errors.college = form.college ? '' : '请选择学院'
   errors.password = form.password.length >= 6 ? '' : '密码至少 6 位'
   errors.confirm = form.confirm === form.password ? '' : '两次输入的密码不一致'
@@ -69,6 +76,7 @@ async function onSubmit() {
     const data = await register({
       username: form.username,
       name: form.name,
+      studentNo: form.studentNo,
       college: form.college,
       password: form.password,
       phone: form.phone,
@@ -111,6 +119,16 @@ async function onSubmit() {
 
           <InkField label="姓名" required :error="errors.name">
             <input v-model.trim="form.name" class="ink-input" type="text" autocomplete="name" />
+          </InkField>
+
+          <InkField label="学号" required :error="errors.studentNo" hint="4-20 位数字">
+            <input
+              v-model.trim="form.studentNo"
+              class="ink-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+            />
           </InkField>
 
           <InkField label="学院" required :error="errors.college">

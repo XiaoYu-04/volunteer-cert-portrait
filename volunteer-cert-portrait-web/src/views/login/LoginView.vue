@@ -14,7 +14,14 @@ const form = reactive({ username: '', password: '' })
 const errors = reactive({ username: '', password: '' })
 const loading = ref(false)
 
-/** 演示账号，一键填入 */
+/**
+ * 演示账号，一键填入。
+ *
+ * 这里刻意**不写学号**：mock 与真后端是两套互不相干的演示数据
+ * （真库 student → 张同学 / 20230001，mock → 陈思远 / 202210001），
+ * 把其中一个学号写进这份共用代码，切到另一套就成了一句话假话。
+ * 学号可登录这件事由输入框的 hint 说明，不靠演示区列值。
+ */
 const demos = [
   { role: '学生', username: 'student', password: '123456' },
   { role: '组织管理员', username: 'org_admin', password: '123456' },
@@ -29,7 +36,7 @@ function fill(demo) {
 }
 
 function validate() {
-  errors.username = form.username.trim() ? '' : '请输入用户名'
+  errors.username = form.username.trim() ? '' : '请输入用户名或学号'
   errors.password = form.password ? '' : '请输入密码'
   return !errors.username && !errors.password
 }
@@ -69,14 +76,14 @@ async function onSubmit() {
         <p class="auth-sub">高校志愿服务时长认证与公益画像数据分析系统</p>
 
         <form novalidate @submit.prevent="onSubmit">
-          <InkField label="用户名" required :error="errors.username">
+          <InkField label="账号" required :error="errors.username" hint="支持用户名或学号登录">
             <input
               v-model.trim="form.username"
               class="ink-input"
               type="text"
               autocomplete="username"
-              placeholder="请输入用户名"
-              @blur="errors.username = form.username ? '' : '请输入用户名'"
+              placeholder="用户名或学号"
+              @blur="errors.username = form.username ? '' : '请输入用户名或学号'"
             />
           </InkField>
 

@@ -49,7 +49,11 @@ import java.util.regex.Pattern;
  *       需要执行 {@code sql/08_password_bcrypt.sql} 刷一遍。</li>
  *   <li><b>连续登录失败会锁账号</b>：计数与判定都在 {@link LoginAttemptGuard}，
  *       且锁定检查必须排在查库与口令校验之前 —— 顺序一旦反过来，
- *       「已锁定」与「口令错误」的响应耗时不同，锁定状态本身就成了可探测的旁路信息。</li>
+ *       「已锁定」与「口令错误」的响应耗时不同，锁定状态本身就成了可探测的旁路信息。
+ *       计数 key 是用户原始输入（trim 后），不是解析出来的用户名，理由见 {@link #login}。</li>
+ *   <li><b>登录支持「用户名或学号」</b>：请求体字段名仍是 username，由
+ *       {@link #findByAccount(String)} 按「是否纯数字」决定查 student_info 还是 sys_user，
+ *       纯数字查不到学号时再按用户名兜底。前端与 mock 都无需感知这层。</li>
  *   <li><b>Sa-Token 会话里只写 roleCode / orgId / studentId / username 四个键</b>，
  *       不放联系方式。返回给前端的 {@link com.vcp.system.vo.SessionVO} 另含
  *       phone / email，仅供个人资料页回显本人数据 —— 前端只把 token 写进
@@ -63,6 +67,19 @@ public class AuthServiceImpl implements AuthService {
 
     /** 用户名规则，与前端 RegisterView 的校验一致 */
     private static final Pattern RE_USERNAME = Pattern.compile("^[a-zA-Z0-9_]{4,20}$");
+
+    /**
+     * 学号规则：纯数字 4-20 位，注册采集与登录识别共用同一条。
+     *
+     * <p>刻意不写死位数：库里现有形态实测三种并存 —— {@code 20230001}（8 位）、
+     * {@code 2023100001}（10 位扩量数据）、{@code S000011}（建档生成的占位学号）。
+     * 固定位数会把扩量数据判成非法。
+     *
+     * <p>两处用法不同、别混：注册时它是<b>准入门槛</b>，不匹配就报「学号为 4-20 位数字」；
+     * 登录时它只是<b>路由判据</b>，决定查 student_info 还是 sys_user，
+     * 绝不据此报格式错（{@code student} 这种含字母的输入走用户名路径完全合法）。
+     */
+    private static final Pattern RE_STUDENT_NO = Pattern.compile("^[0-9]{4,20}$");
 
     /** 手机号规则 */
     private static final Pattern RE_PHONE = Pattern.compile("^1[3-9]\\d{9}$");
@@ -108,26 +125,28 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginVO login(LoginDTO dto) {
-        String username = dto.getUsername() == null ? null : dto.getUsername().trim();
+        String account = dto.getUsername() == null ? null : dto.getUsername().trim();
 
-        // 锁定判定必须排在查库与口令校验之前：BCrypt 一次约 50-100ms，若先校验口令
-        // 再判锁定，「已锁定」与「口令错误」两条路径的耗时不同，锁定状态本身
-        // 就成了可探测的旁路信息；何况锁定期间即使口令正确也必须拒绝。
-        if (loginAttemptGuard.isLocked(username)) {
-            throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(username));
+        // 计数 key 用「用户原始输入 trim 后的值」，不要顺手改成解析出来的用户名：
+        // 锁定判定发生在查库之前（也就早于 BCrypt 校验），此刻还不知道这串输入对应哪个账号，
+        // 解析本身就要查库。若为了统一 key 把解析提到这里，就等于把查库挪到锁定检查之前 ——
+        // 「已锁定」与「口令错误」两条路径的耗时不再一致，锁定状态成了可探测的旁路信息。
+        // 何况锁定期间本来就必须拒绝，不能先查库。
+        if (loginAttemptGuard.isLocked(account)) {
+            throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(account));
         }
 
-        SysUser user = findByUsername(username);
+        SysUser user = findByAccount(account);
 
         // 用户不存在与密码错误返回同一个提示，避免被用来枚举系统里有哪些账号
         if (user == null || !PasswordUtils.matches(dto.getPassword(), user.getPassword())) {
             // 不存在的用户名同样计数：否则「连续错 5 次会被锁」只对真实账号成立，
             // 拿"锁没锁"一测就知道账号存不存在，上面那句防枚举就白写了
-            loginAttemptGuard.recordFailure(username);
+            loginAttemptGuard.recordFailure(account);
             // 这次失败刚好踩到阈值时给的是锁定文案而不是"用户名或密码错误"，
             // 让「账号不存在」与「存在但密码错」两条路径的返回完全一致
-            if (loginAttemptGuard.isLocked(username)) {
-                throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(username));
+            if (loginAttemptGuard.isLocked(account)) {
+                throw new BusinessException(ErrorCodeEnum.ACCOUNT_LOCKED, lockedMessage(account));
             }
             throw new BusinessException(ErrorCodeEnum.AUTH_FAILED, "用户名或密码错误");
         }
@@ -147,7 +166,7 @@ public class AuthServiceImpl implements AuthService {
         // 计数清零放在这两条"口令已通过但登不进去"的分支之后：停用与无角色都不算
         // 认证失败，若在口令匹配处就清零，拿一个口令正确的停用账号反复登录
         // 就能把该用户名的失败计数刷掉
-        loginAttemptGuard.clear(username);
+        loginAttemptGuard.clear(account);
 
         StudentInfo student = isStudent(role) ? findStudentByUserId(user.getId()) : null;
         Long orgId = isOrgAdmin(role) ? findOrgId(user.getId()) : null;
@@ -170,6 +189,12 @@ public class AuthServiceImpl implements AuthService {
         }
         if (nullToEmpty(dto.getName()).isBlank()) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "姓名不能为空");
+        }
+        // 学号：必填 + 纯数字 4-20 位。文案与前端 RegisterView 的 RE_STUDENT_NO 一字不差，
+        // 空着不填与格式写错给同一条提示 —— 对用户来说是同一件事（见 RegisterDTO 的注释）
+        String studentNo = dto.getStudentNo() == null ? null : dto.getStudentNo().trim();
+        if (!RE_STUDENT_NO.matcher(nullToEmpty(studentNo)).matches()) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "学号为 4-20 位数字");
         }
         // 口令规则收敛到 PasswordUtils.checkPolicy：注册、改密、管理员新增/重置共用一套，
         // 分散写迟早会在某个入口漏掉一条；它返回的文案可直接展示给用户
@@ -197,6 +222,14 @@ public class AuthServiceImpl implements AuthService {
         if (existsPhone(dto.getPhone())) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "该手机号已被注册");
         }
+        // 学号唯一性在插库前先查一次：student_no 列本身有 UNIQUE 约束，但撞约束抛出来的是
+        // 数据库异常，前端只会看到「系统繁忙」，用户不知道改哪里。这里给可读文案。
+        // 注意本查询自带 @TableLogic 的 deleted = 0，逻辑删除过的档案看不见 —— 那种残留
+        // 仍会撞库级唯一约束，属于兜底路径，不能靠它当主提示。
+        // 学号是登录凭据之一（登录支持用户名或学号），重复注册会让两个人抢同一个登录名
+        if (existsStudentNo(studentNo)) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "该学号已被注册");
+        }
 
         SysRole studentRole = roleResolver.byCode(RoleCodeEnum.STUDENT.getCode());
         if (studentRole == null) {
@@ -221,7 +254,8 @@ public class AuthServiceImpl implements AuthService {
         // 与上面两句同处一个事务（register 上有 @Transactional），建档失败连账号一起回滚，
         // 不会留下「有账号、无档案」的孤儿账号。
         // 学院在这里一并落库：student_info.college 目前只有注册这一条写入入口（缺陷 B30）
-        StudentInfo student = studentArchiveRegistrar.ensureArchive(user.getId(), college);
+        // 学号改由注册表单采集后原样落库，建档器不再生成 S+userId 占位值（旧账号的占位学号不受影响）
+        StudentInfo student = studentArchiveRegistrar.ensureArchive(user.getId(), college, studentNo);
 
         // 注册完直接登录，与前端 mock 一致（前端拿到 token 就写入登录态）
         establishSession(user, studentRole, null, student.getId());
@@ -323,11 +357,15 @@ public class AuthServiceImpl implements AuthService {
      * <p>带上剩余分钟数而不是只给错误码的默认文案：用户看到「请 3 分钟后再试」会等，
      * 看到「请稍后再试」会一直点，反而把锁定时间不断续上。
      *
-     * @param username 用户名
+     * <p>参数是登录计数用的 key，即用户<b>原始输入</b>（trim 后），可能是用户名也可能是学号，
+     * 不是解析出来的用户名 —— 与 {@link #login} 里计数所用的 key 必须是同一个，
+     * 否则这里会算出 0 分钟。文案里不出现这个值，所以用哪种形式都不影响展示。
+     *
+     * @param account 登录计数 key：用户原始输入（用户名或学号），已 trim
      * @return 可直接展示的文案
      */
-    private String lockedMessage(String username) {
-        return "账号已被锁定，请 " + loginAttemptGuard.remainingMinutes(username) + " 分钟后再试";
+    private String lockedMessage(String account) {
+        return "账号已被锁定，请 " + loginAttemptGuard.remainingMinutes(account) + " 分钟后再试";
     }
 
     /**
@@ -429,6 +467,61 @@ public class AuthServiceImpl implements AuthService {
         return trimmed.length() <= 2 ? trimmed : trimmed.substring(trimmed.length() - 2);
     }
 
+    /**
+     * 按「用户名或学号」定位账号。
+     *
+     * <p><b>判定顺序</b>：
+     * <ol>
+     *   <li>输入是<b>纯数字</b>（{@link #RE_STUDENT_NO}）→ 先按 {@code student_info.student_no}
+     *       查档案，命中就用它的 user_id 去查 {@code sys_user}。</li>
+     *   <li>学号查不到 → <b>再按用户名兜底查一次</b>。用户名规则本来就允许纯数字
+     *       （如 {@code 1234}），少了这一步这些老账号会突然登不进去。</li>
+     *   <li>输入含字母等非数字字符 → 直接走用户名路径（{@code student}、{@code stu100001}）。</li>
+     * </ol>
+     *
+     * <p><b>两个不查库的细节</b>：学号查不到档案时不再多查一次 {@code sys_user}
+     * —— 上面第 2 步的兜底已经覆盖；档案存在但用户被逻辑删除时返回 null
+     * （{@code sys_user} 自带 {@code @TableLogic}），表现为「用户名或密码错误」，
+     * 与账号不存在完全一致，不额外泄露"这个学号曾经存在"。
+     *
+     * <p>本方法只用于决定<b>查哪张表</b>，格式是否合法不由它判定：
+     * 登录识别不报格式错，{@code student} 这类输入走用户名路径本来就是对的。
+     *
+     * @param account 用户输入的账号（用户名或学号），已 trim
+     * @return 匹配到的用户；查不到返回 null
+     */
+    private SysUser findByAccount(String account) {
+        if (!hasText(account)) {
+            return null;
+        }
+        if (RE_STUDENT_NO.matcher(account).matches()) {
+            SysUser byStudentNo = findByStudentNo(account);
+            if (byStudentNo != null) {
+                return byStudentNo;
+            }
+        }
+        return findByUsername(account);
+    }
+
+    /**
+     * 按学号查账号：先查 {@code student_info}，再用 user_id 查 {@code sys_user}。
+     *
+     * <p>查询自带 {@code @TableLogic} 的 {@code deleted = 0}，已逻辑删除的档案查不出来。
+     * 这里也不做投影，理由见 CLAUDE.md 踩坑第 18 条（投影全 NULL 时 selectList 会塞 null）。
+     *
+     * @param studentNo 学号，纯数字
+     * @return 该学号对应的用户；学号不存在、档案已删或用户已删时返回 null
+     */
+    private SysUser findByStudentNo(String studentNo) {
+        StudentInfo student = studentInfoMapper.selectOne(Wrappers.<StudentInfo>lambdaQuery()
+                .eq(StudentInfo::getStudentNo, studentNo)
+                .last("LIMIT 1"));
+        if (student == null || student.getUserId() == null) {
+            return null;
+        }
+        return userMapper.selectById(student.getUserId());
+    }
+
     private SysUser findByUsername(String username) {
         if (!hasText(username)) {
             return null;
@@ -443,6 +536,21 @@ public class AuthServiceImpl implements AuthService {
             return false;
         }
         return userMapper.exists(Wrappers.<SysUser>lambdaQuery().eq(SysUser::getPhone, phone.trim()));
+    }
+
+    /**
+     * 学号是否已被占用。
+     *
+     * <p>用 {@code exists} 而不是查出整行：这里只关心有无，少传一份档案数据。
+     * 查询自带 {@code @TableLogic} 的 {@code deleted = 0}，逻辑删除过的档案不算占用
+     * （那种行仍会撞库级唯一约束，是既有的历史遗留问题，不在这里处理）。
+     *
+     * @param studentNo 学号，调用前已校验为纯数字且非空
+     * @return 已存在返回 true
+     */
+    private boolean existsStudentNo(String studentNo) {
+        return studentInfoMapper.exists(Wrappers.<StudentInfo>lambdaQuery()
+                .eq(StudentInfo::getStudentNo, studentNo));
     }
 
     private StudentInfo findStudentByUserId(Long userId) {
