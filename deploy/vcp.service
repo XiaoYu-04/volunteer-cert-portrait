@@ -13,6 +13,7 @@
 
 [Unit]
 Description=高校志愿服务时长认证与公益画像数据分析系统（后端）
+# 前提：docs/ 已按部署文档 4.2 拷到 /opt/vcp/docs/。没拷的话这行只是条失效提示，不影响启动。
 Documentation=file:/opt/vcp/docs/部署文档.md
 After=network-online.target
 Wants=network-online.target
@@ -42,13 +43,34 @@ Environment="SPRING_PROFILES_ACTIVE=prod"
 
 # JDK 21（pom 的 <java.version>21</java.version>）。机器上若有多个 JDK，
 # 这里写绝对路径最稳，别依赖 PATH —— 实测有机器默认 java 指向 17，起不来。
-ExecStart=/usr/bin/java -jar /opt/vcp/vcp-boot-1.0.0.jar
+#
+# ⚠️ 下面这行**必须**显式写 `$JAVA_OPTS`（独立成词、不带花括号），否则下面那行 Environment 是死配置：
+#    systemd **不会**自动把 Environment= 的值塞进 ExecStart，只有显式引用才会展开；
+#    而 `$FOO` 独立成词时按空白拆成 **0 个或多个**参数，JAVA_OPTS 为空时该词整个消失（不会留下空参数）。
+#    依据：systemd.service(5) 的 ExecStart= 一节 ——
+#    "Use $FOO as a separate word on the command line, in which case it will be replaced by
+#     the value of the environment variable split at whitespace, resulting in zero or more arguments."
+#    https://man.archlinux.org/man/systemd.service.5
+#    ⚠️ 2026-09-25 修正：此前这里没引用 $JAVA_OPTS，于是内存上限与 -Duser.timezone **实际都没生效**
+#    （JVM 用默认堆；时区若不是东八区，会直接影响看板趋势图与签到窗口判定 ——
+#     本项目时间字段是 TIMESTAMP（无时区）+ LocalDateTime，见 CLAUDE.md 踩坑第 10 条）。
+#    首次部署后请核对一次：systemctl show vcp -p ExecStart  与  ps -ef | grep vcp-boot
+#
+# --server.address=127.0.0.1：让后端只监听本机，8080 不直接暴露在网上（Nginx 在 127.0.0.1 上反代它，
+#    见 deploy/nginx.conf 的 location /api/ 与「收口」一节）。这正是部署文档 4.4 的「做法①」。
+#    若要临时从别的机器直连 8080（例如用开发口径看 /doc.html），把这一段删掉或改成 0.0.0.0。
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/vcp/vcp-boot-1.0.0.jar --server.address=127.0.0.1
 
 Restart=on-failure
 RestartSec=5s
 
 # JVM 参数按机器内存调整；演示数据量小，512m 起步够用。
+# 这行靠上面 ExecStart 里的 $JAVA_OPTS 才生效 —— 不写那个引用等于没配。
 Environment="JAVA_OPTS=-Xms256m -Xmx512m -Duser.timezone=Asia/Shanghai"
+
+# ⚠️ 它和 JAVA_OPTS 不是一回事，别删：JAVA_TOOL_OPTIONS 是 **JVM 自己认**的环境变量
+#    （每次启动会往 stderr 打一行 "Picked up JAVA_TOOL_OPTIONS: ..."，属正常现象）。
+#    这里显式置空，是为了挡住从调用方继承进来的同名变量，保证单元行为可预期。
 Environment="JAVA_TOOL_OPTIONS="
 
 # 优雅退出：SIGTERM 时 Spring 会先停内嵌 Tomcat 再退出

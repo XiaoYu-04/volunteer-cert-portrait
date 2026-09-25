@@ -312,11 +312,19 @@ vcp-dependencies  独立 BOM
 口令以 BCrypt 密文入库（`PasswordUtils`），新增 `PUT /api/v1/auth/password`（本人改密，踢其它会话）
 与 `PUT /api/v1/system/users/{id}/password`（管理员重置，踢全部会话），登录连续 5 次失败锁 15 分钟；
 **老库需补跑 `sql/08_password_bcrypt.sql`**，新库不用。**剩余正确性**：`operation_log.target` 写入侧从不填
-（见 B20-6）；**2026-09-25 新发现 B31**：**删除用户不级联** —— `DELETE /api/v1/system/users/{id}`
-只置 `sys_user.deleted = 1`，其 `student_info` / 报名 / 时长仍留在库里并**继续计入看板**
-（实测 1503→1505 学生、10719→10721 报名、19319.3→19321.8 小时，而 `sql/09` 的 20 项抓不到），**未修**；
-修法二选一（要写清口径）：删用户时同事务软删档案并处理报名 / 时长，或统计侧一律 JOIN `sys_user`
-过滤 `deleted = 0`。**P2 交付物**：测试用例表、测试报告、系统截图、部署、论文与答辩材料。
+（见 B20-6）；~~**B31 删除用户不级联**~~ ✅ **2026-09-25 已修并实测闭环** —— `DELETE /api/v1/system/users/{id}`
+现在**同事务级联**软删 `student_info` / 报名 / 签到 / `service_duration`，并按 `sql/09` 第 ⑦ 项同一谓词
+**重算** `signed_count`（跨模块走「vcp-system 声明端口 + 上层实现」，照 `OrgLookupPort` 既有套路；
+**必需注入**而非可缺省 —— 缺实现时安静跳过就是静默的半个级联）。
+**口径（别再改回去）**：报名走**逻辑删除 `deleted = 1`、保留原 `status`**，**不是**置 `CANCELED`
+（看板 enrolled 的口径是 `COUNT(*) FROM activity_signup WHERE deleted = 0`，CANCELED 行仍会被数进去）。
+**对照证据**：同一个 `verify.ps1`，修复前跑一轮就漂（10719→10720、19319.3→19321.8、学生 1503→1504），
+修复后跑一轮**不漂**；`sql/09` 仍「20 项违规合计 0」。顺带修掉同族缺口
+`PortraitAggregateMapper.selectTagCounts` 缺 `si.deleted = 0`。**仍未做**：`sql/09` 未加
+「业务记录属于已逻辑删除的用户」这一项（项数仍是 20）；修复**不追溯**存量脏数据（靠重跑整链清，实测 9.7 秒）。
+**P2 交付物**：测试用例表 ✅、测试报告 ✅、**系统截图 ✅（`docs/screenshots/` 28 张 / 2.73 MB，真后端口径）**、
+部署（文档 + 配置 + `deploy/verify-deploy.ps1` 就绪，**真机未部署**）、
+**论文五章初稿 ✅（`docs/论文/`，含 164 页 DOCX）**、**答辩材料 ✅（`docs/答辩材料/`，含 18 页 PPT）**。
 Flyway（B14）待表结构稳定后再开；**活动图片上传已完成**，
 组织资质材料与用户头像上传仍未接入。
 
