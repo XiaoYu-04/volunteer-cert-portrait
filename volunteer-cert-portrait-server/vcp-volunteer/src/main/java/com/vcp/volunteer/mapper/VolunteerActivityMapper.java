@@ -50,6 +50,32 @@ public interface VolunteerActivityMapper extends BaseMapper<VolunteerActivity> {
     int decreaseSignedCount(@Param("id") Long id);
 
     /**
+     * 按「报名即占名额」口径重算指定学生涉及过的活动的 {@code signed_count}。
+     *
+     * <p><b>为什么是重算而不是逐行 -1</b>（待办 B31 的实现取舍）：{@code decreaseSignedCount}
+     * 一次只减 1，同一学生在一个活动下若有多条报名（例如先被驳回、之后又重新报名），
+     * 逐行减很容易多减或漏减。本方法把计数<b>直接置成子查询的结果</b>，
+     * 与 {@code sql/09_consistency_check.sql} 第 ⑦ 项用的是<b>同一段谓词</b>
+     * （{@code deleted = 0 AND status IN ('PENDING','APPROVED','COMPLETED')}），
+     * 因此跑完第 ⑦ 项必然为 0；重复执行也不会二次扣减，天然幂等。
+     *
+     * <p>调用时机：该学生的报名行被<b>逻辑删除之后</b>（先删行、再重算），
+     * 这样一条语句就能覆盖他名下全部活动，不依赖调用方逐条判断原状态。
+     * 活动范围取「该学生名下出现过的全部活动」，不写 {@code sg.deleted} 过滤 ——
+     * 报名行刚被软删，带上过滤会漏掉这些活动，重算就落空了。
+     *
+     * @param studentId 学生档案 id
+     * @return 影响行数：被重算的活动数
+     */
+    @Update("UPDATE volunteer_activity va SET signed_count = ("
+            + "       SELECT COUNT(*) FROM activity_signup sg"
+            + "        WHERE sg.activity_id = va.id AND sg.deleted = 0"
+            + "          AND sg.status IN ('PENDING', 'APPROVED', 'COMPLETED')), update_time = NOW() "
+            + "WHERE va.deleted = 0 AND va.id IN ("
+            + "       SELECT DISTINCT sg.activity_id FROM activity_signup sg WHERE sg.student_id = #{studentId})")
+    int refreshSignedCountByStudent(@Param("studentId") Long studentId);
+
+    /**
      * 分页查询活动。
      *
      * @param page        分页对象，由 PageUtils.toPage 构造
