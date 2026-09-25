@@ -3,16 +3,17 @@ import { onMounted, ref } from 'vue'
 import { listActivities, listCategories } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/stores/dict'
-import { formatNumber } from '@/utils/format'
 
 import InkField from '@/components/common/InkField.vue'
-import InkTable from '@/components/common/InkTable.vue'
 import InkPagination from '@/components/common/InkPagination.vue'
 import InkButton from '@/components/common/InkButton.vue'
-import StatusTag from '@/components/common/StatusTag.vue'
+import InkEmpty from '@/components/common/InkEmpty.vue'
+import ActivityGridCard from '@/components/biz/ActivityGridCard.vue'
 
 const dict = useDictStore()
 
+// pageSize 走 useTable 的默认 10：InkPagination 的每页条数下拉只有 10/20/50，
+// 这里传个 12 会让下拉选不中任何一项、显示与实际不一致。
 const { rows, total, loading, query, search } = useTable(listActivities, {
   defaultQuery: { keyword: '', type: '', status: 'PUBLISHED' },
 })
@@ -29,17 +30,6 @@ onMounted(async () => {
   dict.load()
   categories.value = await listCategories()
 })
-
-const columns = [
-  { key: 'title', title: '活动名称' },
-  { key: 'type', title: '类型', width: '110px' },
-  { key: 'date', title: '时间', width: '160px' },
-  { key: 'place', title: '地点' },
-  { key: 'org', title: '组织' },
-  { key: 'enrolled', title: '报名 / 名额', width: '120px', align: 'right' },
-  { key: 'status', title: '状态', width: '100px' },
-  { key: 'actions', title: '操作', width: '110px', align: 'right' },
-]
 
 const statusOptions = dict.options('activity_status')
 </script>
@@ -85,38 +75,30 @@ const statusOptions = dict.options('activity_status')
         </div>
       </form>
 
-      <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的活动">
-        <template #title="{ row }">
-          <span class="cell-activity">
-            <img v-if="row.cover" class="cell-cover" :src="row.cover" :alt="`${row.title}封面`" />
-            <span class="cell-strong">{{ row.title }}</span>
-          </span>
-        </template>
+      <div v-if="loading" class="act-grid">
+        <div v-for="n in 6" :key="`sk-${n}`" class="ink-agc">
+          <span class="ink-skeleton ink-agc-sk-cover"></span>
+          <div class="ink-agc-body sk-body">
+            <span class="ink-skeleton ink-skeleton-row"></span>
+            <span class="ink-skeleton ink-skeleton-row"></span>
+          </div>
+        </div>
+      </div>
 
-        <template #type="{ row }">
-          <span class="ink-act-type">{{ row.type }}</span>
-        </template>
+      <div v-else-if="rows.length" class="act-grid">
+        <ActivityGridCard
+          v-for="row in rows"
+          :key="row.id"
+          :activity="row"
+          :to="`/student/activities/${row.id}`"
+        />
+      </div>
 
-        <template #date="{ row }">
-          <span class="col-num">{{ row.date }} {{ row.time }}</span>
-        </template>
-
-        <template #enrolled="{ row }">
-          <span class="col-num"
-            >{{ formatNumber(row.enrolled) }} / {{ formatNumber(row.capacity) }}</span
-          >
-        </template>
-
-        <template #status="{ row }">
-          <StatusTag type="activity_status" :value="row.status" />
-        </template>
-
-        <template #actions="{ row }">
-          <InkButton :to="`/student/activities/${row.id}`" size="sm" variant="ghost"
-            >详情</InkButton
-          >
-        </template>
-      </InkTable>
+      <InkEmpty
+        v-else
+        text="没有符合条件的活动"
+        hint="试试换个关键字，或把类型与状态放宽到「全部」。"
+      />
 
       <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
     </section>
@@ -134,23 +116,8 @@ const statusOptions = dict.options('activity_status')
   padding-bottom: 2px;
 }
 
-.cell-activity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.cell-cover {
-  flex: none;
-  width: 48px;
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
-  border: 1px solid var(--c-line);
+/* 骨架卡的正文区比真实卡片矮，补一点下内边距免得贴边 */
+.sk-body {
+  padding-bottom: 20px;
 }
 </style>
