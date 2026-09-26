@@ -53,7 +53,23 @@ const radarOrg = computed(() =>
 )
 
 const orgBarOption = computed(() => (orgs.value.length ? charts.orgBar(orgs.value) : null))
-const radarOption = computed(() => (radarOrg.value ? charts.orgRadar(radarOrg.value) : null))
+
+/**
+ * 雷达「活动场次」轴的量程：取本校组织的最大活动数，向上取整到 10 的倍数。
+ * 不能让数据超过量程 —— ECharts 雷达不做截断，顶点会冲出外圈被画布裁掉。
+ */
+const radarActivityMax = computed(() => {
+  const max = Math.max(
+    40,
+    radarOrg.value?.activities || 0,
+    ...orgs.value.map((o) => o.activities || 0),
+  )
+  return Math.ceil(max / 10) * 10
+})
+
+const radarOption = computed(() =>
+  radarOrg.value ? charts.orgRadar(radarOrg.value, { activityMax: radarActivityMax.value }) : null,
+)
 
 /** 本组织在全校组织中的活跃度名次（按活动场次降序，未收录时为 0） */
 const rank = computed(() => {
