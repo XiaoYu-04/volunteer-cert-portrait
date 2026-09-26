@@ -52,7 +52,14 @@ public class SaTokenConfig implements WebMvcConfigurer {
     };
 
     /**
-     * 免登录放行清单：认证入口，任何 profile 下都放行。
+     * 图片内容读取路径：图片与 {@code /uploads/**} 静态资源等价，浏览器 {@code <img>}
+     * 标签不会带 token，不放行就加载不出来。用单段通配 {@code *} 限定 id 位，
+     * 不会顺带放行 attachments 下的其它接口。
+     */
+    private static final String ATTACHMENT_CONTENT_PATH = "/api/v1/attachments/*/content";
+
+    /**
+     * 免登录放行清单：认证入口 + 公开图片，任何 profile 下都放行。
      *
      * <p>登录与注册本身不能要求先登录，否则永远拿不到第一个 token。
      *
@@ -60,11 +67,15 @@ public class SaTokenConfig implements WebMvcConfigurer {
      * 走不了被拦截的 {@code /api/v1/system/dicts}。放行后能拿到的只有 sys_dict 里
      * college 类型的中文标签，不含用户数据；注册时对学院的校验仍在后端做，
      * 不受这里放行影响。
+     *
+     * <p>图片内容读取同样放行：它是 {@code /uploads/**} 静态图片的替代路径，
+     * 地址里的自增 id 不暴露业务数据，公开读取是刻意设计。
      */
     private static final String[] EXCLUDE_PATHS = {
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/colleges",
+            ATTACHMENT_CONTENT_PATH,
     };
 
     /** 接口文档开关，对应配置项 {@code knife4j.enable}；缺省 false，与 Knife4j 约定一致 */

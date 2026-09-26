@@ -91,8 +91,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     /**
      * 把上传目录暴露为只读静态资源。
      *
-     * <p>数据库只保存 /uploads/... 形式的相对地址；开发环境和生产环境都由后端
-     * 直接提供图片。正式部署也可以在 Nginx 层直接 alias 该目录以获得更高吞吐。
+     * <p><b>2026-09-27 起新图片一律走 DB，不再落盘</b>：活动图片上传后二进制存
+     * {@code attachment.file_data}，由 {@code GET /api/v1/attachments/{id}/content}
+     * 读取。本映射只为老数据（file_url 仍是 {@code /uploads/...} 的历史行）保留兼容，
+     * 不要删；新上传的地址已不再指向这里。
+     *
+     * <p>开发环境和生产环境都由后端直接提供这些历史图片文件；
+     * 正式部署也可以在 Nginx 层直接 alias 该目录以获得更高吞吐。
      *
      * @param registry 静态资源注册器
      */
