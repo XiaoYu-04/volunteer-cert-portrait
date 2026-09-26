@@ -51,14 +51,16 @@ warn() { printf '\033[1;33m      [警告] %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31m      [失败] %s\033[0m\n' "$*" >&2; exit 1; }
 
 # 以 postgres 超级用户执行 SQL（Debian 默认 local peer 认证，root 可以直接 runuser 过去）
-super_sql() { runuser -u postgres -- psql -X -q -A -t -v ON_ERROR_STOP=1 "$@"; }
+super_sql() { runuser -u postgres -- psql -X -q -A -t -P pager=off -v ON_ERROR_STOP=1 "$@"; }
 
 # 以应用角色 vcp 经 TCP 执行 SQL 文件
 run_sql_file() {
     local file="$1" label="$2"
     [ -f "$file" ] || die "缺少 SQL 文件：$file（sql/ 目录要和 deploy/ 同级，见 README 第三节）"
     info "→ ${label}  ($(basename "$file"))"
-    PGPASSWORD="$VCP_DB_PASSWORD" psql -X -q \
+    # -P pager=off：sql/13 这类脚本会输出几十行自检明细，不关分页器的话 psql 会停在
+    # (END) 等按键，自动化脚本就"卡住"了（真机实测踩到）。
+    PGPASSWORD="$VCP_DB_PASSWORD" psql -X -q -P pager=off \
         -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
         -v ON_ERROR_STOP=1 -f "$file"
 }
@@ -192,7 +194,7 @@ fi
 # ===========================================================================
 step "关键数字（与 README 的演示口径对照）"
 # ===========================================================================
-PGPASSWORD="$VCP_DB_PASSWORD" psql -X -q -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL' || warn "关键数字查询失败（不中断流程，后面的 09 自检才是硬标准）"
+PGPASSWORD="$VCP_DB_PASSWORD" psql -X -q -P pager=off -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" <<'SQL' || warn "关键数字查询失败（不中断流程，后面的 09 自检才是硬标准）"
 SELECT '学院字典' AS 项目, COUNT(*)::text AS 数量 FROM sys_dict WHERE dict_type = 'college'
 UNION ALL SELECT '学生档案', COUNT(*)::text FROM student_info WHERE deleted = 0
 UNION ALL SELECT '活动',     COUNT(*)::text FROM volunteer_activity WHERE deleted = 0
