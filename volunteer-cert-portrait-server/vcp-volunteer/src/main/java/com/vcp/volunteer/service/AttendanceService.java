@@ -24,6 +24,19 @@ public interface AttendanceService {
     PageResult<AttendanceVO> listAttendance(AttendanceQuery query);
 
     /**
+     * 分页查询「我自己的」签到记录（学生端自助签到 / 签退的入口数据，待办 B24）。
+     *
+     * <p><b>数据范围只看登录态</b>：学生档案 id 取会话里的 {@code student_info.id}，
+     * 前端传的 studentId / orgId 一律忽略（同待办 B19 的口径）—— 否则改一个 id
+     * 就能读到别人的签到记录。
+     *
+     * @param query 筛选条件；studentId 与 orgId 不生效
+     * @return 本人签到记录分页结果
+     * @throws com.vcp.common.exception.BusinessException 未登录（20001），或账号没有学生档案（10003）
+     */
+    PageResult<AttendanceVO> listMyAttendance(AttendanceQuery query);
+
+    /**
      * 人工修正签到记录（组织管理员 / 学校管理员）。
      *
      * <p>覆盖式提交：前端把空串当作「无该时间」提交，因此空串一律解析成 null 并覆盖原值，

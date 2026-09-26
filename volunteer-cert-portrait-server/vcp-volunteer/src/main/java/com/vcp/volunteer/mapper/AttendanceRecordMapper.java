@@ -36,6 +36,24 @@ public interface AttendanceRecordMapper extends BaseMapper<AttendanceRecord> {
                                               @Param("now") LocalDateTime now);
 
     /**
+     * 分页查询「某个学生本人的」签到记录（学生端自助签到，待办 B24）。
+     *
+     * <p>与 {@link #selectAttendancePage} 是同一组 JOIN、同一套筛选，只多一条
+     * {@code s.student_id = #{studentId}}：学生 id 由登录态给出，<b>不接受前端传入</b>
+     * ——否则改一个 id 就能看到别人的签到记录（同待办 B19）。
+     *
+     * @param page      分页对象
+     * @param query     筛选条件（keyword 匹配活动名称、activityId、status）
+     * @param studentId 当前登录学生的学生档案 id
+     * @param now       当前时间，由调用方传入，理由同 {@link #selectAttendancePage}
+     * @return 分页结果
+     */
+    IPage<AttendanceRow> selectMyAttendancePage(IPage<AttendanceRow> page,
+                                                @Param("q") AttendanceQuery query,
+                                                @Param("studentId") Long studentId,
+                                                @Param("now") LocalDateTime now);
+
+    /**
      * 取单条签到记录（含活动与学生信息），供签到 / 签退 / 人工修正前校验用。
      *
      * <p>签到与签退要判断归属（只能给自己签到）与时间窗口（活动开始前 30 分钟到

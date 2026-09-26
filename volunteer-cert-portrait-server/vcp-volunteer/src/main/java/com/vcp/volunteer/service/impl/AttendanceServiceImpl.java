@@ -71,6 +71,22 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
+    public PageResult<AttendanceVO> listMyAttendance(AttendanceQuery query) {
+        AttendanceQuery condition = query == null ? new AttendanceQuery() : query;
+        // 数据范围只看登录态：前端传的 studentId / orgId 一律忽略（同 listAttendance 的口径）。
+        // studentId 单独作为入参下传，避免与筛选条件里的同名字段混淆
+        condition.setStudentId(null);
+        condition.setOrgId(null);
+        Long studentId = StudentIdentityUtils.requireCurrentStudentId();
+
+        // 与列表同理：一页里每行都要做惰性判定与窗口判定，「现在」只能取一次
+        LocalDateTime now = LocalDateTime.now();
+        IPage<AttendanceRow> page = attendanceMapper.selectMyAttendancePage(
+                PageUtils.<AttendanceRow>toPage(condition), condition, studentId, now);
+        return PageUtils.page(page, row -> toVO(row, now));
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateAttendance(Long id, AttendanceUpdateDTO dto) {
         AttendanceRow row = id == null ? null : attendanceMapper.selectAttendanceDetail(id);
@@ -241,9 +257,48 @@ public class AttendanceServiceImpl implements AttendanceService {
         vo.setStatus(status.getCode());
         vo.setSignInAt(DateTimeUtils.formatDateTime(row.getSignInTime()));
         vo.setSignOutAt(DateTimeUtils.formatDateTime(row.getSignOutTime()));
+        vo.setActivityStartAt(DateTimeUtils.formatDateTime(row.getActivityStartTime()));
+        vo.setActivityEndAt(DateTimeUtils.formatDateTime(row.getActivityEndTime()));
+        vo.setCanSignIn(canSignIn(row, status, now));
+        vo.setCanSignOut(canSignOut(row, status, now));
         vo.setHours(AttendancePolicy.resolveHours(
                 status, row.getSignInTime(), row.getSignOutTime(), row.getActivityDuration()));
         return vo;
+    }
+
+    /**
+     * 当前是否可签到：状态允许且签到窗口开放。
+     *
+     * <p>判定条件与 {@link #signIn(Long)} 的准入逐条对应（惰性判定后状态为未签到或已判缺勤，
+     * 且 {@link AttendancePolicy#isSignInOpen} 为真）。这样前端按钮的显隐与接口的实际受理
+     * 同源，不会出现「按钮能点、点了必然报错」；窗口时间到点后由前端重新拉一次列表刷新。
+     *
+     * @param row    查询行
+     * @param status 惰性判定后的状态
+     * @param now    当前时间
+     * @return 可签到时返回 true
+     */
+    private static boolean canSignIn(AttendanceRow row, AttendanceStatusEnum status, LocalDateTime now) {
+        boolean statusAllowed = status == AttendanceStatusEnum.NOT_SIGNED
+                || status == AttendanceStatusEnum.ABSENT;
+        return statusAllowed
+                && AttendancePolicy.isSignInOpen(row.getActivityStartTime(), row.getActivityEndTime(), now);
+    }
+
+    /**
+     * 当前是否可签退：已签到且签退窗口未关闭。
+     *
+     * <p>与 {@link #signOut(Long)} 的准入对应。注意「签了到但窗口已过」是待办 A2 刻意保留的
+     * {@code SIGNED_IN}（不判缺勤），这类记录这里返回 false，改由组织管理员人工修正。
+     *
+     * @param row    查询行
+     * @param status 惰性判定后的状态
+     * @param now    当前时间
+     * @return 可签退时返回 true
+     */
+    private static boolean canSignOut(AttendanceRow row, AttendanceStatusEnum status, LocalDateTime now) {
+        return status == AttendanceStatusEnum.SIGNED_IN
+                && AttendancePolicy.isSignOutOpen(row.getActivityStartTime(), row.getActivityEndTime(), now);
     }
 
 }

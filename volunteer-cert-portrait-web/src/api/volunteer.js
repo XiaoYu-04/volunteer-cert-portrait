@@ -25,5 +25,15 @@ export const cancelSignup = (id) => put(`/v1/signups/${id}/cancel`)
 /* ---------- 签到 ---------- */
 export const listAttendance = (params) => get('/v1/attendance', params)
 export const updateAttendance = (id, data) => put(`/v1/attendance/${id}`, data)
+
+/**
+ * 学生本人的签到记录（待办 B24）。
+ *
+ * 数据范围由后端按登录态裁剪，前端传 studentId 无效；canSignIn / canSignOut 是
+ * 服务端按 A2 的 30 分钟窗口算好的，前端不要重复窗口常量。
+ * 注意是静态段路由：后端要把它排在 /attendance/{id} 之前。
+ */
+export const listMyAttendance = (params) => get('/v1/attendance/mine', params)
+
 export const signIn = (attendanceId) => post('/v1/attendance/sign-in', { attendanceId })
 export const signOut = (attendanceId) => post('/v1/attendance/sign-out', { attendanceId })

@@ -881,11 +881,23 @@ export const signups = Array.from({ length: FIRST_BATCH + 22 }, (_, i) => {
   const isFirstBatch = i < FIRST_BATCH
   const student = students[i % students.length]
   const act = isFirstBatch ? activities[0] : activities[1 + (i % 11)]
+  // i === 0 是演示账号（students[0]，「我的报名」第一个被点开的就是它），单独给 COMPLETED：
+  // ① 下面的 attendance 是按「活动 1 的非驳回报名」派生的，而真后端的签到记录是报名
+  //    **审核通过**时才生成的（SignupServiceImpl.ensureAttendanceRecord）—— 这条若留在 PENDING，
+  //    「我的报名」就会出现「待审核 + 已签退 4 小时」这种真后端不可能出现的组合
+  //    （B24 新增签到列之后这条矛盾才变得可见）；
+  // ② 活动 1 是 2025-03-22（已结束），按 ActivityServiceImpl 的收口逻辑（活动 CLOSED 时把
+  //    到场报名置 COMPLETED），它本来就该是 COMPLETED —— 顺带让页面上的按钮与
+  //    「已完成的活动无法取消」一致（该行不再显示「取消报名」）。
+  // 其余 i % 11 === 0 仍为 PENDING，五种报名状态的覆盖不变；
+  // 「非驳回非取消」计数仍为 46，verify:mock 的 act1Valid === enrolled 断言不受影响。
   const status = isFirstBatch
     ? i < FIRST_BATCH - FIRST_BATCH_REJECTED
-      ? i % 11 === 0
+      ? i % 11 === 0 && i > 0
         ? 'PENDING'
-        : 'APPROVED'
+        : i === 0
+          ? 'COMPLETED'
+          : 'APPROVED'
       : 'REJECTED'
     : signupStatuses[i % signupStatuses.length]
   return {
@@ -970,6 +982,48 @@ export const attendance = signups
       hours: status === 'SIGNED_OUT' ? activities[0].hours : 0,
     }
   })
+
+/* ---------- 演示账号「可签到」的签到记录（待办 B24 的前端一半）----------
+   为什么补：上面那批 attendance 完全由「活动 1 的报名」派生，而演示账号
+   （登录名 student，studentId = 1，陈思远）在活动 1 里的那条报名恰好是 PENDING，
+   派生出来的记录是 46 条里的第 1 条、状态 SIGNED_OUT。于是「我的报名」页的签到入口
+   在 mock 构建（VITE_USE_MOCK=true，答辩用的纯前端独立演示口径）下**永远没有可点的按钮**
+   —— 签到签退这一环只剩组织端的签到管理页能手改状态，学生侧闭环是断的。
+
+   为什么只取 APPROVED：报名通过之后、活动签到之前，学生才处在「已通过、还没签到」
+   这个合理状态。COMPLETED 的活动早已结束，真后端下那条记录会按缺勤展示而不是可签到，
+   给它造签到入口等于演示一个真实后端不可能出现的状态。
+
+   为什么只补 NOT_SIGNED：签到 / 签退成功后，mock 的 handler（volunteer.js 里的
+   /v1/attendance/sign-in、/sign-out）会自己写入 signInAt / signOutAt 并把状态推到
+   SIGNED_IN / SIGNED_OUT；而 SIGNED_OUT 必须满足 verify:mock 的行内自洽断言
+   「(签退 − 签到) / 3600 = hours」（C14），凭空造它既没有演示价值又容易被断言抓住。
+
+   为什么先排除已有签到记录的报名：活动 1 那批报名已经各有一条签到记录，不排除的话
+   同一条报名会挂两条记录，「我的报名」行上的签到状态就有歧义了。 */
+const signedUpSignupIds = new Set(attendance.map((a) => a.signupId))
+
+attendance.push(
+  ...signups
+    .filter((s) => s.studentId === demoStudent.id && s.status === 'APPROVED')
+    .filter((s) => !signedUpSignupIds.has(s.id))
+    .map((s, i) => ({
+      // 既有 46 条的 id 是 1~46；这里在 push 之前求值，整个 map 过程中 attendance.length
+      // 恒为 46，故新记录的 id 为 47 起，不会与既有记录撞号
+      id: attendance.length + i + 1,
+      signupId: s.id,
+      activityId: s.activityId,
+      activityTitle: s.activityTitle,
+      studentId: s.studentId,
+      studentName: s.studentName,
+      studentNo: s.studentNo,
+      college: s.college,
+      status: 'NOT_SIGNED',
+      signInAt: '',
+      signOutAt: '',
+      hours: 0,
+    })),
+)
 
 /** 服务时长提交与审核记录 */
 export const durations = Array.from({ length: 56 }, (_, i) => {
