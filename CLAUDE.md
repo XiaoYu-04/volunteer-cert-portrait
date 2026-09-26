@@ -249,6 +249,26 @@ vcp-dependencies  独立 BOM
     （答辩现场想造一场窗口内的活动演示签到时必踩）。修法：看**输入串本身**有没有时间部分
     （`value.indexOf(' ') < 0 && value.indexOf('T') < 0`）。
 
+23. **跨模块小工具已收敛，不要再写私有副本**（2026-09-26 全仓去重，净减约 500 行）
+    - `com.vcp.common.util.StringUtils`：`hasText` / `isBlank` / `trimToNull` / `nullToEmpty`。
+      原先 **14 个 Service 各有一份私有副本**（横跨 6 个模块），现已全部改为静态导入 + 删副本。
+      新增判空逻辑一律用它；**别再复制**。
+    - `com.vcp.common.util.NumberUtils`：`toLong(Object)`（聚合结果转 long）/ `longValue(Long)`（null→0）
+      / `ratio(Long, Long)` 与 `ratio(Long, Long, int scale)`（默认 4 位、`HALF_UP`）。
+      ⚠️ `DurationAuditServiceImpl` 用的是 **scale=3**（接口输出精度），**别"顺手统一"成 4**；
+      它零分母分支刻意保留未补零的 `BigDecimal.ZERO`（输出 `0` 而非 `0.000`）。
+    - `com.vcp.framework.util.UploadPathUtils.normalizeUploadPrefix`：**静态资源映射（WebMvcConfig）
+      与 Sa-Token 放行白名单（SaTokenConfig）必须共用它** —— 分头实现会出现「能上传但访问 401」。
+    - ⚠️ **两个宽松变体是刻意保留的，不要合并**：`AttachmentServiceImpl.publicPrefix()` 与
+      `ActivityServiceImpl` 封面校验用的是「不补前导斜杠」的版本；当 `vcp.upload.public-prefix`
+      配成不带 `/` 的值时与主版本行为不同（可达输入）。要合并必须先统一配置契约。
+    - 依赖裁剪：`vcp-common` 移除了全仓 0 引用的 Hutool；`vcp-certification` 移除了未用的 `vcp-volunteer`；
+      `vcp-portrait` / `vcp-analytics` 移除了未用的 `vcp-certification`/`vcp-volunteer`/`vcp-portrait`，
+      **并显式补了 `vcp-framework`（analytics 另补 `vcp-common`）** —— 原先靠传递依赖，改 pom 前先确认这一条。
+    - `vcp-dependencies`（BOM）里的 Hutool / MapStruct 版本管理条目**按约束保持不动**，当前无模块声明它们。
+    - `SignupQuery.orgId` 是**已知待修缺陷**：前端组织审核页每页都发它，但后端 `setOrgId(null)` 且 XML 无该条件
+      （静默失效）；`AttendanceQuery.orgId` 因前端从不传已删除。修法二选一：删参数（同步前端）或在 XML 补条件。
+
 ### 前端（`volunteer-cert-portrait-web/`）
 
 1. **Vue 3.5 的模板解析器只在属性值含分号时才按「多语句」解析**
@@ -380,6 +400,38 @@ vcp-dependencies  独立 BOM
     回归脚本 `.tmp-shots/probe-attendance-fix-picker.cjs`（真后端 14 项 / mock 10 项，含回滚）。
     （本条原编号 17，与并行会话同批新增的第 17 条冲突，合并时顺延为 18。）
 
+19. **动效统一走 `src/styles/motion.css`（第 4 层样式），不要在页面 scoped 里写动画**（2026-09-26 全站动效改造）
+    - 引入顺序 `tokens.css → base.css → ink.css → motion.css`，**顺序不能颠倒**（`main.js` 有注释）；
+      令牌在 `tokens.css` 的「动效扩展」一节：`--t-page` / `--t-page-leave` / `--t-reveal` / `--stagger` / `--slide-y` / `--ease-out`。
+    - 可用的类与指令：`.anim-rise`（单元素淡入上浮）、`.anim-fade`（只淡入）、
+      `.anim-stagger`（容器；**直接子元素**按 `nth-child` 错峰，最多 12 项）、
+      `v-reveal` / `v-reveal.fade`（`IntersectionObserver`，进视口才播、只播一次，实现在 `src/directives/reveal.js`）。
+      指令自带「首屏豁免」（首屏内的元素不播，避免闪一下）、`prefers-reduced-motion` 跳过、无 Observer 时保持可见。
+    - **三条硬规矩**：① 含 ECharts 画布的区块只能用 `.anim-fade` / `v-reveal.fade`
+      （`translate` 会让 canvas 在动画期间发虚）；② 表格行与「翻页会被销毁重建的容器」**不做**逐项 stagger
+      （会每次翻页重播，显得廉价；确实要做就照 `ActivityListView.vue` 的**一次性入场**写法：
+      局部 ref 挂类 + 900ms 后摘掉 + 一个「只播一次」的布尔闸）；③ 不要嵌套 `.anim-stagger`。
+    - 页面切换在**布局层**：`StudentLayout.vue` / `ConsoleLayout.vue` 的 `<RouterView v-slot>` +
+      `<Transition name="page" mode="out-in">` 包一层 `.page-view`。
+      **包装层是必需的** —— 控制台页面全是多根组件，直接包 `<component>` 会报
+      "renders non-element root node" 且动画不生效；`mode="out-in"` 也是必需的（两个页面同时留在流里会让页面高度翻倍）。
+      离场只做透明度：路由 `scrollBehavior` 正在把视口归零，离场若叠加位移会看成「旧页面上滑 + 视口跳顶」两段运动。
+      key 用 `route.path`（只变 query 不该重播切换动画）。
+    - 降级由 `tokens.css` 的 `prefers-reduced-motion` 规则统一兜底，**不要各页另写 media query**。
+
+20. **页签滑块与浮层出场是「机制级」改动，动之前先读实现**（2026-09-26）
+    - `InkTabs` 的朱砂下划线不再是 `border-bottom-color`，而是一条绝对定位的 `.ink-tab-slider`
+      （JS 量 `offsetLeft`/`offsetWidth` 写 `transform` + `width`，含 resize / `document.fonts.ready` 重算）。
+      **不要再给 `.is-current` 加 `border-bottom-color`** —— 否则「目标页签下划线立刻亮 + 滑块还在路上」会出现双线。
+      滑块 `bottom:0; height:2px` 与原先 2px border 的像素位置完全一致，靠的是容器 `padding-bottom:1px`
+      抵消按钮 `margin-bottom:-1px`（踩坑 15/16 的两个机制**不要动**）。
+    - `InkDialog` 已加 `<Transition name="ink-dialog">`：入场仍是既有的 `ink-mask-in` / `ink-dialog-in` 动画
+      （**不要**改成 enter 类，会双跑），出场在 `ink.css` 的 `.ink-dialog-leave-*`；`InkConfirm` 复用同一组件，自动生效。
+    - `InkToast` 已改为 `<TransitionGroup name="ink-toast">`。两个反直觉但必需的点：
+      `-leave-active` **必须**带 `position:absolute`（否则离场元素仍占位、兄弟节点没有位移，`-move` 补位过渡量不到，
+      表现为「跳位」）；`-move` 时长**必须 ≥ 入场动画的 200ms**（Vue 的 `getTransitionInfo` 在「过渡 ≥ 动画」时
+      判成 animation 而整段跳过 move）。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
@@ -408,6 +460,39 @@ vcp-dependencies  独立 BOM
 → 5 个接口的关键字查询全线 10000（11 处加 `::text`）；**B33** `toDeadline` 用
 `DATE.toString().length()` 判「只给日期」导致**时分秒恒被抹掉** → 「进行中且可报名」的活动造不出来
 （改看输入串是否含时间部分）。详见踩坑 21、22 与 `docs/待办清单.md` 的 B24 / B32 / B33。
+
+**2026-09-26（第二轮：全仓去重 + 全站动效）**：**前端死代码清理**（17 个文件 −245 行）——
+删 9 个未调用的 analytics 接口函数与对应 mock handler、`formatRelative`/`sealText`、
+`InkButton.block`、`PortraitSeal` 永不命中的动态类、`OrgList` 三处未定义类名、3 处未用 CSS 类；
+`useDashboardText` 收敛 return、`request.js` 的 401 跳转去重、组织/学校端抽出 `useSelection`
+（三份逐字相同的勾选逻辑，含行为等价测试）、**修掉 5 处「字典非响应式取值」**（`dict.load()`
+整体替换数组导致下拉不更新）；`index` chunk **62.7 → 53.3 kB**、`mock` 49.7 → 48.3 kB。
+**后端跨模块去重**：新建 `StringUtils`（替 14 份私有副本）、`NumberUtils`（替 `toLong/valueOf/ratio` 共 6 份）、
+`UploadPathUtils`（替上传前缀 2 份，资源映射与放行白名单同源）、`StudentArchiveQueries`、`DurationFormatUtils`；
+`DurationRefMapper` / `PortraitAggregateMapper` 的注解 SQL 抽常量（**4 个 `@Select` 字符串
+SHA-256 抽取前后完全相等**，用 javac 真实求值验证）；`SignupAuditRow` 删 3 个未读字段并去掉
+只为它存在的 `LEFT JOIN sys_user`；`AttendanceRecordMapper.xml` 抽 `<sql>` 片段；删 4 个无调用的
+枚举 `of()`；收紧 2 个 public→private；清陈旧注释与注释掉的依赖/配置；裁剪 3 个模块的未使用依赖。
+**验证**：`mvn compile` 11 模块 BUILD SUCCESS；`npm run build` + `npm run verify:mock` 31 项通过。
+**动效**见踩坑 19/20（`motion.css` 第 4 层 + `v-reveal` 指令 + 布局层页面过渡 + 页签滑块 + 浮层出场），
+浏览器实测：页面过渡 `leave-from→to`→`enter-active→to`、滚动揭示 6/6、滑块像素对齐
+（slider bottom == tab bottom、宽 == 页签宽）、弹窗出场面板下移 5.1px 淡出且滚动锁正确恢复、
+toast 2.6s 全生命周期（含 `-move` 补位）、活动列表一次性入场**翻页不重播**、9 个 ECharts 画布尺寸正常。
+**未做**：`SignupQuery.orgId` 静默失效（前端传、后端忽略）按「不自行实现无法验证的 SQL」保留为待修。
+
+**收尾已重打包并重启**（`mvn package` 11 模块 BUILD SUCCESS，fat jar **38.07 MB**，**pid 122968**，
+开发口径、未带 prod profile；`application-local.yml` 未混入 jar，只有全占位符的 `.example`）。
+三角色冒烟 **21 项全过**：管理员 `/activities` **392**（学生端 **379**，排除已取消/草稿）、
+`/signups` **10720** == 看板 enrolled、时长 **19319.3**、签到率 **90.1%**、标签分布
+**1471/1380/392/286/231/222/200/165**（与文档逐项一致）、`GET /portraits/distribution` 是**管理员专属**
+（学生调用正确返回 20003）、`selectAuditRow`（已删 `LEFT JOIN sys_user`）与 `AttendanceRecordMapper`
+的 `<sql>` 片段均**实跑通过**、`/duration-audits/summary` 214ms、前端五个学生页 + 五个管理员页
+**零控制台报错**。
+⚠️ **库侧已有测试残留漂移**：活动 **389 → 392**、签到 **8235 → 8237**（此前会话 e2e 建的活动与
+签到记录），与本次改动无关；要回到文档口径需重跑整链（`02 → … → 12`，约 16 秒）。
+⚠️ 另注：后端重启会让**内存态 Sa-Token 会话全部失效**，前端会按预期跳登录页（属正常现象）。
+⚠️ 浏览器窗口**失焦时** rAF 被节流，Vue 的 `mode="out-in"` 离场会延迟到重新聚焦才完成
+（标准框架行为，非本项目缺陷）；自动化截图/走查前先让标签页取得焦点。
 
 **当前阶段**：开发计划**第九阶段（系统测试与数据完善）**。已完成：6 个业务模块全部落地、
 `mvn package` 11 个模块全过、`sql/07_demo_scale.sql` 已实跑、**前后端联调（B12）已于
