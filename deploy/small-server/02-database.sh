@@ -240,5 +240,5 @@ cat <<EOF
   备份示例  : pg_dump -h 127.0.0.1 -U $DB_USER -Fc $DB_NAME > vcp-\$(date +%F).dump
 
 下一步：部署应用（jar 与 dist 先按 README 第二节传到 /tmp/vcp-upload/）
-  sudo bash deploy/small-server/03-deploy.sh
+  sudo bash ${SCRIPT_DIR}/03-deploy.sh
 EOF
