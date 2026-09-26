@@ -365,20 +365,47 @@ else
                 # 所以这个取值自动改用阿里云源。国内其它可选：mirrors.ustc.edu.cn 同样没有。
                 warn "TUNA 不镜像 PGDG apt 源（实测 404），自动改用阿里云镜像"
             fi
-            # 阿里云镜像站的 PostgreSQL 仓库；ECS 内网用 mirrors.cloud.aliyuncs.com（免流量）,
-            # 公网/非阿里云机器退回 mirrors.aliyun.com。
-            PGDG_BASE="http://${ALIYUN_HOST}/postgresql/repos/apt"
-            if ! curl -fsI --max-time 8 "${PGDG_BASE}/dists/bookworm-pgdg/Release" >/dev/null 2>&1; then
-                warn "阿里云内网镜像不可达，退回公网 https://mirrors.aliyun.com/postgresql/repos/apt"
-                PGDG_BASE="https://mirrors.aliyun.com/postgresql/repos/apt"
-            fi
-            curl -fsSL --retry 2 "${PGDG_BASE}/ACCC4CF8.asc" \
-                | gpg --dearmor --yes -o /usr/share/keyrings/postgresql-pgdg.gpg \
-                || die "拉取 / 导入 PGDG 公钥失败（$PGDG_BASE/ACCC4CF8.asc）；检查网络或改 PGDG_MIRROR=official"
-            printf 'deb [signed-by=/usr/share/keyrings/postgresql-pgdg.gpg] %s bookworm-pgdg main\n' \
-                "$PGDG_BASE" > /etc/apt/sources.list.d/pgdg.list
-            info "已添加 PGDG 源：$PGDG_BASE bookworm-pgdg main"
-            apt-get update -o Acquire::Retries=3
+            # 候选镜像按顺序试：阿里云内网（ECS 免流量）→ 阿里云公网 → PGDG 官方。
+            # 为什么要「逐个真跑 apt-get update」而不是只探测可达性：
+            # 镜像站可能**可达但正在同步** —— Release 比 Packages 新，apt 会报
+            #   File has unexpected size ... Mirror sync in progress?
+            # 并整段失败（2026-09-27 真机踩到）。换一个源就能继续，不必等人去手工改。
+            PGDG_CANDIDATES=(
+                "http://${ALIYUN_HOST}/postgresql/repos/apt"
+                "https://mirrors.aliyun.com/postgresql/repos/apt"
+                "https://apt.postgresql.org/pub/repos/apt"
+            )
+            PGDG_OK=0
+            for PGDG_BASE in "${PGDG_CANDIDATES[@]}"; do
+                info "尝试 PGDG 源：$PGDG_BASE"
+                if ! curl -fsI --max-time 8 "${PGDG_BASE}/dists/bookworm-pgdg/Release" >/dev/null 2>&1; then
+                    warn "不可达，换下一个"
+                    continue
+                fi
+                if ! curl -fsSL --retry 2 "${PGDG_BASE}/ACCC4CF8.asc" \
+                        | gpg --dearmor --yes -o /usr/share/keyrings/postgresql-pgdg.gpg; then
+                    warn "公钥拉取失败，换下一个"
+                    continue
+                fi
+                printf 'deb [signed-by=/usr/share/keyrings/postgresql-pgdg.gpg] %s bookworm-pgdg main\n' \
+                    "$PGDG_BASE" > /etc/apt/sources.list.d/pgdg.list
+                # 只更新这一个源（-o Dir::Etc::sourceparts=- 关掉其它 sources.d 文件），
+                # 用退出码判断「这个源本身能不能用」，避免把主源的报错算到它头上。
+                if apt-get update -o Acquire::Retries=2 \
+                        -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/pgdg.list \
+                        -o Dir::Etc::sourceparts=- \
+                        -o APT::Get::List-Cleanup=0 >/dev/null 2>&1; then
+                    info "PGDG 源可用：$PGDG_BASE"
+                    PGDG_OK=1
+                    break
+                fi
+                warn "该源索引校验失败（多半是镜像同步中），换下一个"
+            done
+            [ "$PGDG_OK" = "1" ] || die "三个 PGDG 源都不可用（内网 / 公网阿里云 / 官方）。手工排查：
+      ① 看当前源：cat /etc/apt/sources.list.d/pgdg.list
+      ② 单独跑：sudo apt-get update（看报错是哪个源）
+      ③ 过几分钟重跑本脚本即可（镜像同步通常几分钟内完成）"
+            apt-get update -o Acquire::Retries=3 >/dev/null 2>&1 || true
             ;;
         *)
             die "PGDG_MIRROR 只能是 aliyun / official / tuna，当前是 $PGDG_MIRROR"
