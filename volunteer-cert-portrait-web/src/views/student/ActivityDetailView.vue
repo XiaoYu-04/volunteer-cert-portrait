@@ -200,12 +200,12 @@ async function submitSignup() {
         </div>
       </div>
 
-      <section v-if="!loading && activity?.images?.length" class="activity-gallery">
+      <section v-if="!loading && activity?.images?.length" v-reveal class="activity-gallery">
         <div class="gallery-head">
           <h2>活动图集</h2>
           <span class="num">{{ activity.images.length }} 张</span>
         </div>
-        <div class="gallery-grid">
+        <div class="gallery-grid" :class="{ 'anim-stagger': activity.images.length > 1 }">
           <figure v-for="(image, index) in activity.images" :key="image.id || image.fileUrl">
             <img
               :src="image.fileUrl"

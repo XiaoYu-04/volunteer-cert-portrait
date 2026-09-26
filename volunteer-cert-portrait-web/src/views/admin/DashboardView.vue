@@ -65,7 +65,7 @@ const {
   <p class="console-sub">全校志愿服务的规模、结构与审核质量。</p>
 
   <!-- 核心指标 -->
-  <div class="stats stats-console" :aria-busy="loading">
+  <div class="stats stats-console anim-stagger" :aria-busy="loading">
     <InkStat
       v-for="item in data?.stats || []"
       :key="item.key"
@@ -78,7 +78,7 @@ const {
   </div>
 
   <!-- 趋势 -->
-  <section class="panel panel-gap">
+  <section v-reveal.fade class="panel panel-gap">
     <div class="panel-head">
       <h2 class="panel-title">活动与服务时长趋势</h2>
       <span class="panel-extra panel-note">
@@ -114,7 +114,7 @@ const {
   </section>
 
   <!-- 结构与分布 -->
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <div class="panel-head">
       <h2 class="panel-title">活动结构与学院分布</h2>
       <span class="panel-extra panel-note">{{ structureNote }}</span>
@@ -148,7 +148,7 @@ const {
   </section>
 
   <!-- 审核与签到 -->
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <div class="panel-head">
       <h2 class="panel-title">时长审核与签到质量</h2>
       <span class="panel-extra panel-note">通过率 {{ formatPercent(data?.audit?.passRate) }}</span>
@@ -201,7 +201,7 @@ const {
   </section>
 
   <!-- 签到热力 -->
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <div class="panel-head">
       <h2 class="panel-title">签到热力日历</h2>
       <span class="panel-extra panel-note">{{ heatMonth }}</span>
@@ -221,7 +221,7 @@ const {
   </section>
 
   <!-- 排行与组织 -->
-  <section class="panel">
+  <section v-reveal class="panel">
     <div class="panel-head">
       <h2 class="panel-title">学院排行与组织活跃度</h2>
     </div>
@@ -240,12 +240,12 @@ const {
   </section>
 
   <!-- 认证流程 -->
-  <section class="panel">
+  <section v-reveal class="panel">
     <div class="panel-head">
       <h2 class="panel-title">服务时长认证流程</h2>
     </div>
 
-    <ol class="ink-flow">
+    <ol class="ink-flow anim-stagger">
       <li v-for="(step, i) in data?.flow || []" :key="step.step" class="ink-flow-step">
         <span class="ink-flow-no num">{{ i + 1 }}</span>
         <span class="ink-flow-name">{{ step.step }}</span>
@@ -271,8 +271,6 @@ const {
 .stats-console :deep(.ink-stat-card:nth-child(6n)) {
   border-right: 0;
 }
-
-/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
 
 /* 面板内部已经有边框，图框不再重复描边 */
 .dash-fig {

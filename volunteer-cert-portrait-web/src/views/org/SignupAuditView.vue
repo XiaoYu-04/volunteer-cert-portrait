@@ -5,6 +5,7 @@ import { listSignups, auditSignup, listActivities } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useSelection } from '@/composables/useSelection'
 import { useUserStore } from '@/stores/user'
 import { useDictStore } from '@/stores/dict'
 import { formatDateTime } from '@/utils/format'
@@ -33,7 +34,6 @@ const { rows, total, loading, query, search, load } = useTable(listSignups, {
 })
 
 const activities = ref([])
-const selected = ref([])
 // 走 computed 而非直接取值：dict.load() 会用接口数据整体替换字典数组
 const statusOptions = computed(() => dict.options('signup_status'))
 
@@ -49,10 +49,14 @@ const columns = [
 ]
 
 /** 待审核的报名才能操作，已审核的不能重复处理 */
-const selectable = computed(() => rows.value.filter((r) => r.status === 'PENDING'))
-const allChecked = computed(
-  () => selectable.value.length > 0 && selected.value.length === selectable.value.length,
-)
+const {
+  selected,
+  candidates: selectable,
+  allChecked,
+  toggleAll,
+  toggleOne,
+  clear,
+} = useSelection(rows, { selectable: (r) => r.status === 'PENDING' })
 
 onMounted(async () => {
   dict.load()
@@ -64,23 +68,11 @@ onMounted(async () => {
   }
 })
 
-function toggleAll(e) {
-  selected.value = e.target.checked ? selectable.value.map((r) => r.id) : []
-}
-
-function toggleOne(id, checked) {
-  if (checked) {
-    if (!selected.value.includes(id)) selected.value.push(id)
-  } else {
-    selected.value = selected.value.filter((x) => x !== id)
-  }
-}
-
 function resetQuery() {
   query.keyword = ''
   query.status = 'PENDING'
   query.activityId = ''
-  selected.value = []
+  clear()
   search()
 }
 
@@ -131,7 +123,7 @@ async function batchApprove() {
 
   if (done) toast.success(`已通过 ${done} 条`)
   if (failed) toast.warn(`${failed} 条未能通过，可能已被审核`)
-  selected.value = []
+  clear()
   await load()
 }
 </script>
@@ -295,8 +287,6 @@ async function batchApprove() {
 </template>
 
 <style scoped>
-
-/* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
 
 /* 操作列整格带 .col-num（等宽体），驳回理由与占位符是中文说明，还原正文字体 */
 .ink-table td.col-num .cell-mute {

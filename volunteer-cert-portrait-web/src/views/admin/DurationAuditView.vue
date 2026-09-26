@@ -5,6 +5,7 @@ import { getColleges } from '@/api/auth'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useSelection } from '@/composables/useSelection'
 import { useDictStore } from '@/stores/dict'
 import { formatDateTime } from '@/utils/format'
 
@@ -25,7 +26,6 @@ const { rows, total, loading, query, search, load } = useTable(listDurations, {
 })
 
 const summary = ref(null)
-const selected = ref([])
 
 // 学院下拉选项：数据源与注册页同一份（字典里 dict_type='college' 的启用项）。
 // 刻意不做前端兜底列表 —— 学院是管理员可增删的字典数据，写死等于造第二份真相。
@@ -57,25 +57,18 @@ const columns = [
   { key: 'actions', title: '操作', width: '160px', align: 'right' },
 ]
 
-const statusOptions = dict.options('duration_status')
+// 走 computed 而非直接取值：dict.load() 会用接口数据整体替换字典数组
+const statusOptions = computed(() => dict.options('duration_status'))
 
 /** 当前页可勾选的记录（已审核的不能重复处理） */
-const selectable = computed(() => rows.value.filter((r) => r.status === 'PENDING_AUDIT'))
-const allChecked = computed(
-  () => selectable.value.length > 0 && selected.value.length === selectable.value.length,
-)
-
-function toggleAll(e) {
-  selected.value = e.target.checked ? selectable.value.map((r) => r.id) : []
-}
-
-function toggleOne(id, checked) {
-  if (checked) {
-    if (!selected.value.includes(id)) selected.value.push(id)
-  } else {
-    selected.value = selected.value.filter((x) => x !== id)
-  }
-}
+const {
+  selected,
+  candidates: selectable,
+  allChecked,
+  toggleAll,
+  toggleOne,
+  clear,
+} = useSelection(rows, { selectable: (r) => r.status === 'PENDING_AUDIT' })
 
 onMounted(async () => {
   dict.load()
@@ -126,7 +119,7 @@ async function batchAudit() {
   try {
     const data = await batchAuditDurations({ ids: selected.value, action: 'APPROVE' })
     toast.success(`已通过 ${data.count} 条`)
-    selected.value = []
+    clear()
     await load()
     summary.value = await getAuditSummary()
   } catch (err) {
@@ -312,11 +305,6 @@ async function batchAudit() {
 .stats-console :deep(.ink-stat-card:nth-child(6n)) {
   border-right: 0;
 }
-
-/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-
-/* 与报名审核、时长提交等表格页同名同款：本页此前漏了这两条，
-   学生姓名没走衬线墨色、非待审核行的审核时间也没降调 */
 
 .audit-field {
   margin-bottom: 0;

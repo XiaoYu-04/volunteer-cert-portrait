@@ -4,6 +4,7 @@ import { listDurations, submitDurations } from '@/api/certification'
 import { listActivities, listAttendance } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
+import { useSelection } from '@/composables/useSelection'
 import { useUserStore } from '@/stores/user'
 import { useDictStore } from '@/stores/dict'
 import { formatDateTime, formatHours } from '@/utils/format'
@@ -102,9 +103,21 @@ const selectedActivity = computed(
   () => activities.value.find((a) => a.id === Number(dialog.value.activityId)) || null,
 )
 
-const submittable = computed(() => dialog.value.candidates.filter((c) => !c.submitted))
-const allChecked = computed(
-  () => submittable.value.length > 0 && dialog.value.selected.length === submittable.value.length,
+/** 选中集合落在弹窗对象上（打开弹窗或换活动时整体重置），套一层可写 computed 交给 useSelection */
+const candidateSelected = computed({
+  get: () => dialog.value.selected,
+  set: (value) => {
+    dialog.value.selected = value
+  },
+})
+const {
+  candidates: submittable,
+  allChecked,
+  toggleAll,
+  toggleOne,
+} = useSelection(
+  computed(() => dialog.value.candidates),
+  { selectable: (c) => !c.submitted, selected: candidateSelected },
 )
 
 function openSubmit() {
@@ -144,18 +157,6 @@ async function loadCandidates() {
     toast.error(err.message)
   } finally {
     dialog.value.loading = false
-  }
-}
-
-function toggleAll(e) {
-  dialog.value.selected = e.target.checked ? submittable.value.map((c) => c.id) : []
-}
-
-function toggleOne(id, checked) {
-  if (checked) {
-    if (!dialog.value.selected.includes(id)) dialog.value.selected.push(id)
-  } else {
-    dialog.value.selected = dialog.value.selected.filter((x) => x !== id)
   }
 }
 

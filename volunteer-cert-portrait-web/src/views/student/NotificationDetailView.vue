@@ -134,14 +134,14 @@ const actions = computed(() => {
         <!-- 正文：此前这一页只渲染标题与元信息，后端 content 从没显示过。
              管理员发的公告现在会带正文（NotificationCreateDTO.content），
              留空时整块不渲染，避免出现一个空标题的空面板。 -->
-        <div v-if="notice.content" class="panel">
+        <div v-if="notice.content" v-reveal class="panel">
           <div class="panel-head">
             <h2 class="panel-title">通知正文</h2>
           </div>
           <p class="panel-text notice-content">{{ notice.content }}</p>
         </div>
 
-        <div class="panel">
+        <div v-reveal class="panel">
           <div class="panel-head">
             <h2 class="panel-title">相关操作</h2>
           </div>
@@ -153,7 +153,7 @@ const actions = computed(() => {
           </div>
         </div>
 
-        <div v-if="relatedNotices.length" class="panel">
+        <div v-if="relatedNotices.length" v-reveal class="panel">
           <div class="panel-head">
             <h2 class="panel-title">同类型通知</h2>
             <span class="panel-extra">

@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -17,6 +17,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const root = ref(null)
+/** 朱砂滑块，样式见 ink.css 的 .ink-tab-slider */
+const slider = ref(null)
 
 /** 选中项下标；没有匹配项时退回第一个，保证键盘 Tab 永远进得来 */
 const activeIndex = () => {
@@ -45,6 +47,33 @@ function onKeydown(event) {
     root.value?.querySelectorAll('[role="tab"]')[next]?.focus()
   })
 }
+
+/**
+ * 把滑块对齐到当前选中页签。offsetLeft / offsetWidth 读的是按钮 border box，
+ * 与绝对定位滑块的定位基准同为 .ink-tabs 的 padding box（position:relative），
+ * 数值可原样使用；横向溢出时滑块处在内容坐标系里，会随页签一起滚动。
+ */
+function syncSlider() {
+  const bar = slider.value
+  const target = root.value?.querySelectorAll('[role="tab"]')[activeIndex()]
+  if (!bar || !target) return
+  bar.style.transform = `translateX(${target.offsetLeft}px)`
+  bar.style.width = `${target.offsetWidth}px`
+}
+
+// 选中项或 tabs 变化（含就地改 label）后，等 DOM 更新完再量
+watch([() => props.modelValue, () => props.tabs], () => nextTick(syncSlider), { deep: true })
+
+onMounted(() => {
+  syncSlider()
+  window.addEventListener('resize', syncSlider)
+  // 衬线字体加载完成前后页签宽度不同，字体就绪后再量一次
+  document.fonts?.ready?.then(syncSlider)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncSlider)
+})
 </script>
 
 <template>
@@ -64,5 +93,6 @@ function onKeydown(event) {
     >
       {{ tab.label }}
     </button>
+    <span ref="slider" class="ink-tab-slider" aria-hidden="true" />
   </div>
 </template>

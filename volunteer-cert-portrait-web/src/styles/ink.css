@@ -77,8 +77,6 @@
 .dash-fig{padding-top:30px; padding-bottom:30px}
 .fig-cap{margin-top:18px; padding-top:12px; border-top:1px solid var(--c-line-2); font-family:var(--font-display); font-size:13px; letter-spacing:.06em; color:var(--c-ink-3)}
 .fig-cap b{color:var(--c-a2); margin-right:8px; font-family:var(--font-mono); font-size:11px; letter-spacing:.16em}
-.chart-240{height:240px}
-.chart-280{height:280px}
 .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:36px}
 .grid-3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:36px}
 
@@ -321,9 +319,6 @@
   background-size:6px 6px, 6px 6px;
   background-repeat:no-repeat;
 }
-.ink-input-affix{display:flex; align-items:stretch}
-.ink-input-affix .ink-input{flex:1 1 auto}
-.ink-input-affix .ink-input:not(:first-child){border-left:0}
 
 /* 复选框 / 单选框：方形，与零圆角语言一致 */
 .ink-check{display:inline-flex; align-items:center; gap:8px; font-size:14px; color:var(--c-ink-2); cursor:pointer}
@@ -387,6 +382,18 @@
 /* 入场只做 8px 上浮 + 淡入：浮层靠遮罩分层，不靠阴影或缩放 */
 @keyframes ink-mask-in{from{opacity:0}to{opacity:1}}
 @keyframes ink-dialog-in{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
+/* 出场：<Transition name="ink-dialog"> 只接管离场，入场仍是上面的 animation ——
+   不写 enter 类，避免动画与过渡双跑。leave-active 里那句 animation:none 是必需的：
+   进场动画（200ms）比离场过渡（140ms）长，不关掉的话 Vue 量过渡时会判定为
+   animation，一直等不会发生的 animationend，节点要拖到 200ms 后才移除。 */
+.ink-dialog-leave-active{animation:none; transition:opacity var(--t-page-leave) var(--ease-out)}
+.ink-dialog-leave-to{opacity:0}
+.ink-dialog-leave-active .ink-dialog{
+  animation:none;
+  transition:opacity var(--t-page-leave) var(--ease-out), transform var(--t-page-leave) var(--ease-out);
+}
+/* 面板离场下移 8px：与入场的 translateY(8px) 同一距离，一进一出走同一条轨迹 */
+.ink-dialog-leave-to .ink-dialog{opacity:0; transform:translateY(8px)}
 .ink-dialog.is-wide{max-width:840px}
 .ink-dialog.is-narrow{max-width:420px}
 .ink-dialog-head{
@@ -424,6 +431,28 @@
   animation:ink-toast-in var(--t-base) ease-out;
 }
 @keyframes ink-toast-in{from{opacity:0; transform:translateY(-8px)}to{opacity:1; transform:none}}
+/* 列表过渡（<TransitionGroup name="ink-toast">）：离场只做透明度；
+   下面几条的「补位」交给 move —— Vue 量到位移后给它们加类、清掉内联 transform，
+   再靠过渡滑到位。两个实测过的坑，别删：
+   1) move 时长必须**比入场动画长**：入场动画也挂在 .ink-toast 上，Vue 的
+      getTransitionInfo 在「过渡 ≥ 动画」时把元素判成 animation，hasCSSTransform
+      返回 false，.ink-toast-move 根本不会加上，表现为下面几条瞬间跳位。故用 --t-slow。
+   2) 离场元素必须 position:absolute 移出文档流：否则更新那一刻它还占着位置，
+      兄弟节点没有任何位移，FLIP 一样量不到（跳位只是推迟到 140ms 后）。Vue 官方
+      TransitionGroup 示例的 leave-active 也是这么处理的；这里是 align-items:center
+      的纵向 flex，absolute 后的静态位置在顶部居中 —— 正常队列里「最先加入的先消失」
+      正好是它原来的位置，不会挪窝。 */
+.ink-toast-move{transition:transform var(--t-slow) var(--ease-out)}
+.ink-toast-leave-active{
+  position:absolute; animation:none;
+  transition:opacity var(--t-page-leave) var(--ease-out);
+}
+/* 同时离场又在补位（被移除的是中间一条）时，两个过渡都要；
+   这种元素会被 FLIP 移到顶部再淡出，transform 与其它补位同速 */
+.ink-toast-leave-active.ink-toast-move{
+  transition:opacity var(--t-page-leave) var(--ease-out), transform var(--t-base) var(--ease-out);
+}
+.ink-toast-leave-to{opacity:0}
 .ink-toast.tone-ok{border-left:3px solid var(--c-ok)}
 .ink-toast.tone-bad{border-left:3px solid var(--c-bad)}
 .ink-toast.tone-warn{border-left:3px solid var(--c-warn)}
@@ -445,8 +474,19 @@
    观感不变（整条只比原来高 1px）。用 overflow-y:hidden 也能压掉滚动条，但那会把压住边框的
    那 1px 一起裁掉、下划线从 2px 变 1.5px（实测像素），所以不取。 */
 .ink-tabs{
+  position:relative; /* 朱砂滑块（.ink-tab-slider）的定位基准 */
   display:flex; gap:0; border-bottom:1px solid var(--c-ink); margin-bottom:32px;
   overflow-x:auto; padding-bottom:1px;
+}
+/* 朱砂滑块：选中态由「瞬间给 border 上色」改成一条会平移的线。
+   绝对定位在 .ink-tabs 的 padding box 内：bottom:0 + height:2px 与 .ink-tab 的
+   border-bottom 盒（border box 最下 2px）逐像素重合，不需要 bottom:-1px；
+   位置/宽度由 InkTabs.vue 量 offsetLeft / offsetWidth 后写内联样式；
+   横向溢出时它处在内容坐标系里，会跟页签一起滚。 */
+.ink-tab-slider{
+  position:absolute; left:0; bottom:0; height:2px;
+  background:var(--c-a2); pointer-events:none;
+  transition:transform var(--t-base) var(--ease-out), width var(--t-base) var(--ease-out);
 }
 .ink-tab{
   flex:none; padding:14px 24px; border:0; background:transparent;
@@ -455,7 +495,9 @@
   transition:color .18s ease-out;
 }
 .ink-tab:hover{color:var(--c-ink)}
-.ink-tab.is-current{color:var(--c-ink); border-bottom-color:var(--c-a2)}
+/* 不再给选中页签的 border 上色：下划线交给 .ink-tab-slider 平移呈现，
+   否则目标页签的线会立刻亮起，与「还在路上」的滑块重复成两条。 */
+.ink-tab.is-current{color:var(--c-ink)}
 /* 键盘焦点环默认画在边框盒**外面**，而 tab 条是滚动容器 —— 溢出的部分会被裁掉，
    上/左/下三面全裁没了、只剩右边一面，看上去就是当前页签右缘一条莫名其妙的朱砂竖线
    （焦点环色 --c-focus 与 --c-a2 同为 #B03A2E，所以像一条分隔线）。
@@ -475,6 +517,7 @@
 
 /* 面包屑 */
 .ink-crumbs{display:flex; flex-wrap:wrap; gap:10px; font-size:13px; color:var(--c-ink-3)}
+.ink-crumbs a{transition:color var(--t-base) var(--ease-out)}
 .ink-crumbs a:hover{color:var(--c-a2)}
 .ink-crumbs .sep{color:var(--c-a6)}
 
@@ -553,7 +596,7 @@
 .console-user{padding:18px 20px; border-top:1px solid var(--c-line); font-size:13px}
 .console-user-name{display:block; font-family:var(--font-display); font-size:14px; letter-spacing:.04em; color:var(--c-ink)}
 .console-user-meta{display:block; margin-top:3px; font-family:var(--font-mono); font-size:11px; color:var(--c-ink-3)}
-.console-user-out{margin-top:12px; display:inline-block; font-size:12px; color:var(--c-ink-3); border-bottom:1px solid var(--c-line)}
+.console-user-out{margin-top:12px; display:inline-block; font-size:12px; color:var(--c-ink-3); border-bottom:1px solid var(--c-line); transition:color var(--t-base) var(--ease-out), border-color var(--t-base) var(--ease-out)}
 .console-user-out:hover{color:var(--c-a2); border-bottom-color:var(--c-a2)}
 
 .console-main{min-width:0; display:flex; flex-direction:column; background:var(--c-bg)}

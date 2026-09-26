@@ -210,13 +210,13 @@ async function onSignOut(row) {
                 {{ formatHours(row.attendance.hours) }}
               </span>
             </template>
-            <span v-else class="remark-mute">—</span>
+            <span v-else class="cell-mute">—</span>
           </template>
 
           <template #remark="{ row }">
             <span v-if="row.rejectReason" class="remark-bad">{{ row.rejectReason }}</span>
-            <span v-else-if="row.reason" class="remark-mute">{{ row.reason }}</span>
-            <span v-else class="remark-mute">—</span>
+            <span v-else-if="row.reason" class="cell-mute">{{ row.reason }}</span>
+            <span v-else class="cell-mute">—</span>
           </template>
 
           <template #actions="{ row }">
@@ -273,11 +273,6 @@ async function onSignOut(row) {
 .remark-bad {
   font-size: 13px;
   color: var(--c-bad);
-}
-
-.remark-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
 }
 
 /* 签到列：状态标签后面跟实得时长，与标签拉开一点距离。

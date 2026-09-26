@@ -54,40 +54,44 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div
-      v-if="modelValue"
-      class="ink-dialog-mask"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="title || undefined"
-      @mousedown="onMaskDown"
-    >
+    <!-- Transition 只接管离场（.ink-dialog-leave-*）：入场仍是 ink.css 的
+         ink-mask-in / ink-dialog-in 动画，不写 enter 类，避免动画与过渡双跑 -->
+    <Transition name="ink-dialog">
       <div
-        ref="panel"
-        class="ink-dialog"
-        :class="{ 'is-wide': size === 'wide', 'is-narrow': size === 'narrow' }"
+        v-if="modelValue"
+        class="ink-dialog-mask"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title || undefined"
+        @mousedown="onMaskDown"
       >
-        <div v-if="title || showClose" class="ink-dialog-head">
-          <h3 class="ink-dialog-title">{{ title }}</h3>
-          <button
-            v-if="showClose"
-            class="ink-dialog-close"
-            type="button"
-            aria-label="关闭"
-            @click="close"
-          >
-            ×
-          </button>
-        </div>
+        <div
+          ref="panel"
+          class="ink-dialog"
+          :class="{ 'is-wide': size === 'wide', 'is-narrow': size === 'narrow' }"
+        >
+          <div v-if="title || showClose" class="ink-dialog-head">
+            <h3 class="ink-dialog-title">{{ title }}</h3>
+            <button
+              v-if="showClose"
+              class="ink-dialog-close"
+              type="button"
+              aria-label="关闭"
+              @click="close"
+            >
+              ×
+            </button>
+          </div>
 
-        <div class="ink-dialog-body">
-          <slot />
-        </div>
+          <div class="ink-dialog-body">
+            <slot />
+          </div>
 
-        <div v-if="$slots.footer" class="ink-dialog-foot">
-          <slot name="footer" :close="close" />
+          <div v-if="$slots.footer" class="ink-dialog-foot">
+            <slot name="footer" :close="close" />
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
   </Teleport>
 </template>

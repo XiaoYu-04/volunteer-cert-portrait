@@ -55,7 +55,8 @@ onMounted(async () => {
   }
 })
 
-const statusOptions = dict.options('user_status')
+// 走 computed 而非直接取值：dict.load() 会用接口数据整体替换字典数组
+const statusOptions = computed(() => dict.options('user_status'))
 
 const roleName = (code) => roles.value.find((r) => r.code === code)?.name || code
 
@@ -271,7 +272,7 @@ function resetQuery() {
     维护三类账号的资料与启用状态。
   </p>
 
-  <div class="stats">
+  <div class="stats anim-stagger">
     <InkStat
       v-for="role in roles"
       :key="role.code"
@@ -479,8 +480,6 @@ function resetQuery() {
 </template>
 
 <style scoped>
-/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-
 /* 重置口令是不可逆操作，说明文字比字段提示（12px 灰）提一档，
    让「登录态失效」这句后果先被看到 */
 .reset-note {

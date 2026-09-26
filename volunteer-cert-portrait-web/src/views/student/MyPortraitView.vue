@@ -68,7 +68,7 @@ const dimLabel = computed(() =>
           <InkStat label="画像等级" :value="portrait.level" />
         </div>
 
-        <div class="grid-2 grid-gap">
+        <div v-reveal.fade class="grid-2 grid-gap">
           <div class="panel">
             <div class="panel-head">
               <h2 class="panel-title">画像标签</h2>
@@ -117,7 +117,7 @@ const dimLabel = computed(() =>
               <span class="panel-extra">满分 100</span>
             </div>
 
-            <ul class="dim-list">
+            <ul class="dim-list anim-stagger">
               <li v-for="dim in portrait.dimensions" :key="dim.name" class="dim-item">
                 <span class="dim-name">{{ dim.name }}</span>
                 <InkProgress :value="dim.value" :max="100" show-text />
@@ -126,7 +126,7 @@ const dimLabel = computed(() =>
           </div>
         </div>
 
-        <figure class="fig-frame fig-gap">
+        <figure v-reveal.fade class="fig-frame fig-gap">
           <InkChart
             :option="dimOption"
             :loading="loading"

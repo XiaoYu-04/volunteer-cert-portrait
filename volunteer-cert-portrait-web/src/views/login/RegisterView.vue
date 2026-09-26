@@ -108,7 +108,7 @@ async function onSubmit() {
     </aside>
 
     <main class="auth-main">
-      <div class="auth-card">
+      <div class="auth-card anim-rise">
         <h1 class="auth-title">注册</h1>
         <p class="auth-sub">仅开放学生自助注册，组织与管理员账号由学校统一分配</p>
 
