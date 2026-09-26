@@ -7,4 +7,3 @@ export const getMyPortrait = () => get('/v1/portraits/me')
 export const getDistribution = () => get('/v1/portraits/distribution')
 
 export const listPortraits = (params) => get('/v1/portraits', params)
-export const getPortrait = (studentId) => get(`/v1/portraits/${studentId}`)

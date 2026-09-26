@@ -79,12 +79,5 @@ h1, h2, h3, h4 { font-family: var(--font-display, inherit); color: var(--c-ink, 
   padding-inline: var(--pad, 24px);
 }
 
-/* ---------- 图表容器：ECharts 需要显式高度 ---------- */
-.chart { width: 100%; min-height: 220px; }
-.chart-sm { min-height: 180px; }
-.chart-md { min-height: 240px; }
-.chart-lg { min-height: 300px; }
-
 /* ---------- 数据文本约定 ---------- */
 .num { font-family: var(--font-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums; }
-.nowrap { white-space: nowrap; }

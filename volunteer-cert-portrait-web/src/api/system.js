@@ -26,13 +26,6 @@ export const deleteCollege = (id) => del(`/v1/system/colleges/${id}`)
 export const updateCollegeStatus = (id, status) =>
   put(`/v1/system/colleges/${id}/status`, { status })
 
-/* ---------- 字典 ---------- */
-export const listDicts = () => get('/v1/system/dicts')
-
-/* ---------- 学生档案 ---------- */
-export const listStudents = (params) => get('/v1/system/students', params)
-export const getStudent = (id) => get(`/v1/system/students/${id}`)
-
 /* ---------- 通知公告 ---------- */
 export const listNotifications = (params) => get('/v1/system/notifications', params)
 export const getNotification = (id) => get(`/v1/system/notifications/${id}`)

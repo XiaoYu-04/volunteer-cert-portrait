@@ -4,7 +4,7 @@ import { formatNumber, formatPercent } from '@/utils/format'
 /**
  * 看板文案：把 `GET /v1/analytics/dashboard` 的响应转成图注与无障碍描述。
  *
- *   const { trendLabel, collegeDesc } = useDashboardText(data)
+ *   const { trendLabel, collegeLabel } = useDashboardText(data)
  *
  * 为什么要集中在这里：这些位置原先写的是原型（mock）的冻结数字 ——
  * 386 场、86,420 小时、「计算机学院 15240 小时居首，体育学院 7980 小时最少」——
@@ -20,12 +20,10 @@ import { formatNumber, formatPercent } from '@/utils/format'
  * @param {import('vue').Ref<object|null>} data dashboard 响应
  */
 export function useDashboardText(data) {
-  const stats = computed(() => data.value?.stats || [])
   const trend = computed(() => data.value?.trend || [])
   const types = computed(() => data.value?.types || [])
   const colleges = computed(() => data.value?.colleges || [])
   const auditItems = computed(() => data.value?.audit?.items || [])
-  const profiles = computed(() => data.value?.profiles || [])
   const signin = computed(() => data.value?.signin || {})
 
   /** '2026-08' → '2026 年 8 月' */
@@ -108,12 +106,6 @@ export function useDashboardText(data) {
     return `各学院志愿时长排名横向条形图，${top.college} ${top.hours} 小时居首，${low.college} ${low.hours} 小时最少`
   })
 
-  const collegeDesc = computed(() => {
-    const top = collegeTop.value
-    if (!top) return '按累计认证时长排序'
-    return `按累计认证时长排序，${top.college}以 ${formatNumber(top.hours)} 小时居首。`
-  })
-
   const auditLabel = computed(() => {
     if (!auditItems.value.length) return '时长审核三态环形图'
     const parts = auditItems.value.map((i) => `${i.name} ${i.value} 条`).join('、')
@@ -132,18 +124,6 @@ export function useDashboardText(data) {
     return `签到率仪表盘：${formatPercent(s.rate)}，应签到 ${s.total} 人次，实签到 ${s.signed} 人次`
   })
 
-  const signinDesc = computed(() => {
-    const s = signin.value
-    if (s.total === undefined) return '活动签到率。'
-    return `活动签到率，应签到 ${formatNumber(s.total)} 人次、实签到 ${formatNumber(s.signed)} 人次。`
-  })
-
-  /** 画像区文案。刻意不写「全校 N 名学生」——profiles 是「标签 → 人数」的分布，
-      一个学生可同时有多个标签，其 count 之和是**标签计数**而非学生数，写成学生数会偏大。 */
-  const portraitDesc = computed(
-    () => `共 ${profiles.value.length} 类画像标签，按参与活动的类型、频次与时长归类。`,
-  )
-
   /** 「N 类活动 · M 个学院」这类结构性说明 */
   const structureNote = computed(() => {
     const parts = []
@@ -159,21 +139,8 @@ export function useDashboardText(data) {
   })
 
   return {
-    // 原始切片，页面直接用
-    stats,
-    trend,
-    types,
-    colleges,
-    auditItems,
-    profiles,
-    signin,
-    topType,
-    collegeTop,
-    collegeLow,
-    // 现算文案
     trendRange,
     trendTotal,
-    trendHours,
     trendTotalText,
     trendHoursText,
     trendDesc,
@@ -182,14 +149,10 @@ export function useDashboardText(data) {
     typeLabel,
     typeCaption,
     collegeLabel,
-    collegeDesc,
     auditLabel,
     auditDesc,
     signinLabel,
-    signinDesc,
-    portraitDesc,
     structureNote,
     heatLabel,
-    monthText,
   }
 }

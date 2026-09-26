@@ -2,7 +2,7 @@ import { portraits, profiles, students, users } from './dataset'
 import { ok, fail, paginate, like, eq, currentUserId } from './_helpers'
 
 export default [
-  /* 静态段必须排在 /v1/portraits/:id 之前（本模块暂无 :id 路由，保持约定） */
+  /* 静态段路由；本模块暂无 :studentId 路由（将来新增时须排在这两段之后） */
   {
     method: 'get',
     path: '/v1/portraits/me',
@@ -43,14 +43,6 @@ export default [
         .filter((p) => eq(p.college, query.college))
         .filter((p) => eq(p.tag, query.tag))
       return ok(paginate(rows, query))
-    },
-  },
-  {
-    method: 'get',
-    path: '/v1/portraits/:studentId',
-    handler: ({ params }) => {
-      const item = portraits.find((p) => p.studentId === Number(params.studentId))
-      return item ? ok(item) : fail(50001, '画像尚未生成')
     },
   },
 ]

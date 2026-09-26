@@ -19,7 +19,7 @@ function tok(name, fallback) {
 
 let cache = null
 
-export function theme() {
+function theme() {
   if (cache) return cache
   cache = {
     panel: tok('--c-panel', '#ffffff'),
@@ -47,7 +47,7 @@ export function theme() {
 }
 
 /** 把颜色转成带透明度的 rgba，支持 #rgb / #rrggbb / rgb() */
-export function alpha(color, a) {
+function alpha(color, a) {
   const c = (color || '').trim()
   if (c.charAt(0) === '#') {
     let hx = c.slice(1)
@@ -185,38 +185,6 @@ export function trend(data) {
   return o
 }
 
-/** 活动数量趋势：圆角柱状（奇偶交替双色） */
-export function trendBar(data) {
-  const t = theme()
-  const o = base()
-  o.grid = { left: 4, right: 12, top: 24, bottom: 4, containLabel: true }
-  o.tooltip = Object.assign({}, o.tooltip, {
-    trigger: 'axis',
-    axisPointer: { type: 'shadow' },
-    formatter: (p) => {
-      const d = data[p[0].dataIndex]
-      return `${d.month}<br/>活动 <b>${d.count}</b> 场<br/>服务 <b>${fmt(d.hours)}</b> 小时`
-    },
-  })
-  o.xAxis = Object.assign(catAxis(data.map((d) => monthLabel(d.month))), { boundaryGap: true })
-  o.yAxis = valAxis('场')
-  o.series = [
-    {
-      type: 'bar',
-      barWidth: '56%',
-      data: data.map((d, i) => ({
-        value: d.count,
-        itemStyle: {
-          color: t.series[i % 2 === 0 ? 0 : 1],
-          borderRadius: [6, 6, 0, 0],
-        },
-      })),
-      label: { show: true, position: 'top', color: t.ink3, fontSize: 10 },
-    },
-  ]
-  return o
-}
-
 /** 服务时长趋势：折线（无面积） */
 export function hours(data) {
   const t = theme()
@@ -269,28 +237,6 @@ export function typePie(data) {
         value: d.value,
         itemStyle: { color: t.series[i % 6] },
       })),
-    },
-  ]
-  return o
-}
-
-/** 活动类型分布：柱状 */
-export function typeBar(data) {
-  const t = theme()
-  const o = base()
-  o.grid = { left: 4, right: 12, top: 22, bottom: 4, containLabel: true }
-  o.tooltip = Object.assign({}, o.tooltip, { trigger: 'axis', axisPointer: { type: 'shadow' } })
-  o.xAxis = Object.assign(catAxis(data.map((d) => d.name)), { boundaryGap: true })
-  o.yAxis = valAxis('场')
-  o.series = [
-    {
-      type: 'bar',
-      barWidth: '54%',
-      data: data.map((d, i) => ({
-        value: d.value,
-        itemStyle: { color: t.series[i % 6], borderRadius: [4, 4, 0, 0] },
-      })),
-      label: { show: true, position: 'top', color: t.ink2, fontSize: 11 },
     },
   ]
   return o
@@ -607,6 +553,6 @@ export function heat(data) {
 }
 
 /** 把 days 数组转成 calendar 需要的 [['2025-03-01', 88], ...] */
-export function heatmapSeries({ month, days }) {
+function heatmapSeries({ month, days }) {
   return days.map((v, i) => [`${month}-${String(i + 1).padStart(2, '0')}`, v])
 }

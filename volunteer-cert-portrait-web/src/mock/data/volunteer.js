@@ -164,16 +164,6 @@ export default [
   },
   {
     method: 'put',
-    path: '/v1/activities/:id',
-    handler: ({ params, body }) => {
-      const activity = activities.find((a) => a.id === Number(params.id))
-      if (!activity) return fail(30001, '活动不存在')
-      Object.assign(activity, body, { id: activity.id })
-      return ok(null, '保存成功')
-    },
-  },
-  {
-    method: 'put',
     path: '/v1/activities/:id/status',
     handler: ({ params, body }) => {
       const activity = activities.find((a) => a.id === Number(params.id))

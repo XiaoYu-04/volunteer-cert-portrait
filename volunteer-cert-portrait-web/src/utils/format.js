@@ -14,7 +14,7 @@ export function formatNumber(value) {
 }
 
 /** 日期：'2025-03-22T09:00:00' → '2025-03-22' */
-export function formatDate(value) {
+function formatDate(value) {
   if (!value) return '—'
   const d = toDate(value)
   if (!d) return String(value)
@@ -28,22 +28,6 @@ export function formatDateTime(value, withSeconds = false) {
   if (!d) return String(value)
   const base = `${formatDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
   return withSeconds ? `${base}:${pad(d.getSeconds())}` : base
-}
-
-/** 相对时间：'3 天前'。超过 30 天回退成绝对日期 */
-export function formatRelative(value) {
-  if (!value) return '—'
-  const d = toDate(value)
-  if (!d) return String(value)
-  const diff = Date.now() - d.getTime()
-  const min = Math.floor(diff / 60000)
-  if (min < 1) return '刚刚'
-  if (min < 60) return `${min} 分钟前`
-  const hour = Math.floor(min / 60)
-  if (hour < 24) return `${hour} 小时前`
-  const day = Math.floor(hour / 24)
-  if (day < 30) return `${day} 天前`
-  return formatDate(d)
 }
 
 /** 百分比：0.923 → '92.3%'。入参为 0~1 的小数 */
@@ -60,13 +44,6 @@ export function formatHours(value) {
   const n = Number(value)
   if (Number.isNaN(n)) return String(value)
   return `${Number.isInteger(n) ? n : n.toFixed(1)} 小时`
-}
-
-/** 取姓名末两字作印章文字，用于 .seal */
-export function sealText(name) {
-  if (!name) return '志愿'
-  const s = String(name).trim()
-  return s.length <= 2 ? s : s.slice(-2)
 }
 
 function toDate(value) {

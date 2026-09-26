@@ -2,7 +2,6 @@ import { get, post, put } from '@/utils/request'
 
 /* ---------- 服务时长 ---------- */
 export const listDurations = (params) => get('/v1/durations', params)
-export const getDuration = (id) => get(`/v1/durations/${id}`)
 
 /** 提交时长，body 支持单条或 { items: [...] } 批量 */
 export const submitDurations = (data) => post('/v1/durations', data)
