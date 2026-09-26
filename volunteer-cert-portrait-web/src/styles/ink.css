@@ -430,7 +430,18 @@
 .ink-progress-text{flex:none; font-family:var(--font-mono); font-size:12px; color:var(--c-ink-3); white-space:nowrap}
 
 /* ---------- 标签页 ---------- */
-.ink-tabs{display:flex; gap:0; border-bottom:1px solid var(--c-ink); margin-bottom:32px; overflow-x:auto}
+/* ⚠️ 末尾那个 padding-bottom:1px **不是留白，是必需的**，别当冗余删掉：
+   页签用 margin-bottom:-1px 让 2px 朱砂下划线压住容器那条 1px 深色分隔线，代价是页签
+   **溢出内容盒 1px**（实测 clientHeight 55 / scrollHeight 56）；而规范规定「一个轴非 visible
+   时另一个轴的 visible 计算成 auto」—— `overflow-x:auto` 把纵向也变成可滚动，于是 tab 条
+   右侧凭空长出一条竖向滚动条（Windows 经典滚动条占 15px，用户截图里那条就是它）。
+   补 1px 下内边距把这 1px 收进 padding box：溢出归零、滚动条消失，而「下划线压分隔线」的
+   观感不变（整条只比原来高 1px）。用 overflow-y:hidden 也能压掉滚动条，但那会把压住边框的
+   那 1px 一起裁掉、下划线从 2px 变 1.5px（实测像素），所以不取。 */
+.ink-tabs{
+  display:flex; gap:0; border-bottom:1px solid var(--c-ink); margin-bottom:32px;
+  overflow-x:auto; padding-bottom:1px;
+}
 .ink-tab{
   flex:none; padding:14px 24px; border:0; background:transparent;
   font-family:var(--font-display); font-size:15px; letter-spacing:.08em;
@@ -439,6 +450,12 @@
 }
 .ink-tab:hover{color:var(--c-ink)}
 .ink-tab.is-current{color:var(--c-ink); border-bottom-color:var(--c-a2)}
+/* 键盘焦点环默认画在边框盒**外面**，而 tab 条是滚动容器 —— 溢出的部分会被裁掉，
+   上/左/下三面全裁没了、只剩右边一面，看上去就是当前页签右缘一条莫名其妙的朱砂竖线
+   （焦点环色 --c-focus 与 --c-a2 同为 #B03A2E，所以像一条分隔线）。
+   把环收到页签内部，四面都在，才是正常的焦点提示；与 .console-nav a:focus-visible
+   既有做法一致。 */
+.ink-tab:focus-visible{outline-offset:-2px}
 
 /* ---------- 页头（内页用，比 hero 轻） ---------- */
 .page-head{padding:44px 0 32px; border-bottom:1px solid var(--c-line)}
