@@ -27,14 +27,15 @@ spring:
     # 库名 volunteer_cert_portrait 取自知识库《命名体系总表》
     # sslmode=prefer：优先 SSL，服务端不支持时自动回退，兼容强制/非强制 SSL 两种云实例
     url: jdbc:postgresql://103.40.14.100:19476/volunteer_cert_portrait?currentSchema=public&stringtype=unspecified&sslmode=prefer
-    # 环境变量 VCP_DB_USERNAME / VCP_DB_PASSWORD 优先，未设置时取 application-local.yml 的 vcp.db.*
-    # ⚠️ 缺凭证时应用**仍能正常启动**（实测确认：@ConfigurationProperties 绑定不会因为占位符
-    # 解析不了而报错，占位符会被原样当成字符串），要到第一次访问数据库才以认证失败暴露。
-    # 所以一旦出现连不上库，第一件事是检查 application-local.yml 是否存在、口令是否写对。
-    # 写进 application-local.yml 时口令必须加引号：以 0 开头的数字串会被 YAML 当作八进制整数解析
-    # （实测 012345 → 5349），口令就错了。
-    username: ${VCP_DB_USERNAME:${vcp.db.username}}
-    password: ${VCP_DB_PASSWORD:${vcp.db.password}}
+    # 【演示口径，2026-09-26 决定】口令**明文**写在这里：123456。
+    # 云库是共享演示库、库里全是演示数据；目标是任何人 clone 下来**零配置**即可连库。
+    # 代价（知情选择）：仓库是 public，等于把口令公开 —— 任何能访问 103.40.14.100:19476 的人
+    # 都能改/删这个库里的数据。因此这个库**只允许放演示数据**。
+    # ⚠️ 答辩结束后必须轮换口令；生产部署必须用 --spring.profiles.active=prod + 环境变量覆盖。
+    # 历史背景：口令曾泄露进 git 历史并轮换过一次，本次是**刻意**改回明文，属演示取舍，不是疏忽。
+    # 覆盖方式（优先级从高到低）：环境变量 VCP_DB_PASSWORD → application-local.yml 的 vcp.db.password。
+    username: ${VCP_DB_USERNAME:postgres}
+    password: ${VCP_DB_PASSWORD:123456}
     # 另注：2026-09-24 起 vcp-boot/pom.xml 的 <resources> 已把 application-local.yml 排除出打包，
     # jar 里不再有它（clean 重打后实测确认，见 docs/下一步待办.md 第 12 项）；
     # 本地开发按上面 spring.config.import 的 file 路径读取，部署时用 jar 同级 config/application-local.yml 或环境变量。

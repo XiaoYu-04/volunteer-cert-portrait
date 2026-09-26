@@ -12,6 +12,8 @@
 #
 # 数据库凭证不写在本文件：仍走环境变量 VCP_DB_USERNAME / VCP_DB_PASSWORD，
 # 或 jar 同级 config/application-local.yml（见 application.yml 的 spring.config.import 注释）。
+# ⚠️ 2026-09-26 起 application.yml 的默认口令是**明文演示值 123456**（公开仓库、共享演示库的
+#    刻意取舍）；**激活 prod 时必须用环境变量覆盖它**，否则生产就是在用公开口令。
 
 vcp:
   cors:
