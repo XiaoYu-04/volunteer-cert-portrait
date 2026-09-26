@@ -77,4 +77,20 @@ public interface ActivityService {
      * @throws com.vcp.common.exception.BusinessException 组织不存在（10005）、角色无权查看（20003）
      */
     OrgOverviewVO getOrgOverview(Long orgId);
+
+    /**
+     * 删除草稿活动（逻辑删除）。
+     *
+     * <p><b>只允许删草稿</b>，这不是保守而是构造上安全：草稿既不能被学生看到
+     * （{@code ActivityServiceImpl#getActivity} 对学生把草稿当不存在），也不接受报名
+     * （{@code SignupServiceImpl#createSignup} 要求活动为 PUBLISHED），
+     * 因此草稿不可能挂有报名 / 签到 / 时长记录，删除**无级联**，
+     * 不会重演待办 B31「删用户不级联」那类遗留脏数据。
+     * 已发布及之后的状态只能走「取消」，不能删。
+     *
+     * @param id 活动 id
+     * @throws com.vcp.common.exception.BusinessException
+     *         活动不存在或不属于本组织（30001）、当前状态不是草稿（10001）
+     */
+    void deleteDraft(Long id);
 }

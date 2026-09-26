@@ -12,6 +12,7 @@ import com.vcp.volunteer.vo.ActivityVO;
 import com.vcp.volunteer.vo.OrgOverviewVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -114,6 +115,25 @@ public class ActivityController {
     @OperationLog(module = "志愿活动", action = "更新活动状态")
     public R<Void> updateStatus(@PathVariable Long id, @RequestBody ActivityStatusDTO dto) {
         activityService.updateStatus(id, dto);
+        return R.ok();
+    }
+
+    /**
+     * 删除草稿活动。
+     *
+     * <p>权限沿用 {@code volunteer:activity:update} 而不是新加一个 delete ——
+     * 权限表在 {@code StpInterfaceImpl} 里是按角色硬编码的，为一个操作新增权限
+     * 要同时改权限表与种子数据；而「维护本组织活动」本就是 update 的语义，
+     * 组织管理员与学校管理员都已持有。真正的约束在 Service：只允许删草稿。
+     *
+     * @param id 活动 id
+     * @return 空响应
+     */
+    @DeleteMapping("/{id}")
+    @SaCheckPermission("volunteer:activity:update")
+    @OperationLog(module = "志愿活动", action = "删除草稿活动")
+    public R<Void> deleteDraft(@PathVariable Long id) {
+        activityService.deleteDraft(id);
         return R.ok();
     }
 }

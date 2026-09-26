@@ -173,6 +173,25 @@ export default [
       return ok(null, label[body.status] || '状态已更新')
     },
   },
+  {
+    // 删除草稿。守卫与后端 ActivityServiceImpl#deleteDraft 对齐：只接受 DRAFT。
+    // 草稿不可能有报名（后端拒绝为非 PUBLISHED 活动报名），所以这里直接 splice 无级联问题。
+    method: 'delete',
+    path: '/v1/activities/:id',
+    handler: ({ params }) => {
+      const activity = activities.find((a) => a.id === Number(params.id))
+      if (!activity) return fail(30001, '活动不存在')
+      if (activity.status !== 'DRAFT') {
+        const label = { PUBLISHED: '已发布', CLOSED: '已结束', CANCELED: '已取消' }
+        return fail(
+          10001,
+          `只能删除草稿活动，当前状态为「${label[activity.status] || activity.status}」，如需下线请改用「取消」`
+        )
+      }
+      activities.splice(activities.indexOf(activity), 1)
+      return ok(null, '草稿已删除')
+    },
+  },
 
   /* ---------- 活动分类 ---------- */
   {
