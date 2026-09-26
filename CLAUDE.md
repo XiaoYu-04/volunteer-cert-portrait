@@ -352,6 +352,16 @@ vcp-dependencies  独立 BOM
     （`.console-nav a:focus-visible{outline-offset:-2px}` 早就是这个做法，新加可聚焦元素时照抄）。
     回归脚本 `.tmp-shots/probe-tabs-fixed.cjs` / `probe-tabs-fixed2.cjs`（4 个 tab 页 + 375px 窄屏）。
 
+17. **环形 / 玫瑰图的外侧「强调标签」会被画布裁掉 —— 悬停信息统一走 tooltip**（2026-09-26 实测）
+    当圆环占满大半高度时（审核三态：`center 46% / radius 84%`，顶部只剩 8px），
+    ECharts 的 `emphasis.label`（`position:'outer'`）画在环外，**顶部 / 底部扇区的标签会超出画布、
+    被 canvas 上 / 下边缘裁掉** —— 现场：学校端 hover「已驳回」，标签第一行只剩一半（用户所说「显示不全」）。
+    该标签与 tooltip 内容重复，故把 `pieEmphasis()` 改为「只放大扇区、不画标签」
+    （`{ scale:true, scaleSize:6 }`），悬停数值一律交给 tooltip（不受画布裁剪、字段更全）；
+    三个环图（`typePie` / `profile` / `audit`）共用该 helper，会一起变。
+    附带：`sign`（签到仪表盘）默认 tooltip 只显示裸数值（`90.1` 加一个无意义色点），
+    已改用 formatter 输出「活动签到率 / 90.1%」。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
