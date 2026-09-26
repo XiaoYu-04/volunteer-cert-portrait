@@ -17,14 +17,6 @@ export default [
     },
   },
   {
-    method: 'get',
-    path: '/v1/durations/:id',
-    handler: ({ params }) => {
-      const item = durations.find((d) => d.id === Number(params.id))
-      return item ? ok(item) : fail(40001, '时长记录不存在')
-    },
-  },
-  {
     method: 'post',
     path: '/v1/durations',
     handler: ({ body }) => {

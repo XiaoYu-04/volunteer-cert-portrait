@@ -26,7 +26,7 @@ const pct = (r) => formatPercent(r)
 </script>
 
 <template>
-  <ul class="ink-org">
+  <ul class="ink-org anim-stagger">
     <li v-for="row in rows" :key="row.org" class="ink-org-row">
       <RouterLink v-if="linkBase" class="ink-org-name ink-org-link" :to="toOrgActivities(row.org)">
         {{ row.org }}
@@ -35,14 +35,14 @@ const pct = (r) => formatPercent(r)
       <span class="ink-org-metrics">
         <span class="ink-org-metric">
           <b class="ink-org-metric-num num">{{ row.activities }}</b>
-          <span class="ink-org-metric-cap"> 场</span>
+          <span> 场</span>
         </span>
         <span class="ink-org-metric">
-          <span class="ink-org-metric-cap">签到 </span>
+          <span>签到 </span>
           <b class="ink-org-metric-num num">{{ pct(row.signRate) }}</b>
         </span>
         <span class="ink-org-metric">
-          <span class="ink-org-metric-cap">通过 </span>
+          <span>通过 </span>
           <b class="ink-org-metric-num num">{{ pct(row.passRate) }}</b>
         </span>
       </span>

@@ -114,10 +114,5 @@ export const useUserStore = defineStore('user', {
       if (!perm) return true
       return this.perms.includes(perm)
     },
-
-    hasRole(roles) {
-      if (!roles || !roles.length) return true
-      return roles.includes(this.role)
-    },
   },
 })

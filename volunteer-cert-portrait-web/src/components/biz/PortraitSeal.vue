@@ -13,8 +13,8 @@ defineProps({
 </script>
 
 <template>
-  <ul class="tags">
-    <li v-for="(item, i) in items" :key="item.tag" class="ink-tag" :class="`ink-tag-${i + 1}`">
+  <ul class="tags anim-stagger">
+    <li v-for="item in items" :key="item.tag" class="ink-tag">
       <span class="ink-tag-name">{{ item.tag }}</span>
       <span class="ink-tag-count">{{ formatNumber(item.count) }} 人</span>
       <span v-if="showDesc" class="ink-tag-desc">{{ item.desc }}</span>

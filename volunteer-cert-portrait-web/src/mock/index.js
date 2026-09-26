@@ -28,10 +28,7 @@ const routes = [
   ...analyticsRoutes,
 ]
 
-import { ok, fail } from './data/_helpers'
-
-// 响应构造器定义在 data/_helpers.js，这里转出，方便调用方从一处引入
-export { ok, fail }
+import { fail } from './data/_helpers'
 
 /**
  * 路径匹配，支持 :param 占位。

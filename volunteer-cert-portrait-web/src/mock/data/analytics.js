@@ -36,49 +36,4 @@ export default [
         activities: activities.filter((a) => a.status === 'PUBLISHED'),
       }),
   },
-  {
-    method: 'get',
-    path: '/v1/analytics/overview',
-    handler: () => ok(stats),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/trend',
-    handler: () => ok(trend),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/types',
-    handler: () => ok(types),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/colleges',
-    handler: () => ok(colleges),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/orgs',
-    handler: () => ok(orgs),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/profiles',
-    handler: () => ok(profiles),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/audit',
-    handler: () => ok(audit),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/signin',
-    handler: () => ok(signin),
-  },
-  {
-    method: 'get',
-    path: '/v1/analytics/heatmap',
-    handler: () => ok(heatmap),
-  },
 ]

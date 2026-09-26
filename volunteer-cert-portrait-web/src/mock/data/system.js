@@ -273,27 +273,6 @@ export default [
     },
   },
 
-  /* ---------- 学生档案 ---------- */
-  {
-    method: 'get',
-    path: '/v1/system/students',
-    handler: ({ query }) => {
-      const rows = students
-        .filter((s) => like(s.name, query.keyword) || like(s.studentNo, query.keyword))
-        .filter((s) => eq(s.college, query.college))
-        .filter((s) => eq(s.grade, query.grade))
-      return ok(paginate(rows, query))
-    },
-  },
-  {
-    method: 'get',
-    path: '/v1/system/students/:id',
-    handler: ({ params }) => {
-      const student = students.find((s) => s.id === Number(params.id))
-      return student ? ok(student) : fail(10003, '学生档案不存在')
-    },
-  },
-
   /* ---------- 通知公告 ---------- */
   {
     method: 'get',
