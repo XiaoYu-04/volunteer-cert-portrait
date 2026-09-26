@@ -102,11 +102,12 @@ async function onMarkRead(row) {
         :rows="rows"
         :loading="loading"
         empty-text="没有符合条件的通知"
-        empty-hint="换一个关键字或类型再试"
+        empty-hint="放宽关键字或类型；开着「仅看未读」时可切回「全部通知」。"
       >
         <template #title="{ row }">
+          <!-- 「顶」是缩写字形：role="img" + aria-label 让读屏念「置顶」而不是孤零零一个「顶」 -->
           <RouterLink class="notice-link" :class="{ 'is-unread': !row.read }" :to="`/student/notifications/${row.id}`">
-            <span v-if="row.top" class="notice-flag" aria-label="置顶">顶</span>{{ row.title }}
+            <span v-if="row.top" class="notice-flag" role="img" aria-label="置顶">顶</span>{{ row.title }}
           </RouterLink>
         </template>
 
@@ -155,6 +156,7 @@ async function onMarkRead(row) {
   font-size: 15px;
   letter-spacing: 0.03em;
   color: var(--c-ink-2);
+  transition: color var(--t-fast) ease-out;
 }
 
 .notice-link:hover {
@@ -173,7 +175,7 @@ async function onMarkRead(row) {
   font-size: 11px;
   line-height: 1.5;
   font-weight: 400;
-  color: #fff;
+  color: var(--c-panel);
   background: var(--c-a2);
   vertical-align: 1px;
 }

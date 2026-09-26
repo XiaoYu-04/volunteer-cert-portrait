@@ -130,12 +130,18 @@ async function submitFix() {
     <div class="panel-head">
       <span class="panel-title">签到记录</span>
       <span class="panel-extra">
-        <span class="cell-mute">共 {{ total }} 条</span>
+        <span class="panel-note">共 {{ total }} 条</span>
         <InkButton to="/org/durations" size="sm">去提交时长</InkButton>
       </span>
     </div>
 
-    <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的签到记录">
+    <InkTable
+      :columns="columns"
+      :rows="rows"
+      :loading="loading"
+      empty-text="没有符合条件的签到记录"
+      empty-hint="学生在现场自助签到签退，记录会汇总到这里"
+    >
       <template #studentName="{ row }">
         <span class="cell-strong">{{ row.studentName }}</span>
       </template>
@@ -207,8 +213,16 @@ async function submitFix() {
 <style scoped>
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
+}
+
+/* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
+.panel-note {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
 }
 
 .cell-strong {
@@ -223,6 +237,6 @@ async function submitFix() {
 
 .fix-desc {
   grid-template-columns: 1fr;
-  margin-bottom: 22px;
+  margin-bottom: var(--sp-5);
 }
 </style>

@@ -135,7 +135,7 @@ async function remove(row) {
 
   <section class="panel panel-gap">
     <div class="panel-head">
-      <span class="panel-title">分类列表</span>
+      <h2 class="panel-title">分类列表</h2>
       <span class="panel-extra">
         <InkButton size="sm" variant="primary" @click="openCreate">新增分类</InkButton>
       </span>
@@ -209,8 +209,13 @@ async function remove(row) {
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-gap {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
 }
 
 .cell-strong {

@@ -124,7 +124,7 @@ async function toggleStatus(row) {
 <template>
   <h1 class="console-title">组织管理</h1>
   <p class="console-sub">
-    审核组织资质，维护启用状态。
+    审核组织资质并维护启用状态；通过后组织可发布活动、提交服务时长。
   </p>
 
   <section class="panel">
@@ -149,7 +149,7 @@ async function toggleStatus(row) {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">组织列表</span>
+      <h2 class="panel-title">组织列表</h2>
       <span class="panel-extra panel-note">共 {{ formatNumber(total) }} 个组织</span>
     </div>
 
@@ -306,6 +306,11 @@ async function toggleStatus(row) {
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-note {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -320,13 +325,13 @@ async function toggleStatus(row) {
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 
 .audit-desc {
   grid-template-columns: 1fr;
-  margin-bottom: 22px;
+  margin-bottom: var(--sp-5);
 }
 
 .audit-field {

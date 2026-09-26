@@ -174,14 +174,20 @@ async function batchApprove() {
     <div class="panel-head">
       <span class="panel-title">报名记录</span>
       <span class="panel-extra">
-        <span class="cell-mute">共 {{ total }} 条</span>
+        <span class="panel-note">共 {{ total }} 条</span>
         <InkButton size="sm" :disabled="!selected.length" @click="batchApprove">
           批量通过{{ selected.length ? `（${selected.length}）` : '' }}
         </InkButton>
       </span>
     </div>
 
-    <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的报名记录">
+    <InkTable
+      :columns="columns"
+      :rows="rows"
+      :loading="loading"
+      empty-text="没有符合条件的报名记录"
+      empty-hint="换一个关键字或状态再试"
+    >
       <template #select="{ row }">
         <label v-if="row.status === 'PENDING'" class="ink-check">
           <input
@@ -260,7 +266,13 @@ async function batchApprove() {
         </div>
       </dl>
 
-      <InkField v-if="dialog.mode === 'REJECT'" label="驳回理由" required class="audit-field">
+      <InkField
+        v-if="dialog.mode === 'REJECT'"
+        label="驳回理由"
+        required
+        hint="理由会展示在学生的「我的报名」里"
+        class="audit-field"
+      >
         <textarea
           v-model.trim="dialog.remark"
           class="ink-textarea"
@@ -285,8 +297,16 @@ async function batchApprove() {
 <style scoped>
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
+}
+
+/* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
+.panel-note {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
 }
 
 .cell-strong {
@@ -299,8 +319,13 @@ async function batchApprove() {
   color: var(--c-ink-3);
 }
 
+/* 操作列整格带 .col-num（等宽体），驳回理由与占位符是中文说明，还原正文字体 */
+.ink-table td.col-num .cell-mute {
+  font-family: var(--font-body);
+}
+
 .select-hint {
-  margin-top: 16px;
+  margin-top: var(--sp-4);
   font-size: 13px;
   color: var(--c-ink-3);
 }

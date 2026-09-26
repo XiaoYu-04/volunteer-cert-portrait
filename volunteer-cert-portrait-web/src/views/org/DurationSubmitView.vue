@@ -359,7 +359,7 @@ async function submit() {
 
 /* 指标区与首个面板之间没有现成的间距规则，这里补上 */
 .stats + .panel {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
 }
 
 .stats-duration :deep(.ink-stat-card) {
@@ -377,7 +377,7 @@ async function submit() {
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 
@@ -397,7 +397,7 @@ async function submit() {
 }
 
 .select-hint {
-  margin-top: 16px;
+  margin-top: var(--sp-4);
   font-size: 13px;
   color: var(--c-ink-3);
 }

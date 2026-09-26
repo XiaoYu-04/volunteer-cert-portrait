@@ -86,36 +86,36 @@ const rank = computed(() => {
     </div>
 
     <div class="grid-2">
-      <div>
+      <figure class="dash-fig">
         <InkChart
           :option="orgBarOption"
           :loading="loading"
           height="280px"
           label="全校各志愿服务组织活动场次横向条形图，按场次升序排列"
         />
-        <p class="fig-cap">
+        <figcaption class="fig-cap">
           <b>图一</b>全校志愿服务组织活动场次（场），共 {{ orgs.length }} 个组织。
-        </p>
-      </div>
+        </figcaption>
+      </figure>
 
-      <div>
+      <figure class="dash-fig">
         <InkChart
           :option="radarOption"
           :loading="loading"
           height="280px"
           label="本组织活动场次、签到率、审核通过率三项指标的雷达图"
         />
-        <p class="fig-cap">
+        <figcaption class="fig-cap">
           <b>图二</b>{{ org?.name || '本组织' }}的场次、签到率与审核通过率。
-        </p>
-      </div>
+        </figcaption>
+      </figure>
     </div>
   </section>
 
   <section class="panel">
     <div class="panel-head">
       <span class="panel-title">全校组织活跃度</span>
-      <span class="panel-extra" v-if="rank">本组织排名第 {{ rank }} 位</span>
+      <span class="panel-extra panel-note" v-if="rank">本组织排名第 {{ rank }} 位</span>
     </div>
     <OrgList :rows="orgs" />
   </section>
@@ -186,7 +186,20 @@ const rank = computed(() => {
 
 /* 指标区与首个面板之间没有现成的间距规则，这里补上 */
 .stats + .panel {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
+}
+
+/* 面板内部已有边框，图框只承担「图表 + 题注」的语义，不再加边距与描边 */
+.dash-fig {
+  margin: 0;
+}
+
+/* 面板右上角的注记（排名等）：与学校端看板同一套等宽体小字 */
+.panel-note {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
 }
 
 .stats-org :deep(.ink-stat-card) {

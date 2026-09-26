@@ -42,7 +42,7 @@ const statusOptions = dict.options('activity_status')
       <p class="page-head-sub">按类型与关键字筛选，查看详情与剩余名额。</p>
     </header>
 
-    <section class="sec-list">
+    <section class="sec-list" :aria-busy="loading">
       <form class="ink-filter" @submit.prevent="search">
         <InkField label="关键字">
           <input
@@ -75,7 +75,7 @@ const statusOptions = dict.options('activity_status')
         </div>
       </form>
 
-      <div v-if="loading" class="act-grid">
+      <div v-if="loading" class="act-grid sk-grid" aria-hidden="true">
         <div v-for="n in 6" :key="`sk-${n}`" class="ink-agc">
           <span class="ink-skeleton ink-agc-sk-cover"></span>
           <div class="ink-agc-body sk-body">
@@ -119,5 +119,10 @@ const statusOptions = dict.options('activity_status')
 /* 骨架卡的正文区比真实卡片矮，补一点下内边距免得贴边 */
 .sk-body {
   padding-bottom: 20px;
+}
+
+/* 占位卡不是可点元素：别让它们继承真卡片「悬停变墨色边框」的反馈 */
+.sk-grid .ink-agc {
+  pointer-events: none;
 }
 </style>

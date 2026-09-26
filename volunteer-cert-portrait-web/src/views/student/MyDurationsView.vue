@@ -155,6 +155,7 @@ function openDetail(row) {
             v-if="row.status === 'REJECTED'"
             size="sm"
             variant="ghost"
+            :aria-label="`查看驳回理由：${row.activityTitle}`"
             @click="openDetail(row)"
           >
             驳回理由
@@ -226,6 +227,7 @@ function openDetail(row) {
   font-size: 15px;
   letter-spacing: 0.03em;
   color: var(--c-ink);
+  transition: color var(--t-fast) ease-out;
 }
 
 .row-link:hover {

@@ -99,7 +99,7 @@ const {
       :desc="trendDesc"
     >
       <div class="grid-2">
-        <figure class="fig-frame" style="margin: 0">
+        <figure class="fig-frame">
           <InkChart
             :option="trendOption"
             :loading="loading"
@@ -111,7 +111,7 @@ const {
           </figcaption>
         </figure>
 
-        <figure class="fig-frame" style="margin: 0">
+        <figure class="fig-frame">
           <InkChart
             :option="typePieOption"
             :loading="loading"
@@ -176,7 +176,7 @@ const {
     >
       <div class="grid-2">
         <div>
-          <figure class="fig-frame" style="margin: 0 0 24px">
+          <figure class="fig-frame fig-rank">
             <InkChart
               :option="collegeOption"
               :loading="loading"
@@ -205,7 +205,7 @@ const {
       desc="审核按条、签到按人次统计；两项比率以记录总数为分母。"
     >
       <div class="grid-2">
-        <figure class="fig-frame" style="margin: 0">
+        <figure class="fig-frame">
           <InkChart
             :option="auditOption"
             :loading="loading"
@@ -215,7 +215,7 @@ const {
           <figcaption class="fig-cap"><b>图四</b>志愿服务时长审核三态分布（条）。</figcaption>
         </figure>
 
-        <figure class="fig-frame" style="margin: 0">
+        <figure class="fig-frame">
           <InkChart
             :option="signOption"
             :loading="loading"
@@ -243,6 +243,21 @@ const {
 
 .sub-head-gap {
   margin-top: 32px;
+}
+
+/* 「图三」与紧接其下的学院排行是一组，和上方图表拉开一档间距 */
+.fig-rank {
+  margin-bottom: 24px;
+}
+
+/* 首页竖排活动卡（ActivityCard）的标题是整张卡唯一的入口，
+   组件内部没有给悬停反馈，这里补上与网格卡 / 通知列表一致的朱砂色 */
+.wrap :deep(.ink-act-title a) {
+  transition: color var(--t-fast) ease-out;
+}
+
+.wrap :deep(.ink-act-title a:hover) {
+  color: var(--c-a2);
 }
 
 .sec-more {

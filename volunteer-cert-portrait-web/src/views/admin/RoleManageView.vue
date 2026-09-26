@@ -42,7 +42,7 @@ const totalPerms = computed(() =>
 
   <section v-for="role in roles" :key="role.code" class="panel panel-gap">
     <div class="panel-head">
-      <span class="panel-title">{{ role.name }}</span>
+      <h2 class="panel-title">{{ role.name }}</h2>
       <span class="panel-extra">
         <span class="role-code num">{{ role.code }}</span>
         <span class="role-count">
@@ -63,8 +63,13 @@ const totalPerms = computed(() =>
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-gap {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
 }
 
 .role-code {
@@ -74,7 +79,7 @@ const totalPerms = computed(() =>
   letter-spacing: 0.08em;
   color: var(--c-ink-2);
   border: 1px solid var(--c-line);
-  background: #fff;
+  background: var(--c-panel);
 }
 
 .role-count {
@@ -99,7 +104,7 @@ const totalPerms = computed(() =>
   font-family: var(--font-display);
   font-size: 14px;
   letter-spacing: 0.08em;
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
   font-weight: 400;
 }
 
@@ -118,12 +123,12 @@ const totalPerms = computed(() =>
   letter-spacing: 0.02em;
   color: var(--c-ink-2);
   border: 1px solid var(--c-line);
-  background: #fff;
+  background: var(--c-panel);
   white-space: nowrap;
 }
 
 .role-empty {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
   font-size: 14px;
   color: var(--c-ink-3);
 }
