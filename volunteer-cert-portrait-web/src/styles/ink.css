@@ -513,7 +513,7 @@
 .console-nav-group{margin-bottom:22px}
 .console-nav-group-title{
   display:block; padding:0 20px 8px;
-  font-family:var(--font-mono); font-size:10px; letter-spacing:.24em; color:var(--c-ink-3);
+  font-family:var(--font-display); font-size:18px; font-weight:700; letter-spacing:.08em; color:var(--c-a2);
 }
 .console-nav a{
   display:flex; align-items:center; gap:10px;
