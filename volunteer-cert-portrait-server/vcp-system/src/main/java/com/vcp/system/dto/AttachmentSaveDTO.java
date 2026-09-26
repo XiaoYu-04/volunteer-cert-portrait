@@ -7,13 +7,13 @@ import java.io.Serializable;
 /**
  * 业务侧提交的附件元数据。
  *
- * <p>文件本体已经由上传接口写入磁盘，本对象只负责把访问地址、大小、说明和排序
- * 交给业务 Service 落库。这样活动事务失败时不会留下 attachment 关联行。
+ * <p>图片本体已由上传接口写进 attachment.file_data，本对象只负责把访问地址、
+ * 大小、说明和排序交给业务 Service 落库。这样活动事务失败时不会留下 attachment 关联行。
  */
 @Data
 public class AttachmentSaveDTO implements Serializable {
 
-    /** 访问地址，例如 /uploads/activities/2026/09/xxx.png */
+    /** 访问地址，例如 /api/v1/attachments/123/content */
     private String fileUrl;
 
     /** 原始文件名 */
