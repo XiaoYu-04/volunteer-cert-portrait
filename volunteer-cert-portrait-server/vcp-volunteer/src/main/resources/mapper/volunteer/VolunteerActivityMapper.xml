@@ -53,8 +53,13 @@
         <if test="excludeDraft">
             AND a.status &lt;&gt; 'DRAFT'
         </if>
+        <!-- #{q.keyword}::text 的强转不能省：CONCAT 是 VARIADIC "any"，扩展协议下
+             PostgreSQL 推不出 ? 的类型，直接报 "could not determine data type of parameter"，
+             前端只看到 code=10000「系统繁忙」（关键字查询整条不可用）。
+             同类写法在 AttendanceRecordMapper / ActivitySignupMapper / PortraitAggregateMapper
+             里也有，已一并加 ::text。 -->
         <if test="q.keyword != null and q.keyword != ''">
-            AND a.title ILIKE CONCAT('%', #{q.keyword}, '%')
+            AND a.title ILIKE CONCAT('%', #{q.keyword}::text, '%')
         </if>
         <if test="q.type != null and q.type != ''">
             AND c.category_name = #{q.type}

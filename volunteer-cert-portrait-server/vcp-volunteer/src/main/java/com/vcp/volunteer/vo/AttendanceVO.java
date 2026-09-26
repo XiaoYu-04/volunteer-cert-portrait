@@ -53,6 +53,28 @@ public class AttendanceVO implements Serializable {
     /** 签退时间 yyyy-MM-dd HH:mm:ss；未签退为空 */
     private String signOutAt;
 
+    /** 活动开始时间 yyyy-MM-dd HH:mm:ss；学生端用来显示签到窗口 */
+    private String activityStartAt;
+
+    /** 活动结束时间 yyyy-MM-dd HH:mm:ss */
+    private String activityEndAt;
+
+    /**
+     * 当前是否可签到（服务端按待办 A2 的窗口口径算好）。
+     *
+     * <p>前端按钮显隐直接用这个字段，<b>不要在前端重复 30 分钟窗口常量</b>：
+     * 两边各写一份，改一处就会漂成「按钮能点但接口必然拒绝」。
+     */
+    private Boolean canSignIn;
+
+    /**
+     * 当前是否可签退，口径同 {@link #canSignIn}。
+     *
+     * <p>已签到但签退窗口已关闭的记录（待办 A2 里保留 {@code SIGNED_IN} 的那批）这里是 false，
+     * 需要组织管理员在「签到管理」里人工修正。
+     */
+    private Boolean canSignOut;
+
     /** 实得时长（小时），2 位小数 */
     private BigDecimal hours;
 }

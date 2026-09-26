@@ -56,15 +56,63 @@
             AND a.org_id = #{scopeOrgId}
         </if>
         <if test="q.keyword != null and q.keyword != ''">
-            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}, '%')
-                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}, '%')
-                 OR a.title ILIKE CONCAT('%', #{q.keyword}, '%'))
+            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}::text, '%')
+                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}::text, '%')
+                 OR a.title ILIKE CONCAT('%', #{q.keyword}::text, '%'))
         </if>
         <if test="q.activityId != null">
             AND s.activity_id = #{q.activityId}
         </if>
         <if test="q.studentId != null">
             AND s.student_id = #{q.studentId}
+        </if>
+        <if test="q.status != null and q.status != ''">
+            <choose>
+                <when test="q.status == 'ABSENT'">
+                    AND (r.status = 'ABSENT'
+                         OR (r.status = 'NOT_SIGNED'
+                             AND a.end_time IS NOT NULL
+                             AND a.end_time + INTERVAL '30 minutes' &lt; #{now}))
+                </when>
+                <when test="q.status == 'NOT_SIGNED'">
+                    AND r.status = 'NOT_SIGNED'
+                    AND (a.end_time IS NULL
+                         OR a.end_time + INTERVAL '30 minutes' &gt;= #{now})
+                </when>
+                <otherwise>
+                    AND r.status = #{q.status}
+                </otherwise>
+            </choose>
+        </if>
+        ORDER BY r.id DESC
+    </select>
+
+    <!--
+      学生本人的签到记录（待办 B24）。
+
+      与列表是同一组 JOIN、同一套筛选，只多一条 student_id 限定。学生端「我的报名」
+      要给每一行挂签到 / 签退按钮，而 attendanceId 只能从这里拿：GET /attendance 挂的是
+      组织端权限（volunteer:attendance:manage），学生访问会拿到 20003，而前端把 20003
+      当登录失效 —— 表现是掉线而不是某块空白。
+
+      student_id 由登录态给出（StudentIdentityUtils），不接受前端传入。
+      keyword 这里只匹配活动名称：其余两列（姓名、学号）对本人的记录是常量，匹配没有意义。
+
+      状态筛选的 CASE 分支与列表逐字一致（未签到但已过签退窗口的按 ABSENT 筛得出来），
+      窗口口径必须与 VolunteerConstants.SIGN_OUT_DEADLINE_MINUTES 同步。
+    -->
+    <select id="selectMyAttendancePage" resultType="com.vcp.volunteer.mapper.row.AttendanceRow">
+        SELECT <include refid="attendanceColumns"/>
+        <include refid="attendanceFrom"/>
+        WHERE r.deleted = 0
+          AND s.deleted = 0
+          AND a.deleted = 0
+          AND s.student_id = #{studentId}
+        <if test="q.keyword != null and q.keyword != ''">
+            AND a.title ILIKE CONCAT('%', #{q.keyword}::text, '%')
+        </if>
+        <if test="q.activityId != null">
+            AND s.activity_id = #{q.activityId}
         </if>
         <if test="q.status != null and q.status != ''">
             <choose>

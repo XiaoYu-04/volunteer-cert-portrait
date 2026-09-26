@@ -42,10 +42,13 @@
         <if test="scopeOrgId != null">
             AND a.org_id = #{scopeOrgId}
         </if>
+        <!-- #{q.keyword}::text 的强转不能省：CONCAT 是 VARIADIC "any"，扩展协议下
+             PostgreSQL 推不出 ? 的类型，直接报 "could not determine data type of parameter"，
+             前端只看到 code=10000「系统繁忙」（关键字查询整条不可用）。 -->
         <if test="q.keyword != null and q.keyword != ''">
-            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}, '%')
-                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}, '%')
-                 OR a.title ILIKE CONCAT('%', #{q.keyword}, '%'))
+            AND (u.real_name ILIKE CONCAT('%', #{q.keyword}::text, '%')
+                 OR si.student_no ILIKE CONCAT('%', #{q.keyword}::text, '%')
+                 OR a.title ILIKE CONCAT('%', #{q.keyword}::text, '%'))
         </if>
         <if test="q.status != null and q.status != ''">
             AND s.status = #{q.status}

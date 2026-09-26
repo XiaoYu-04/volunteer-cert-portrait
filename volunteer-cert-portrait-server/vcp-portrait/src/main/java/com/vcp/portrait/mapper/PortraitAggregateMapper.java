@@ -85,14 +85,14 @@ public interface PortraitAggregateMapper {
             LEFT JOIN sys_user u ON u.id = si.user_id
             <where>
                 <if test="keyword != null">
-                    AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
-                         OR si.student_no LIKE CONCAT('%', #{keyword}, '%'))
+                    AND (u.real_name LIKE CONCAT('%', #{keyword}::text, '%')
+                         OR si.student_no LIKE CONCAT('%', #{keyword}::text, '%'))
                 </if>
                 <if test="college != null">
                     AND si.college = #{college}
                 </if>
                 <if test="tag != null">
-                    AND (',' || sp.tags || ',') LIKE CONCAT('%,', #{tag}, ',%')
+                    AND (',' || sp.tags || ',') LIKE CONCAT('%,', #{tag}::text, ',%')
                 </if>
             </where>
             ORDER BY sp.student_id

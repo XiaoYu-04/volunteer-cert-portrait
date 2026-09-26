@@ -93,7 +93,14 @@ public final class VolunteerTimeUtils {
         if (parsed == null) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "报名截止日期格式不正确：" + value);
         }
-        if (value.length() <= DATE.toString().length()) {
+        // 「是否只给了日期」必须看**输入串本身**有没有时间部分。
+        // 原判据写的是 value.length() <= DATE.toString().length()，而 DateTimeFormatter.toString()
+        // 返回的不是模式串，而是形如 "Value(YearOfEra,4,19,EXCEEDS_PAD)'-'Value(MonthOfYear,2)..." 的
+        // 描述串（长度 78，不是 10）—— 条件恒真，于是**连完整日期时间的时分秒也被一律抹成 23:59:59**。
+        // 后果：deadline 恒为当天最后一刻，`deadline <= start_time` 对「今天开始的活动」永远不成立
+        // （建活动/改活动直接 10001），「进行中且可报名」的活动无法用接口造出来。
+        // 2026-09-26 由验收实测发现（`docs/待办清单.md` 的 B33）。
+        if (value.indexOf(' ') < 0 && value.indexOf('T') < 0) {
             return parsed.toLocalDate().atTime(LocalTime.of(23, 59, 59));
         }
         return parsed;
