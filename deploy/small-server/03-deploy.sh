@@ -36,6 +36,10 @@ SITE_NAME="${SITE_NAME:-vcp}"
 UPLOAD_DIR="${UPLOAD_DIR:-/tmp/vcp-upload}"
 DB_NAME="${DB_NAME:-volunteer_cert_portrait}"
 DB_USER="${DB_USER:-vcp}"
+# DB_HOST/DB_PORT 在 02-database.sh 里也有；这里补上是因为 vcp.env 要写
+# SPRING_DATASOURCE_URL（脚本开了 set -u，未定义变量会直接报 unbound variable）
+DB_HOST="${DB_HOST:-127.0.0.1}"
+DB_PORT="${DB_PORT:-5432}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$APP_DIR/vcp.env"
 TOTAL_STEPS=8
