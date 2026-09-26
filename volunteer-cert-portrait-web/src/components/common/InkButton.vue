@@ -17,6 +17,15 @@ const props = defineProps({
 
 const tag = computed(() => (props.to ? RouterLink : 'button'))
 
+/**
+ * 导航型按钮（RouterLink）没有原生 disabled：只加 aria-disabled 的话，
+ * 键盘 Tab 与回车仍然能聚焦、能跳转 —— 视觉上"禁用"、行为上没禁用。
+ * 这里在点击入口拦住，并把它从 Tab 序列里摘掉。
+ */
+function onClick(event) {
+  if (props.to && props.disabled) event.preventDefault()
+}
+
 const classes = computed(() => [
   'btn',
   props.variant !== 'default' && `btn-${props.variant}`,
@@ -32,7 +41,9 @@ const classes = computed(() => [
     :to="to || undefined"
     :type="to ? undefined : nativeType"
     :disabled="to ? undefined : disabled"
+    :tabindex="to && disabled ? -1 : undefined"
     :aria-disabled="to && disabled ? 'true' : undefined"
+    @click="onClick"
   >
     <slot />
   </component>

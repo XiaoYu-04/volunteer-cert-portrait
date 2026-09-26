@@ -20,7 +20,7 @@ const widthStyle = (col) => (col.width ? { width: col.width } : undefined)
 </script>
 
 <template>
-  <div class="ink-table-wrap">
+  <div class="ink-table-wrap" :aria-busy="loading ? 'true' : undefined">
     <table class="ink-table">
       <thead>
         <tr>
@@ -36,7 +36,8 @@ const widthStyle = (col) => (col.width ? { width: col.width } : undefined)
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 4" :key="`sk-${n}`">
+          <!-- 骨架屏是纯视觉占位：对读屏隐藏，加载状态由外层的 aria-busy 表达 -->
+          <tr v-for="n in 4" :key="`sk-${n}`" aria-hidden="true">
             <td v-for="col in columns" :key="col.key">
               <span class="ink-skeleton ink-skeleton-row"></span>
             </td>

@@ -22,8 +22,9 @@
 .brand-name{font-family:var(--font-display); font-size:20px; color:var(--c-ink); letter-spacing:.06em; white-space:nowrap}
 .brand-sub{display:block; font-size:11px; color:var(--c-ink-3); letter-spacing:.22em; margin-top:3px}
 .top-nav{margin-left:auto; display:flex; align-items:center; gap:26px}
-.top-nav a{font-family:var(--font-display); font-size:15px; color:var(--c-ink-2); letter-spacing:.06em; transition:color .18s ease-out}
+.top-nav a{font-family:var(--font-display); font-size:15px; color:var(--c-ink-2); letter-spacing:.06em; transition:color var(--t-base) ease-out}
 .top-nav a:hover{color:var(--c-a2)}
+.top-nav a:focus-visible{outline-offset:6px}
 .top-nav a.is-current{color:var(--c-ink); border-bottom:2px solid var(--c-a2); padding-bottom:3px}
 
 /* ---------- Hero ---------- */
@@ -47,9 +48,9 @@
 .hero-actions{margin-top:36px; display:flex; flex-wrap:wrap; gap:16px}
 
 /* ---------- 通用区块 ---------- */
-.sec{padding:88px 0; border-bottom:1px solid var(--c-line)}
+.sec{padding:var(--sec-pad) 0; border-bottom:1px solid var(--c-line)}
 .sec:last-of-type{border-bottom:0}
-.sec-head{display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:36px; align-items:baseline; margin-bottom:44px}
+.sec-head{display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:var(--gutter); align-items:baseline; margin-bottom:44px}
 .sec-head .no{grid-column:span 2; font-family:var(--font-mono); font-size:11px; letter-spacing:.24em; color:var(--c-a2)}
 .sec-head h2{grid-column:span 6; font-family:var(--font-display); font-size:clamp(22px,2.6vw,32px); letter-spacing:.06em; color:var(--c-ink)}
 .sec-head p{grid-column:span 4; font-size:14px; line-height:1.9; color:var(--c-ink-3)}
@@ -60,7 +61,7 @@
 .ink-stat-card:nth-child(3n){border-right:0}
 .ink-stat-label{display:block; font-family:var(--font-display); font-size:15px; letter-spacing:.1em; color:var(--c-ink-2)}
 .ink-stat-value{display:flex; align-items:baseline; gap:6px; margin-top:16px; white-space:nowrap}
-.ink-stat-num{font-family:var(--font-display); font-size:clamp(30px,3.6vw,44px); line-height:1.1; letter-spacing:-.01em; color:var(--c-ink)}
+.ink-stat-num{font-family:var(--font-display); font-size:clamp(30px,3.6vw,44px); line-height:1.1; letter-spacing:-.01em; color:var(--c-ink); font-variant-numeric:lining-nums tabular-nums}
 .ink-stat-unit{font-size:14px; color:var(--c-ink-3)}
 .ink-stat-delta{display:flex; align-items:baseline; gap:6px; margin-top:12px; font-size:12px; color:var(--c-ink-3); font-family:var(--font-mono)}
 .ink-stat-delta .ink-stat-arrow{color:var(--c-a2)}
@@ -108,8 +109,8 @@
   position:relative; display:block; aspect-ratio:16 / 9; overflow:hidden;
   border-bottom:1px solid var(--c-line-2); background:var(--c-line-2);
 }
-.ink-agc-cover img{display:block; width:100%; height:100%; object-fit:cover; transition:transform .45s ease}
-.ink-agc:hover .ink-agc-cover img{transform:scale(1.04)}
+.ink-agc-cover img{display:block; width:100%; height:100%; object-fit:cover; transition:transform var(--t-slow) ease-out}
+.ink-agc:hover .ink-agc-cover img{transform:scale(1.02)}
 /* 无封面时的印章式占位。演示库里 39 场已发布活动只有 3 场有封面，
    占位样式是多数卡片的第一眼观感，不能留成一块死灰。
    底色取纸白 --c-bg 而不是 --c-line-2：后者整片压下来太重，
@@ -190,7 +191,7 @@
 .ink-org-metric-num{color:var(--c-a2)}
 .ink-notice-item{padding:18px 0; border-bottom:1px solid var(--c-line-2)}
 .ink-notice-item:last-child{border-bottom:0}
-.ink-notice-title{display:block; font-family:var(--font-display); font-size:16px; letter-spacing:.03em; line-height:1.7; color:var(--c-ink-2)}
+.ink-notice-title{display:block; font-family:var(--font-display); font-size:16px; letter-spacing:.03em; line-height:1.7; color:var(--c-ink-2); transition:color var(--t-fast) ease-out}
 .ink-notice-item.is-top .ink-notice-title{color:var(--c-ink)}
 .ink-notice-title:hover{color:var(--c-a2)}
 .ink-notice-meta{display:flex; gap:18px; margin-top:8px; font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; color:var(--c-ink-3)}
@@ -216,13 +217,18 @@
   min-height:46px; padding:0 28px;
   font-family:var(--font-display); font-size:15px; letter-spacing:.1em;
   border:1px solid var(--c-ink); background:transparent; color:var(--c-ink);
-  transition:background-color .2s ease-out, color .2s ease-out, border-color .2s ease-out;
+  transition:background-color var(--t-base) ease-out, color var(--t-base) ease-out, border-color var(--t-base) ease-out;
 }
 .btn:hover{background:var(--c-ink); color:#fff}
+/* 按压反馈只调透明度：不动位移、不加阴影，鼠标与触屏行为一致 */
+.btn:active{opacity:.86}
+.btn:focus-visible{outline-offset:3px}
 .btn-primary{background:var(--c-a2); border-color:var(--c-a2); color:#fff}
 .btn-primary:hover{background:#8F2E24; border-color:#8F2E24}
 .btn-ghost{border-color:var(--c-line); color:var(--c-ink-2)}
-.btn-ghost:hover{background:var(--c-panel); color:var(--c-ink); border-color:var(--c-ink)}
+/* 悬停底用 --c-hover 而不是 --c-panel：ghost 按钮大量出现在白面板里，
+   白色悬停等于没有反馈；--c-hover 在纸白与白面板上都看得见 */
+.btn-ghost:hover{background:var(--c-hover); color:var(--c-ink); border-color:var(--c-ink)}
 .btn-danger{border-color:var(--c-bad); color:var(--c-bad)}
 .btn-danger:hover{background:var(--c-bad); border-color:var(--c-bad); color:#fff}
 .btn-sm{min-height:32px; padding:0 14px; font-size:13px; letter-spacing:.06em}
@@ -242,8 +248,10 @@
   padding:14px 16px; color:var(--c-ink-2); vertical-align:middle;
   border-bottom:1px solid var(--c-line-2);
 }
-.ink-table tbody tr{transition:background-color .15s ease-out}
-.ink-table tbody tr:hover{background:#fff}
+.ink-table tbody tr{transition:background-color var(--t-fast) ease-out}
+/* 悬停底不能用 #fff：表格都在 .panel（白底）里，白色悬停等于没有反馈。
+   --c-hover 是纸白之上的一层淡墨，白面板与纸白底上都看得见。 */
+.ink-table tbody tr:hover{background:var(--c-hover)}
 .ink-table tbody tr:last-child td{border-bottom:1px solid var(--c-line-2)}
 .ink-table .col-num{font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap}
 .ink-table .col-actions{white-space:nowrap; text-align:right}
@@ -287,6 +295,10 @@
 .ink-input:hover, .ink-select:hover, .ink-textarea:hover{border-color:var(--c-ink-3)}
 .ink-input:focus, .ink-select:focus, .ink-textarea:focus{
   outline:none; border-color:var(--c-ink);
+}
+/* 键盘焦点不能只靠 1px 边框变色：补一圈方角焦点环，与全局 :focus-visible 同色 */
+.ink-input:focus-visible, .ink-select:focus-visible, .ink-textarea:focus-visible{
+  outline:2px solid var(--c-focus); outline-offset:1px;
 }
 .ink-input::placeholder, .ink-textarea::placeholder{color:var(--c-ink-3); opacity:.7}
 .ink-input:disabled, .ink-select:disabled, .ink-textarea:disabled{
@@ -355,12 +367,17 @@
   position:fixed; inset:0; z-index:200;
   display:flex; align-items:center; justify-content:center; padding:24px;
   background:rgba(26,26,26,.42);
+  animation:ink-mask-in var(--t-base) ease-out;
 }
 .ink-dialog{
   width:100%; max-width:560px; max-height:calc(100vh - 96px);
   display:flex; flex-direction:column;
   background:var(--c-panel); border:1px solid var(--c-ink);
+  animation:ink-dialog-in var(--t-base) ease-out;
 }
+/* 入场只做 8px 上浮 + 淡入：浮层靠遮罩分层，不靠阴影或缩放 */
+@keyframes ink-mask-in{from{opacity:0}to{opacity:1}}
+@keyframes ink-dialog-in{from{opacity:0; transform:translateY(8px)}to{opacity:1; transform:none}}
 .ink-dialog.is-wide{max-width:840px}
 .ink-dialog.is-narrow{max-width:420px}
 .ink-dialog-head{
@@ -390,11 +407,14 @@
 }
 .ink-toast{
   display:flex; align-items:center; gap:10px;
+  max-width:min(560px, calc(100vw - 48px));
   padding:12px 22px; background:var(--c-panel);
   border:1px solid var(--c-ink);
-  font-size:14px; color:var(--c-ink);
-  box-shadow:0 8px 28px rgba(26,26,26,.16);
+  font-size:14px; line-height:1.6; color:var(--c-ink);
+  box-shadow:var(--shadow-pop);
+  animation:ink-toast-in var(--t-base) ease-out;
 }
+@keyframes ink-toast-in{from{opacity:0; transform:translateY(-8px)}to{opacity:1; transform:none}}
 .ink-toast.tone-ok{border-left:3px solid var(--c-ok)}
 .ink-toast.tone-bad{border-left:3px solid var(--c-bad)}
 .ink-toast.tone-warn{border-left:3px solid var(--c-warn)}
@@ -482,10 +502,12 @@
   padding:10px 20px; font-family:var(--font-display); font-size:14px;
   letter-spacing:.06em; color:var(--c-ink-2);
   border-left:2px solid transparent;
-  transition:color .15s ease-out, border-color .15s ease-out, background-color .15s ease-out;
+  transition:color var(--t-fast) ease-out, border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
 }
 .console-nav a:hover{color:var(--c-ink); background:#fff}
 .console-nav a.is-current{color:var(--c-ink); border-left-color:var(--c-a2); background:#fff}
+/* 焦点环内收：侧栏导航是整行满宽，offset 2px 会被侧栏右边框裁掉一截 */
+.console-nav a:focus-visible{outline-offset:-2px}
 
 .console-user{padding:18px 20px; border-top:1px solid var(--c-line); font-size:13px}
 .console-user-name{display:block; font-family:var(--font-display); font-size:14px; letter-spacing:.04em; color:var(--c-ink)}
@@ -574,7 +596,7 @@
   .ink-rank-row, .ink-org-row{flex-wrap:wrap; row-gap:6px}
   .ink-rank-name{width:auto; min-width:4em; flex:0 1 auto}
   .ink-rank-val{margin-left:auto}
-  .sec{padding:64px 0}
+  .sec{padding:var(--sp-9) 0}
   .stats{grid-template-columns:1fr}
   .ink-stat-card{border-right:0 !important}
   .tags{grid-template-columns:repeat(2,minmax(0,1fr))}

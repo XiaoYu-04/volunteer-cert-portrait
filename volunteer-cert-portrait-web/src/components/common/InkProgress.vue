@@ -8,6 +8,8 @@ const props = defineProps({
   showText: { type: Boolean, default: false },
   /** 自定义右侧文字，给了就覆盖 showText 的自动计算 */
   text: { type: String, default: '' },
+  /** 无障碍名称：只说进度的含义（如「报名进度」），不重复数值 */
+  label: { type: String, default: '' },
 })
 
 const percent = computed(() => {
@@ -19,7 +21,15 @@ const displayText = computed(() => props.text || `${props.value} / ${props.max}`
 </script>
 
 <template>
-  <div class="ink-progress">
+  <!-- 语义做进组件：内部两根 span 是装饰，调用方只需给 label，不再各自抄一遍 aria-* -->
+  <div
+    class="ink-progress"
+    role="progressbar"
+    :aria-label="label || undefined"
+    :aria-valuenow="value"
+    :aria-valuemin="0"
+    :aria-valuemax="max > 0 ? max : 100"
+  >
     <span class="ink-progress-track">
       <span class="ink-progress-bar" :style="{ width: `${percent}%` }"></span>
     </span>
