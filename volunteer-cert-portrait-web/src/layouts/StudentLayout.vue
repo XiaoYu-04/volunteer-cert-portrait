@@ -59,7 +59,21 @@ async function onLogout() {
     </header>
 
     <main id="main">
-      <RouterView />
+      <!--
+        页间切换滑动。包装层是必需的：页面组件有多根的（如首页 hero + wrap），
+        直接包 <component> 会报 "renders non-element root node" 且动画不生效。
+        离场只做透明度（motion.css 的 .page-leave-*）：路由的 scrollBehavior
+        会把视口拉回顶部，离场若带上滑位移会看成两段运动。
+        key 用 route.path 而不是 fullPath：只有 query 变化（比如列表页换关键字）
+        不该重播切换动画；详情页换 id 会换 path，正常重播。
+      -->
+      <RouterView v-slot="{ Component, route }">
+        <Transition name="page" mode="out-in">
+          <div class="page-view" :key="route.path">
+            <component :is="Component" />
+          </div>
+        </Transition>
+      </RouterView>
     </main>
 
     <footer class="foot">

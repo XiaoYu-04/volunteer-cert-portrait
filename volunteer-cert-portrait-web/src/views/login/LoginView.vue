@@ -71,7 +71,7 @@ async function onSubmit() {
     </aside>
 
     <main class="auth-main">
-      <div class="auth-card">
+      <div class="auth-card anim-rise">
         <h1 class="auth-title">登录</h1>
         <p class="auth-sub">高校志愿服务时长认证与公益画像数据分析系统</p>
 

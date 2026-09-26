@@ -7,7 +7,7 @@ const user = useUserStore()
 
 <template>
   <div class="err">
-    <div class="err-inner">
+    <div class="err-inner anim-rise">
       <span class="err-seal" aria-hidden="true">无</span>
       <p class="err-code num">404</p>
       <h1 class="err-title">页面不存在</h1>

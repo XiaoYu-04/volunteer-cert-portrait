@@ -42,13 +42,10 @@ const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
 const {
   trendRange,
   trendTotal,
-  trendDesc,
   trendLabel,
   typeLabel,
   typeCaption,
   collegeLabel,
-  collegeDesc,
-  portraitDesc,
 } = useDashboardText(data)
 </script>
 
@@ -73,8 +70,8 @@ const {
 
   <div class="wrap">
     <!-- ==================== 核心指标 ==================== -->
-    <InkSection>
-      <div class="stats" :aria-busy="loading">
+    <InkSection v-reveal>
+      <div class="stats anim-stagger" :aria-busy="loading">
         <InkStat
           v-for="item in data?.stats || []"
           :key="item.key"
@@ -88,11 +85,7 @@ const {
     </InkSection>
 
     <!-- ==================== 数据图表 ==================== -->
-    <InkSection
-      no="01 / 数据"
-      title="全年志愿服务概览"
-      :desc="trendDesc"
-    >
+    <InkSection v-reveal.fade no="01 / 数据" title="全年志愿服务概览">
       <div class="grid-2">
         <figure class="fig-frame">
           <InkChart
@@ -121,12 +114,8 @@ const {
     </InkSection>
 
     <!-- ==================== 近期活动 ==================== -->
-    <InkSection
-      no="02 / 活动"
-      title="本期志愿活动"
-      desc="仅列出开放报名的活动，最多 6 场。"
-    >
-      <div class="grid-3">
+    <InkSection v-reveal no="02 / 活动" title="本期志愿活动">
+      <div class="grid-3 anim-stagger">
         <ActivityCard
           v-for="activity in topActivities"
           :key="activity.id"
@@ -140,21 +129,13 @@ const {
     </InkSection>
 
     <!-- ==================== 公益画像 ==================== -->
-    <InkSection
-      no="03 / 画像"
-      title="学生公益画像"
-      :desc="portraitDesc"
-    >
+    <InkSection v-reveal no="03 / 画像" title="学生公益画像">
       <PortraitSeal :items="data?.profiles || []" />
     </InkSection>
 
     <!-- ==================== 流程 ==================== -->
-    <InkSection
-      no="04 / 流程"
-      title="志愿服务流程"
-      desc="从浏览活动到计入公益画像，共四步。"
-    >
-      <ol class="ink-flow">
+    <InkSection v-reveal no="04 / 流程" title="志愿服务流程">
+      <ol class="ink-flow anim-stagger">
         <li v-for="(step, i) in data?.flow || []" :key="step.step" class="ink-flow-step">
           <span class="ink-flow-no num">{{ i + 1 }}</span>
           <span class="ink-flow-name">{{ step.step }}</span>
@@ -164,11 +145,7 @@ const {
     </InkSection>
 
     <!-- ==================== 排行 + 组织 + 公告 ==================== -->
-    <InkSection
-      no="05 / 排行"
-      title="学院志愿时长排行"
-      :desc="collegeDesc"
-    >
+    <InkSection v-reveal.fade no="05 / 排行" title="学院志愿时长排行">
       <div class="grid-2">
         <div>
           <figure class="fig-frame fig-rank">

@@ -1,0 +1,82 @@
+/* ============================================================
+   动效层（第 4 层，必须在 ink.css 之后引入）
+   约定（令牌见 tokens.css 的「动效扩展」一节）：
+   · 只做 opacity / transform:translate，不做 scale、不动画 box-shadow；
+   · 时长一律引用令牌，不写死毫秒数；
+   · prefers-reduced-motion 的降级由 tokens.css 的全局规则统一兜底，
+     本文件不重复写 media query（唯一例外是文末的打印态）。
+   ============================================================ */
+
+/* ---------- 通用入场：淡入 + 上浮 ---------- */
+@keyframes anim-rise {
+  from { opacity: 0; transform: translateY(var(--slide-y)); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes anim-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.anim-rise { animation: anim-rise var(--t-reveal) var(--ease-out) both; }
+
+/* 只透明度：给含 ECharts 画布的区块用 —— translate 会让 canvas 在动画期间发虚 */
+.anim-fade { animation: anim-fade var(--t-reveal) var(--ease-out) both; }
+
+/* ---------- 逐项入场 ----------
+   容器挂 .anim-stagger，直接子元素按 DOM 顺序错峰。
+   用 nth-child 而不是让模板注入 --i：零模板改动、顺序天然正确。
+   超过 12 项的子元素不再延迟（立即入场），避免长列表末尾等太久。 */
+.anim-stagger > * { animation: anim-rise var(--t-reveal) var(--ease-out) both; }
+
+.anim-stagger > *:nth-child(1)  { animation-delay: calc(0 * var(--stagger)); }
+.anim-stagger > *:nth-child(2)  { animation-delay: calc(1 * var(--stagger)); }
+.anim-stagger > *:nth-child(3)  { animation-delay: calc(2 * var(--stagger)); }
+.anim-stagger > *:nth-child(4)  { animation-delay: calc(3 * var(--stagger)); }
+.anim-stagger > *:nth-child(5)  { animation-delay: calc(4 * var(--stagger)); }
+.anim-stagger > *:nth-child(6)  { animation-delay: calc(5 * var(--stagger)); }
+.anim-stagger > *:nth-child(7)  { animation-delay: calc(6 * var(--stagger)); }
+.anim-stagger > *:nth-child(8)  { animation-delay: calc(7 * var(--stagger)); }
+.anim-stagger > *:nth-child(9)  { animation-delay: calc(8 * var(--stagger)); }
+.anim-stagger > *:nth-child(10) { animation-delay: calc(9 * var(--stagger)); }
+.anim-stagger > *:nth-child(11) { animation-delay: calc(10 * var(--stagger)); }
+.anim-stagger > *:nth-child(12) { animation-delay: calc(11 * var(--stagger)); }
+
+/* ---------- 页面切换（layout 包装层 .page-view 承载，见两者 scoped 前的注释） ---------- */
+.page-enter-active { transition: opacity var(--t-page) var(--ease-out), transform var(--t-page) var(--ease-out); }
+.page-leave-active { transition: opacity var(--t-page-leave) var(--ease-out); }
+
+.page-enter-from { opacity: 0; transform: translateY(var(--slide-y)); }
+
+/* 离场只做透明度：此时路由的 scrollBehavior 可能正在把视口拉回顶部，
+   离场若叠加位移，看起来是"旧页面上滑 + 视口跳顶"两段运动。 */
+.page-leave-to { opacity: 0; }
+
+/* ---------- 滚动进视口（v-reveal 指令） ----------
+   初态由指令在 mounted 里添加，CSS 默认可见 —— 指令没跑（旧浏览器 / 打印）时
+   内容不会永久隐形。加 .reveal-in 切到终态，过渡定义在初态上。 */
+.reveal-pending {
+  opacity: 0;
+  transform: translateY(var(--slide-y));
+  transition: opacity var(--t-reveal) var(--ease-out), transform var(--t-reveal) var(--ease-out);
+}
+
+.reveal-pending.reveal-in { opacity: 1; transform: none; }
+
+/* v-reveal.fade：只透明度，给含 ECharts 画布的区块用 */
+.reveal-pending-fade {
+  opacity: 0;
+  transition: opacity var(--t-reveal) var(--ease-out);
+}
+
+.reveal-pending-fade.reveal-in { opacity: 1; }
+
+/* ---------- 打印：reveal 的隐藏初态绝不能印成空白 ---------- */
+@media print {
+  .reveal-pending,
+  .reveal-pending-fade {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

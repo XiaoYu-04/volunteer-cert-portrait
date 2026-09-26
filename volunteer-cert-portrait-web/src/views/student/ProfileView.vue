@@ -160,7 +160,7 @@ const quickLinks = [
         </div>
       </div>
 
-      <div class="panel panel-gap">
+      <div v-reveal class="panel panel-gap">
         <div class="panel-head">
           <h2 class="panel-title">账号安全</h2>
         </div>
@@ -168,7 +168,7 @@ const quickLinks = [
         <InkButton size="sm" @click="pwdOpen = true">修改密码</InkButton>
       </div>
 
-      <div class="panel">
+      <div v-reveal class="panel">
         <div class="panel-head">
           <h2 class="panel-title">快捷入口</h2>
         </div>

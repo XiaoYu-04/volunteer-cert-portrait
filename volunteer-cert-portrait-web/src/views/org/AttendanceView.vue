@@ -227,8 +227,6 @@ async function submitFix() {
 
 <style scoped>
 
-/* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
-
 .fix-desc {
   grid-template-columns: 1fr;
   margin-bottom: var(--sp-5);

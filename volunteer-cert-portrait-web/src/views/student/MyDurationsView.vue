@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { listDurations } from '@/api/certification'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
@@ -62,7 +62,7 @@ const columns = [
   { key: 'actions', title: '操作', width: '120px', align: 'right' },
 ]
 
-const statusOptions = dict.options('duration_status')
+const statusOptions = computed(() => dict.options('duration_status'))
 
 function resetQuery() {
   query.keyword = ''
@@ -147,7 +147,7 @@ function openDetail(row) {
 
         <template #auditedAt="{ row }">
           <span v-if="row.auditedAt" class="col-num">{{ formatDateTime(row.auditedAt) }}</span>
-          <span v-else class="remark-mute">—</span>
+          <span v-else class="cell-mute">—</span>
         </template>
 
         <template #actions="{ row }">
@@ -160,7 +160,7 @@ function openDetail(row) {
           >
             驳回理由
           </InkButton>
-          <span v-else class="remark-mute">—</span>
+          <span v-else class="cell-mute">—</span>
         </template>
       </InkTable>
 
@@ -211,11 +211,6 @@ function openDetail(row) {
 
 .filter-gap {
   margin-top: 36px;
-}
-
-.remark-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
 }
 
 .desc-one {

@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { listNotifications, markNotificationRead } from '@/api/system'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
@@ -34,7 +34,7 @@ const columns = [
   { key: 'actions', title: '操作', width: '170px', align: 'right' },
 ]
 
-const typeOptions = dict.options('notification_type')
+const typeOptions = computed(() => dict.options('notification_type'))
 
 watch(
   () => query.unreadOnly,

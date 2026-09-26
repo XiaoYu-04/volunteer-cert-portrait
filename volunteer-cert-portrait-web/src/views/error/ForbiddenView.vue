@@ -7,7 +7,7 @@ const user = useUserStore()
 
 <template>
   <div class="err">
-    <div class="err-inner">
+    <div class="err-inner anim-rise">
       <span class="err-seal" aria-hidden="true">禁</span>
       <p class="err-code num">403</p>
       <h1 class="err-title">无权访问该页面</h1>

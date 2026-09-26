@@ -22,7 +22,7 @@ const linkable = computed(() => !!props.basePath)
 </script>
 
 <template>
-  <ul class="ink-notice">
+  <ul class="ink-notice anim-stagger">
     <li
       v-for="row in visible"
       :key="row.id"

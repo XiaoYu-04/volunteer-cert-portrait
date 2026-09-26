@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { listActivities, listCategories } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
@@ -30,6 +30,32 @@ const { rows, total, loading, query, search } = useTable(listActivities, {
     type: '',
     status: 'PUBLISHED',
   },
+})
+
+// .act-grid 会被骨架屏 ↔ 数据、翻页/筛选反复拆掉重建，直接挂 anim-stagger 会在每次翻页重播。
+// 这里只在**首次**拿到数据时挂上动效类，动画播完（240ms + 最多 352ms 延迟）立即摘掉。
+const gridEnter = ref('')
+let enterTimer = null
+let enteredOnce = false
+
+function playGridEnter() {
+  if (enteredOnce) return
+  enteredOnce = true
+  gridEnter.value = 'anim-stagger'
+  enterTimer = setTimeout(() => {
+    gridEnter.value = ''
+    enterTimer = null
+  }, 900)
+}
+
+// useTable 的 load 不对外暴露「首次成功」回调：用 rows 首次变为非空当信号（加载失败 rows 为空，不会误播）
+watch(rows, (list) => {
+  if (list.length) playGridEnter()
+})
+
+// 组件卸载时清掉计时器，避免卸载后再改 gridEnter 触发警告
+onBeforeUnmount(() => {
+  clearTimeout(enterTimer)
 })
 
 function resetQuery() {
@@ -103,7 +129,7 @@ const statusOptions = computed(() => dict.options('activity_status', { exclude: 
         </div>
       </div>
 
-      <div v-else-if="rows.length" class="act-grid">
+      <div v-else-if="rows.length" class="act-grid" :class="gridEnter">
         <ActivityGridCard
           v-for="row in rows"
           :key="row.id"

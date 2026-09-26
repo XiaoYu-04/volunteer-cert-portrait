@@ -188,8 +188,3 @@ async function remove(row) {
     </template>
   </InkDialog>
 </template>
-
-<style scoped>
-/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-
-</style>

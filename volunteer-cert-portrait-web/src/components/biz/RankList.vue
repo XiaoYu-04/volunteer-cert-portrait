@@ -21,7 +21,7 @@ const widthOf = (row) => `${Math.round((row.hours / (max.value || 1)) * 100)}%`
 </script>
 
 <template>
-  <ol class="ink-rank">
+  <ol class="ink-rank anim-stagger">
     <li v-for="(row, i) in visible" :key="row.college" class="ink-rank-row">
       <span class="ink-rank-no num">{{ i + 1 }}</span>
       <span class="ink-rank-name">{{ row.college }}</span>

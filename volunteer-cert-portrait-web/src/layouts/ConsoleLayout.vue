@@ -69,7 +69,14 @@ async function onLogout() {
 
     <div class="console-main">
       <div id="main" class="console-body">
-        <RouterView />
+        <!-- 同 StudentLayout：包装层承接页间切换，侧栏不动、窗口滚动不受影响 -->
+        <RouterView v-slot="{ Component, route }">
+          <Transition name="page" mode="out-in">
+            <div class="page-view" :key="route.path">
+              <component :is="Component" />
+            </div>
+          </Transition>
+        </RouterView>
       </div>
     </div>
   </div>

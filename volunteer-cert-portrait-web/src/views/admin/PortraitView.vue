@@ -109,7 +109,7 @@ function resetQuery() {
     />
   </div>
 
-  <section class="panel panel-gap">
+  <section v-reveal.fade class="panel panel-gap">
     <div class="panel-head">
       <h2 class="panel-title">八类画像标签分布</h2>
       <span class="panel-extra panel-note">画像合计 {{ formatNumber(portraitTotal) }} 人</span>
@@ -118,7 +118,7 @@ function resetQuery() {
     <PortraitSeal :items="distribution" />
   </section>
 
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <div class="panel-head">
       <h2 class="panel-title">标签占比</h2>
     </div>
@@ -136,7 +136,7 @@ function resetQuery() {
     </figure>
   </section>
 
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <form class="ink-filter" @submit.prevent="search">
       <InkField label="关键字">
         <input
@@ -223,8 +223,6 @@ function resetQuery() {
 </template>
 
 <style scoped>
-/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-
 .dash-fig {
   /* 玫瑰图的半径是固定像素（options.profile 里的 [26, 112]），画布越宽、饼越显小，
      而图注是左对齐的 —— 整幅图铺满 1000+ px 的 panel 时，饼飘在中间、图注贴在左边，
@@ -233,8 +231,6 @@ function resetQuery() {
   max-width: 620px;
   margin: 0;
 }
-
-/* 无标签时的破折号占位，与其它表格页的 .cell-mute 同款 */
 
 /* 印章式标签，沿用画像标签的朱砂细边语言 */
 .tag-chip {

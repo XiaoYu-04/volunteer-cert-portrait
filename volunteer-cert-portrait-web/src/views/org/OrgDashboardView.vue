@@ -83,7 +83,7 @@ const rank = computed(() => {
   <h1 class="console-title">组织数据</h1>
   <p class="console-sub">本组织活动的场次、报名、签到与时长认证情况。</p>
 
-  <div class="stats stats-org" :aria-busy="loading">
+  <div class="stats stats-org anim-stagger" :aria-busy="loading">
     <InkStat
       v-for="item in stats"
       :key="item.key"
@@ -95,7 +95,7 @@ const rank = computed(() => {
     />
   </div>
 
-  <section class="panel">
+  <section v-reveal.fade class="panel">
     <div class="panel-head">
       <h2 class="panel-title">活跃度对比</h2>
       <span class="panel-extra">{{ org?.name || '本组织' }}</span>
@@ -128,7 +128,7 @@ const rank = computed(() => {
     </div>
   </section>
 
-  <section class="panel">
+  <section v-reveal class="panel">
     <div class="panel-head">
       <h2 class="panel-title">全校组织活跃度</h2>
       <span class="panel-extra panel-note" v-if="rank">本组织排名第 {{ rank }} 位</span>
@@ -136,7 +136,7 @@ const rank = computed(() => {
     <OrgList :rows="orgs" />
   </section>
 
-  <section class="panel">
+  <section v-reveal class="panel">
     <div class="panel-head">
       <h2 class="panel-title">组织档案</h2>
     </div>
@@ -209,8 +209,6 @@ const rank = computed(() => {
 .dash-fig {
   margin: 0;
 }
-
-/* 面板右上角的注记（排名等）：与学校端看板同一套等宽体小字 */
 
 .stats-org :deep(.ink-stat-card) {
   padding: 24px 20px;
