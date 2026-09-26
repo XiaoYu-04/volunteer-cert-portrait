@@ -303,6 +303,32 @@ vcp-dependencies  独立 BOM
     改完必须两条路径都验：mock 关 → `grep -rl "vcp_mock_extra_users" dist/` 应无输出；
     mock 开 → `.tmp-shots/accept-mock-fixes.cjs` 与 `shoot.cjs` 都要重跑。
 
+11. **flex 行里只给某个子项写 `align-self:baseline` 是无效的**（2026-09-26 实测，发布活动页右上角）
+    父级 `.panel-extra`（ink.css:552）的 `align-items` 是默认的 `normal`(=stretch)，
+    此时整行里**只有写了 align-self:baseline 的那一个子项**参与基线对齐；而它对面那段
+    「裸文本」是**匿名 flex item**，拿不到它的基线作对齐基准 → 该子项退化成顶部对齐。
+    现场：发布活动页 panel-head 右块 = 16px「发布组织：…」+ 12px「标 * 的为必填项」，
+    图例比组织名的基线**高 5px**（用户 125% 缩放下约 6.5px），小字整块浮在名字左上角。
+    横排时**修法是把基线对齐写到父级**（`align-items:baseline`），子项（含匿名项）才互相对齐。
+    （该页当晚已按用户要求改成**上下两行**，见第 12 条；这条对其它横排场景仍然成立。）
+
+12. **竖排的右对齐要用 `align-items:flex-end`，不能沿用 `baseline`**（发布活动页右块现为上下两行）
+    列方向（`flex-direction:column`）的**交叉轴是横向**，`baseline` 在那条轴上没有意义 ——
+    浏览器退化成 `flex-start`，两行会变**左**对齐、右边缘参差。发布活动页 `panel-extra` 现为
+    `flex-direction:column; align-items:flex-end; gap:var(--sp-1)`：第一行组织名、第二行必填说明，
+    左边缘参差、右边缘齐内容区；`.panel-head` 的 `align-items:baseline` 让左侧标题与**第一行**同基线。
+
+13. **量「右边缘是否齐内容区」时别忘了 `.panel` 的 1px 边框**（同上，探针踩过）
+    内容区右缘 = `rect.right − borderRightWidth − paddingRight`。只减 padding 会整体差 1px，
+    探针会把「已经对齐」误报成 8 条 FAIL（`.panel` 有 `border:1px`）。
+
+14. **判断「齐不齐」不能只量 `getBoundingClientRect()`** —— 它给的是盒子，不是基线。
+    要量基线就用 Range 取文字背景盒，再减去 canvas `measureText().fontBoundingBoxAscent`。
+    另外**别往 flex 容器里插探针 span**：插进去它自己就变成一个 flex item，量到的不是原来那段文字
+    （本项目踩过，量出的数全是错的）。回归脚本 `.tmp-shots/probe-publish-header.cjs`：
+    1440/1200/1024/900 四个宽度断言「图例在组织名下方 / 两行右缘齐内容区 / 首行与标题同基线 /
+    不溢出」，**29 项**。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
