@@ -34,3 +34,15 @@ Thumbs.db
 # 并行开发时子代理留下的临时产物（javac 的 classpath 目录、编译输出、探针脚本等）。
 # 它们不是工程的一部分，但很容易被 git add -A 误提交，所以在根目录统一忽略。
 .tmp-*
+
+# Nginx：本地安装的二进制发行版（用户自行下载，2026-09-27）。
+# 目录里是 nginx.exe + 默认 html/conf/logs/temp，约 10MB+，
+# 属于「本机运行时」而非工程源码，不入库；配置模板单独放在 deploy/nginx/ 下入库。
+nginx-1.30.5/
+nginx/
+deploy/nginx-win/
+
+# 后端上传目录：2026-09-27 起活动图片二进制存数据库（attachment.file_data BYTEA），
+# 经 /api/v1/attachments/{id}/content 输出，uploads/ 不再保存图片本体。
+# 它现在只是运行时可写目录（老数据的兼容静态映射会指向它），不该入库。
+volunteer-cert-portrait-server/uploads/

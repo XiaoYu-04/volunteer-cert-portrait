@@ -21,26 +21,27 @@
     前端产物目录，用于核对「产物是不是真后端口径（不含 mock）」。
     留空时依次尝试 deploy/../volunteer-cert-portrait-web/dist、/var/www/vcp。
 .PARAMETER UploadsSamplePath
-    站点上取一张上传图片的相对路径（Nginx alias 或后端静态映射都行）。
+    站点上取一张活动图片的相对路径。2026-09-27 起图片存数据库，
+    默认取 /api/v1/attachments/1/content（演示数据集里 id 1 一定存在）。
 .PARAMETER ProdProfile
     后端确实以 SPRING_PROFILES_ACTIVE=prod 启动时加上：文档页未被拒就判 FAIL。
     不加则该检查输出 SKIP（说明当前不是 prod 口径）。
 .PARAMETER ExpectedSignups / ExpectedHours
-    看板预期口径（sql/07 口径为 10719 / 19319.3）。为 0 表示只打印不断言。
+    看板预期口径（2026-09-27 数据集为 2349 / 9163.0）。为 0 表示只打印不断言。
 .PARAMETER PublicBackendUrl
     后端端口的公网地址（如 http://1.2.3.4:8080）。给了就验「8080 不该对外可达」。
 
 .EXAMPLE
     pwsh deploy/verify-deploy.ps1 -SiteUrl http://127.0.0.1:4173
 .EXAMPLE
-    pwsh deploy/verify-deploy.ps1 -SiteUrl http://vcp.example.edu.cn -ProdProfile -ExpectedSignups 10719 -ExpectedHours 19319.3
+    pwsh deploy/verify-deploy.ps1 -SiteUrl http://vcp.example.edu.cn -ProdProfile -ExpectedSignups 2349 -ExpectedHours 9163.0
 #>
 [CmdletBinding()]
 param(
     [string]$SiteUrl = 'http://127.0.0.1',
     [string]$BackendUrl = 'http://127.0.0.1:8080',
     [string]$DistPath = '',
-    [string]$UploadsSamplePath = '/uploads/demo/activities/children-reading.png',
+    [string]$UploadsSamplePath = '/api/v1/attachments/1/content',
     [switch]$ProdProfile,
     [int]$ExpectedSignups = 0,
     [decimal]$ExpectedHours = 0,
@@ -258,20 +259,20 @@ if ($token) {
     }
 }
 
-# ---------------------------------------------------------------- 上传图片
-Write-Host '--- 上传图片 ---' -ForegroundColor Cyan
+# ---------------------------------------------------------------- 活动图片（数据库存储）
+Write-Host '--- 活动图片（存数据库）---' -ForegroundColor Cyan
 if (-not $UploadsSamplePath) {
-    Add-Result '上传 · /uploads 图片可取' 'SKIP' '未指定样例路径'
+    Add-Result '图片 · 内容接口可取' 'SKIP' '未指定样例路径'
 } else {
     $img = Invoke-Probe "$SiteUrl$UploadsSamplePath"
     if (-not $img.Ok) {
-        Add-Result '上传 · /uploads 图片可取' 'FAIL' ("GET {0}{1} 失败：{2}。真 Nginx 的 alias 是文件系统直出，后端没起也不该失败；但若站点是 vite preview 这类把 /uploads 反代给后端的替身，后端没起时会失败 —— 那属替身差异，不是 alias 缺陷。" -f $SiteUrl, $UploadsSamplePath, $img.Error)
+        Add-Result '图片 · 内容接口可取' 'FAIL' ("GET {0}{1} 失败：{2}。图片存 attachment.file_data，经后端 /api/v1/attachments/{{id}}/content 输出，所以要经反代打到后端；后端没起时会失败。" -f $SiteUrl, $UploadsSamplePath, $img.Error)
     } elseif ($img.Status -eq 200 -and $img.ContentType -match '^image/') {
-        Add-Result '上传 · /uploads 图片可取' 'PASS' ("HTTP 200，{0}，{1:N0} 字节" -f $img.ContentType, $img.Length)
-    } elseif ($img.ContentType -match 'json') {
-        Add-Result '上传 · /uploads 图片可取' 'FAIL' ("HTTP 200 但返回 JSON（{0}）—— 该路径被反代到了后端且文件不存在；Nginx alias 下应为 404" -f $img.Content.Substring(0, [Math]::Min(80, $img.Content.Length)))
+        Add-Result '图片 · 内容接口可取' 'PASS' ("HTTP 200，{0}，{1:N0} 字节，Cache-Control「{2}」（期望 image/* + 长缓存 + ETag）" -f $img.ContentType, $img.Length, $img.CacheControl)
+    } elseif ($img.Status -eq 404) {
+        Add-Result '图片 · 内容接口可取' 'FAIL' ("HTTP 404 —— 该 id 的 attachment 行不存在或 file_data 为空（演示数据集跑完 12 + 13 后 id 1~40 应全有值）")
     } else {
-        Add-Result '上传 · /uploads 图片可取' 'FAIL' ("HTTP {0} CT={1}（样例文件可能不存在，用 -UploadsSamplePath 换成库里真实存在的图片）" -f $img.Status, $img.ContentType)
+        Add-Result '图片 · 内容接口可取' 'FAIL' ("HTTP {0} CT={1}（用 -UploadsSamplePath 换成库里真实存在的图片，如 /api/v1/attachments/12/content）" -f $img.Status, $img.ContentType)
     }
 }
 
