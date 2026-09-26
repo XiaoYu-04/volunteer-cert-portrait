@@ -204,6 +204,12 @@ cat > "$ENV_FILE" <<EOF
 # 让后端只能被 nginx 反代访问，公网扫不到 8080。
 SERVER_ADDRESS=127.0.0.1
 SPRING_PROFILES_ACTIVE=prod
+# ⚠️ 必须显式覆盖数据源地址：application.yml 里的 spring.datasource.url 指向的是
+# **云演示库**（103.40.14.100:19476），不覆盖的话应用会去连云库 —— 而云库里没有本机的
+# $DB_USER 角色，于是每个请求都报 code=10000「系统繁忙」，日志里是
+#   FATAL: password authentication failed for user "$DB_USER"
+# （真机实测踩到：psql 用同一口令能连本机库，应用却连不上，就是这个原因）。
+SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=public&stringtype=unspecified
 VCP_DB_USERNAME=$DB_USER
 VCP_DB_PASSWORD="$VCP_DB_PASSWORD"
 # JVM 参数（小内存档位见上）；-XX:+ExitOnOutOfMemoryError 让 OOM 时进程退出被 systemd 拉起
@@ -212,6 +218,7 @@ EOF
 chown "$APP_USER:$APP_USER" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 info "已写入 $ENV_FILE（600）：SPRING_PROFILES_ACTIVE=prod、SERVER_ADDRESS=127.0.0.1、$MEM_TIER"
+info "数据源指向本机库：jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}（覆盖 application.yml 里的云库地址）"
 info "提示：prod profile 会把 CORS 收紧、关掉文档页、把 SQL 日志降回 info（见 application-prod.yml）"
 
 # ===========================================================================
@@ -375,24 +382,26 @@ if [ -n "$ETAG" ]; then
 fi
 
 # 8) 8080 只监听本机（外网访问不到）
-# 注意：精简版云镜像可能没装 iproute2（没有 ss 命令）—— 此时"查不到"不能当成失败，
-# 真机实测踩到过：ss 不存在 → 两个变量都是空 → 误报"监听状态异常"。
-if ! command -v ss >/dev/null 2>&1; then
-    CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8080/api/v1/auth/colleges || true)"
-    if [ -n "$CODE" ] && [ "$CODE" != "000" ]; then
-        ok "8080 本机可达（未装 ss，改用 curl 探测；记得安全组里不要放行 8080）"
-    else
-        bad "8080 本机也连不上（后端没起？看 journalctl -u $SERVICE_NAME -n 60）"
-    fi
+# 判定顺序（真机实测两处误报后定的）：
+#   ① 先用 curl 证明「本机可达」—— 这是硬标准；ss 查不到不代表没在听
+#      （Tomcat 可能绑在 [::1] 或 ss 输出格式有差异，实测都遇到过）；
+#   ② 再用 ss 查「有没有绑到 0.0.0.0 / ::」—— 这才是真正要防的"对外暴露"。
+LOCAL_CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8080/api/v1/auth/colleges || true)"
+if [ -z "$LOCAL_CODE" ] || [ "$LOCAL_CODE" = "000" ]; then
+    bad "8080 本机连不上（后端没起？看 journalctl -u $SERVICE_NAME -n 60）"
+elif ! command -v ss >/dev/null 2>&1; then
+    ok "8080 本机可达（HTTP $LOCAL_CODE；未装 ss，跳过"是否绑到全网卡"的检查 —— 记得安全组不要放行 8080）"
 else
     LISTEN_ALL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -E '^(0\.0\.0\.0|\*|\[::\]):8080$' || true)"
-    LISTEN_LOCAL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -x '127.0.0.1:8080' || true)"
+    LISTEN_LOCAL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -xE '(127\.0\.0\.1|\[::1\]):8080' || true)"
     if [ -z "$LISTEN_ALL" ] && [ -n "$LISTEN_LOCAL" ]; then
-        ok "8080 只监听 127.0.0.1（安全组里也不要放行 8080）"
+        ok "8080 只监听本机（$LISTEN_LOCAL），未绑到全网卡（安全组里也不要放行 8080）"
+    elif [ -z "$LISTEN_ALL" ] && [ -z "$LISTEN_LOCAL" ]; then
+        # curl 已经证明可达，这里只是 ss 没解析出来（格式差异），不当失败
+        ok "8080 本机可达（HTTP $LOCAL_CODE；ss 未列出该端口，可能绑在 ::1 或输出格式不同）"
     else
-        bad "8080 监听状态异常：本机=$(printf '%s' "$LISTEN_LOCAL" | tr '\n' ' ')，全网卡=$(printf '%s' "$LISTEN_ALL" | tr '\n' ' ')"
-        printf '        处置：确认 %s 里有 SERVER_ADDRESS=127.0.0.1，vcp.service 的 ExecStart 带 --server.address=127.0.0.1，\n' "$ENV_FILE"
-        printf '        systemctl daemon-reload && systemctl restart %s；并去阿里云安全组确认没有放行 8080\n' "$SERVICE_NAME"
+        bad "8080 绑到了全网卡：$LISTEN_ALL —— 去 $ENV_FILE 确认 SERVER_ADDRESS=127.0.0.1，"
+        printf '        vcp.service 的 ExecStart 带 --server.address=127.0.0.1，并检查阿里云安全组\n'
     fi
 fi
 
