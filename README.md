@@ -66,13 +66,18 @@
    后端 `mvn -B package -DskipTests` 11 个模块 BUILD SUCCESS，已重启（**pid 32936**，8080 监听）。
    过程与证据见 [docs/会话记录.md](docs/会话记录.md) 会话 11。
 
-> 另：云数据库口令已轮换，另外两位同学需把新口令更新到自己那份 `application-local.yml`
-> （旧口令已失效）。连不上库时先查这里，不是代码问题。
+> **数据库口令（2026-09-26 起）**：演示库口令是 **明文 `123456`**，已经写进
+> `application.yml` 作为默认值 —— **clone 下来零配置即可连库**，不需要任何本地文件。
+> 这是**刻意的演示口径**（代价：仓库 public = 口令公开，该库只能放演示数据；
+> 任何能访问 `103.40.14.100:19476` 的人都能改/删它）。**答辩结束后必须轮换**，
+> 生产部署必须带 `--spring.profiles.active=prod` 并用环境变量 `VCP_DB_PASSWORD` 覆盖。
 >
-> **口令从哪拿**：口令不在仓库里，只存在于执行轮换那台机器的 `application-local.yml`
-> （该文件已 gitignore）；需要的人找轮换执行者线下索取（群聊 / 私聊），拿到后写进自己的
-> `application-local.yml` 或设环境变量 `VCP_DB_PASSWORD`，**不要回写进任何被跟踪的文件**。
-> 新同学的完整上手流程见下文「[新同学四步上手](#新同学四步上手)」一节。
+> 连不上库多半是这三件事：① 自己或环境变量里留着**旧口令**（`VCP_DB_PASSWORD`
+> 优先级最高，`echo %VCP_DB_PASSWORD%` 查一下）；② 从**仓库根目录**启动
+> （`application-local.yml` 的候选路径是相对工作目录的，要 `cd volunteer-cert-portrait-server`）；
+> ③ 网络到不了云库（`Test-NetConnection 103.40.14.100 -Port 19476`）。
+> 另：`start-backend.ps1` / `start-backend.sh` 仍可用 —— 想临时用别的口令时，
+> 它交互输入、只注入本次进程、不落盘。
 
 完整清单见 [docs/待办清单.md](docs/待办清单.md)，后端细节见 [docs/后端进展与待办.md](docs/后端进展与待办.md)。
 **下一次开工从哪开始**见 [docs/下一步待办.md](docs/下一步待办.md)（含「下次开工的起点」一节），
@@ -112,11 +117,12 @@
    > 只对**清库**场景成立；按上面这条完整序列走，`05` / `06` 本来就在 `10` 之前，不用补跑。
    > `08_password_bcrypt.sql` 只服务于「先建库、后升级到加密版代码」的老库，新库不必跑（见「快速开始（后端）」）。
 
-3. **配置数据库口令**：复制
+3. **数据库口令**：**不需要配置** —— 演示库口令 `123456` 已明文写在
+   `application.yml` 里，clone 下来直接就能连（详见上文「下一步待办」一节末尾的说明，
+   含这条演示口径的代价与答辩后轮换的要求）。
+   只有想覆盖它（换账号、换口令、连别的库）时才需要复制
    `volunteer-cert-portrait-server/vcp-boot/src/main/resources/application-local.yml.example`
-   为同目录下的 `application-local.yml`，并填入数据库口令（口令不在仓库里，
-   获取渠道见上文「下一步待办」一节末尾的说明）。这份文件已 gitignore、也**不会**被打进 jar；
-   放在这个位置时，IDE 内运行与下一步「在 `volunteer-cert-portrait-server/` 下 `java -jar`」都能读到它。
+   为同目录下的 `application-local.yml`；该文件已 gitignore、也**不会**被打进 jar。
 
 4. **起前后端**：
 
@@ -125,6 +131,9 @@
    cd volunteer-cert-portrait-server
    mvn package -DskipTests
    java -jar vcp-boot/target/vcp-boot-1.0.0.jar
+   # 想临时换口令（不留文件）时，也可以直接用启动脚本：
+   #   .\start-backend.ps1        （Windows）
+   #   ./start-backend.sh         （macOS / Linux）
 
    # 前端（另开一个终端窗口）
    cd volunteer-cert-portrait-web
