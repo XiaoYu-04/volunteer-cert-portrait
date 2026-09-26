@@ -221,6 +221,27 @@ vcp-dependencies  独立 BOM
     - 完整顺序（整链实测约 16 秒）：`02 → 03 → 04 → 05 → 06 → 07 → 10 → 11 → 12`，
       最后**只读**跑 `09` 复验（检查项总数 20、违规合计 0）。见「常用命令」一节。
 
+21. **`ILIKE CONCAT('%', #{kw}, '%')` 在 PostgreSQL 下参数类型推不出来**（2026-09-26 实测）
+    `CONCAT` 是 `VARIADIC "any"`，而本项目连接串带了 `stringtype=unspecified`，参数以 unknown
+    类型下发 → 服务端报 `42P18 could not determine data type of parameter $1`，被全局异常兜成
+    **`code=10000 系统繁忙`**。前端表现是「关键字查询一点就报系统繁忙」（`/activities`、
+    `/signups`、`/attendance`、`/attendance/mine`、`/portraits` 全中）。
+    ⚠️ **直连跑同一条 SQL 却是成功的**（psql / `preferQueryMode=simple` 会把字面量替换进去），
+    所以纯 SQL 复核查不出来，必须走 PreparedStatement（走接口，或 JDBC 探针）。
+    修法：`CONCAT('%', #{kw}::text, '%')`（或 `'%' || #{kw} || '%'`）。2026-09-26 已修 **11 处**
+    （`VolunteerActivityMapper.xml`、`ActivitySignupMapper.xml`、`AttendanceRecordMapper.xml` 4 处、
+    `PortraitAggregateMapper.java` 3 处含 tag 筛选）。**新增模糊查询必须带 `::text`**。
+
+22. **`DateTimeFormatter.toString()` 不是模式串，别拿它取长度**（2026-09-26 实测）
+    `DATE.toString()` 返回形如 `Value(YearOfEra,4,19,EXCEEDS_PAD)'-'Value(MonthOfYear,2)...` 的描述串
+    （**长度 78**），不是 `yyyy-MM-dd`（长度 10）。`VolunteerTimeUtils.toDeadline` 原先写
+    `if (value.length() <= DATE.toString().length())` 想表达「只给了日期 → 按当天最后一刻」，
+    结果**条件恒真**：连传完整的 `yyyy-MM-dd HH:mm` 也会被抹成当天 `23:59:59`。
+    后果：`deadline <= start_time` 对「今天开始的活动」永远不成立 → 建/改活动直接
+    10001「报名截止时间不能晚于活动开始时间」，**「进行中且可报名」的活动根本造不出来**
+    （答辩现场想造一场窗口内的活动演示签到时必踩）。修法：看**输入串本身**有没有时间部分
+    （`value.indexOf(' ') < 0 && value.indexOf('T') < 0`）。
+
 ### 前端（`volunteer-cert-portrait-web/`）
 
 1. **Vue 3.5 的模板解析器只在属性值含分号时才按「多语句」解析**
@@ -294,11 +315,22 @@ vcp-dependencies  独立 BOM
 三角色冒烟全过（`/activities` 389、`/analytics/dashboard` 报名 10719 / 时长 19319.3 / 签到率 90.1%）；
 接口文档可用。**6 个业务模块全部落地**（2026-09-23）：`vcp-system` / `vcp-org` /
 `vcp-volunteer` / `vcp-certification` / `vcp-portrait` / `vcp-analytics`，三个角色实打
-20 个接口全部符合预期、日志零异常。OpenAPI 共 59 个路径 / 72 个「方法 + 路径」，
-前端 29 个页面与 `src/api/` 的 70 个调用已与后端契约对齐，0 缺失
-（含 2026-09-24 新增的两条改密接口与学校管理端学院管理的 4 条接口）。
+20 个接口全部符合预期、日志零异常。OpenAPI 共 **60 个路径 / 73 个「方法 + 路径」**
+（2026-09-26 运行实例 `/v3/api-docs` 实查；B24 新增 `GET /api/v1/attendance/mine`），
+前端 29 个页面与 `src/api/` 的 **71 个调用**已与后端契约对齐，0 缺失
+（含 2026-09-24 新增的两条改密接口与学校管理端学院管理的 4 条接口，
+以及 2026-09-26 B24 的学生自助签到接口）。
 活动图片上传已落地：`POST /api/v1/attachments/images`，PostgreSQL 只存附件元数据，
 图片本体写入 `uploads/`；发布页支持 1 张封面 + 最多 6 张带说明图片。
+
+**2026-09-26（B24 学生自助签到闭环 + 两个横切缺陷）**：新增 `GET /api/v1/attendance/mine`
+（学生本人签到记录，只挂 `@SaCheckLogin`、数据范围只看登录态），`AttendanceVO` 补
+`activityStartAt`/`activityEndAt`/`canSignIn`/`canSignOut`（后两个由服务端按 A2 的 30 分钟窗口算好），
+前端「我的报名」行上挂签到 / 签退按钮 + 「签到」列（未签到的显示），mock 三处对齐（含演示账号 4 条可签到记录）。
+同一轮验收还挖出并修掉两个**既有横切缺陷**：**B32** `ILIKE CONCAT('%', ?, '%')` 参数类型推不出来
+→ 5 个接口的关键字查询全线 10000（11 处加 `::text`）；**B33** `toDeadline` 用
+`DATE.toString().length()` 判「只给日期」导致**时分秒恒被抹掉** → 「进行中且可报名」的活动造不出来
+（改看输入串是否含时间部分）。详见踩坑 21、22 与 `docs/待办清单.md` 的 B24 / B32 / B33。
 
 **当前阶段**：开发计划**第九阶段（系统测试与数据完善）**。已完成：6 个业务模块全部落地、
 `mvn package` 11 个模块全过、`sql/07_demo_scale.sql` 已实跑、**前后端联调（B12）已于
