@@ -7,6 +7,12 @@ const props = defineProps({
   total: { type: Number, default: 0 },
   /** 是否显示「共 N 条」 */
   showTotal: { type: Boolean, default: true },
+  /**
+   * 每页条数下拉的档位。
+   * 默认保持表格页原有档位不变；卡片网格页要传能被列数整除的档位
+   * （如 3 列传 [12, 24, 48]）—— 否则最后一行的卡片数凑不满，底部会空出格子。
+   */
+  sizes: { type: Array, default: () => [10, 20, 50] },
 })
 
 const emit = defineEmits(['update:page', 'update:pageSize'])
@@ -93,7 +99,7 @@ function changeSize(e) {
     <label class="ink-pager-size">
       <span class="sr-only">每页条数</span>
       <select class="ink-select" :value="pageSize" @change="changeSize">
-        <option v-for="n in [10, 20, 50]" :key="n" :value="n">{{ n }} 条 / 页</option>
+        <option v-for="n in sizes" :key="n" :value="n">{{ n }} 条 / 页</option>
       </select>
     </label>
   </div>

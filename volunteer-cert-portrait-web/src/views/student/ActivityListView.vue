@@ -12,10 +12,12 @@ import ActivityGridCard from '@/components/biz/ActivityGridCard.vue'
 
 const dict = useDictStore()
 
-// pageSize 走 useTable 的默认 10：InkPagination 的每页条数下拉只有 10/20/50，
-// 这里传个 12 会让下拉选不中任何一项、显示与实际不一致。
+// pageSize 取 12 而不是 useTable 的默认 10：本页 .act-grid 是**固定 3 列**，
+// 10 条会排成 3+3+3+1，最后一行只落 1 张卡、空出 2 格（曾被报为「底部少了两个」）。
+// 12 = 3×4，整四行铺满，不留空格。
+// 配套前提：InkPagination 的每页条数下拉必须含 12，否则下拉选不中任何一项、显示与实际不一致。
 const { rows, total, loading, query, search } = useTable(listActivities, {
-  defaultQuery: { keyword: '', type: '', status: 'PUBLISHED' },
+  defaultQuery: { pageSize: 12, keyword: '', type: '', status: 'PUBLISHED' },
 })
 
 function resetQuery() {
@@ -76,7 +78,8 @@ const statusOptions = dict.options('activity_status')
       </form>
 
       <div v-if="loading" class="act-grid sk-grid" aria-hidden="true">
-        <div v-for="n in 6" :key="`sk-${n}`" class="ink-agc">
+        <!-- 骨架数量与每页条数一致（12），否则加载完从 2 行跳到 4 行会抖一下 -->
+        <div v-for="n in 12" :key="`sk-${n}`" class="ink-agc">
           <span class="ink-skeleton ink-agc-sk-cover"></span>
           <div class="ink-agc-body sk-body">
             <span class="ink-skeleton ink-skeleton-row"></span>
@@ -100,7 +103,12 @@ const statusOptions = dict.options('activity_status')
         hint="试试换个关键字，或把类型与状态放宽到「全部」。"
       />
 
-      <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+      <InkPagination
+        v-model:page="query.page"
+        v-model:page-size="query.pageSize"
+        :total="total"
+        :sizes="[12, 24, 48]"
+      />
     </section>
   </div>
 </template>
