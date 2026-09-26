@@ -114,6 +114,32 @@ case "$VCP_DB_PASSWORD" in
     *'"'*) die '口令里含双引号，EnvironmentFile 解析不了；请在数据库里换一个口令（02-database.sh 会重置）' ;;
 esac
 
+# ---- 先把口令验证一遍，再往下走 ----
+# 为什么必须有这一步：vcp.env 一旦写错口令，应用能起来但每个请求都会
+# "password authentication failed"（对外表现是 code=10000 系统繁忙），
+# 而部署脚本要到第 8 步验收才发现，中间白等几分钟（真机实测踩到）。
+# 这里提前用 psql 连一次，错了立刻重问/中止。
+verify_db_password() {
+    PGPASSWORD="$VCP_DB_PASSWORD" psql -X -q -tA -h 127.0.0.1 -p 5432 -U "$DB_USER" -d "$DB_NAME" \
+        -c 'SELECT 1' >/dev/null 2>&1
+}
+if ! command -v psql >/dev/null 2>&1; then
+    warn "本机没有 psql，跳过口令预验证（请确认口令与 02-database.sh 输入的一致）"
+elif verify_db_password; then
+    info "口令验证通过：$DB_USER 能连上 $DB_NAME"
+else
+    warn "口令验证失败：$DB_USER 连不上 $DB_NAME"
+    if [ -t 0 ]; then
+        read -r -s -p "      请重新输入（留空则中止）: " VCP_DB_PASSWORD
+        echo
+        [ -n "${VCP_DB_PASSWORD:-}" ] || die "已中止：口令不对，别继续（否则应用会一直报 10000 系统繁忙）"
+        verify_db_password || die "还是连不上。排查：① 口令是否与 02-database.sh 一致 ② 02 是否跑完（角色/库在不在）
+      手工验证：sudo bash -c 'set -a; . /opt/vcp/vcp.env; set +a; PGPASSWORD=\"\$VCP_DB_PASSWORD\" psql -h 127.0.0.1 -U $DB_USER -d $DB_NAME -c \"select 1\"'"
+    else
+        die "非交互执行且口令不对，已中止"
+    fi
+fi
+
 # ===========================================================================
 step "系统用户与目录"
 # ===========================================================================
@@ -300,6 +326,13 @@ if printf '%s' "$COLLEGES" | grep -q '"code":0'; then
                             || bad "学院数量是 $N_COLLEGES（期望 10；少说明 04/10 号脚本没跑全）"
 else
     bad "GET /api/v1/auth/colleges 返回异常：$(printf '%s' "$COLLEGES" | head -c 200)"
+    # code=10000（系统繁忙）几乎都是后端连不上库（最常见是口令不对）——
+    # 直接把日志尾部打出来，别让人再去猜（真机实测：这里附日志能一眼看到
+    # "password authentication failed for user"）。
+    printf '        后端日志尾部（journalctl -u %s -n 25）：\n' "$SERVICE_NAME"
+    journalctl -u "$SERVICE_NAME" -n 25 --no-pager 2>/dev/null | sed 's/^/          /' || true
+    printf '        自查口令：sudo bash -c '"'"'set -a; . %s; set +a; PGPASSWORD="$VCP_DB_PASSWORD" psql -h 127.0.0.1 -U %s -d %s -c "select count(*) from student_info;"'"'"'\n' \
+        "$ENV_FILE" "$DB_USER" "$DB_NAME"
 fi
 
 # 5) 三个测试账号登录 code=0，并用 admin 的 token 取看板
@@ -342,14 +375,25 @@ if [ -n "$ETAG" ]; then
 fi
 
 # 8) 8080 只监听本机（外网访问不到）
-LISTEN_ALL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -E '^(0\.0\.0\.0|\*|\[::\]):8080$' || true)"
-LISTEN_LOCAL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -x '127.0.0.1:8080' || true)"
-if [ -z "$LISTEN_ALL" ] && [ -n "$LISTEN_LOCAL" ]; then
-    ok "8080 只监听 127.0.0.1（安全组里也不要放行 8080）"
+# 注意：精简版云镜像可能没装 iproute2（没有 ss 命令）—— 此时"查不到"不能当成失败，
+# 真机实测踩到过：ss 不存在 → 两个变量都是空 → 误报"监听状态异常"。
+if ! command -v ss >/dev/null 2>&1; then
+    CODE="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:8080/api/v1/auth/colleges || true)"
+    if [ -n "$CODE" ] && [ "$CODE" != "000" ]; then
+        ok "8080 本机可达（未装 ss，改用 curl 探测；记得安全组里不要放行 8080）"
+    else
+        bad "8080 本机也连不上（后端没起？看 journalctl -u $SERVICE_NAME -n 60）"
+    fi
 else
-    bad "8080 监听状态异常：本机=$(printf '%s' "$LISTEN_LOCAL" | tr '\n' ' ')，全网卡=$(printf '%s' "$LISTEN_ALL" | tr '\n' ' ')"
-    printf '        处置：确认 %s 里有 SERVER_ADDRESS=127.0.0.1，vcp.service 的 ExecStart 带 --server.address=127.0.0.1，\n' "$ENV_FILE"
-    printf '        systemctl daemon-reload && systemctl restart %s；并去阿里云安全组确认没有放行 8080\n' "$SERVICE_NAME"
+    LISTEN_ALL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -E '^(0\.0\.0\.0|\*|\[::\]):8080$' || true)"
+    LISTEN_LOCAL="$(ss -ltn 2>/dev/null | awk '{print $4}' | grep -x '127.0.0.1:8080' || true)"
+    if [ -z "$LISTEN_ALL" ] && [ -n "$LISTEN_LOCAL" ]; then
+        ok "8080 只监听 127.0.0.1（安全组里也不要放行 8080）"
+    else
+        bad "8080 监听状态异常：本机=$(printf '%s' "$LISTEN_LOCAL" | tr '\n' ' ')，全网卡=$(printf '%s' "$LISTEN_ALL" | tr '\n' ' ')"
+        printf '        处置：确认 %s 里有 SERVER_ADDRESS=127.0.0.1，vcp.service 的 ExecStart 带 --server.address=127.0.0.1，\n' "$ENV_FILE"
+        printf '        systemctl daemon-reload && systemctl restart %s；并去阿里云安全组确认没有放行 8080\n' "$SERVICE_NAME"
+    fi
 fi
 
 # ===========================================================================
