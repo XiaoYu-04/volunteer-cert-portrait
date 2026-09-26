@@ -288,6 +288,23 @@ public class ActivityServiceImpl implements ActivityService {
     }
 
     @Override
+    public void deleteDraft(Long id) {
+        VolunteerActivity activity = requireActivity(id);
+        // 组织归属校验复用与改状态同一套：组织管理员只能动本组织的，学生一律拒绝
+        requireWritable(activity);
+        ActivityStatusEnum current = ActivityStatusEnum.of(activity.getStatus());
+        if (current != ActivityStatusEnum.DRAFT) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR,
+                    "只能删除草稿活动，当前状态为「"
+                            + (current == null ? activity.getStatus() : current.getLabel())
+                            + "」，如需下线请改用「取消」");
+        }
+        // 逻辑删除：实体上有 @TableLogic，deleteById 会被改写成 UPDATE ... SET deleted = 1
+        activityMapper.deleteById(id);
+        log.info("[志愿活动] 删除草稿。id={}, title={}", id, activity.getTitle());
+    }
+
+    @Override
     public OrgOverviewVO getOrgOverview(Long orgId) {
         Long targetOrgId = resolveOverviewOrgId(orgId);
         OrgOverviewRow row = activityMapper.selectOrgOverview(targetOrgId);

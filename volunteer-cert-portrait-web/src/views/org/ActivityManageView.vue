@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { listActivities, updateActivityStatus, listCategories } from '@/api/volunteer'
+import { listActivities, updateActivityStatus, deleteActivity, listCategories } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -78,6 +78,25 @@ async function changeStatus(row, status) {
   try {
     await updateActivityStatus(row.id, status)
     toast.success(STATUS_TEXT[status] || '状态已更新')
+    await load()
+  } catch (err) {
+    toast.error(err.message)
+  }
+}
+
+/** 删除草稿。不是状态流转（后端是逻辑删除），所以单独一个按钮、不走 changeStatus */
+async function removeDraft(row) {
+  const okToGo = await confirm({
+    title: '删除草稿',
+    message: `删除草稿「${row.title}」后不可恢复。若只是暂时不想发布，用「取消」可以留档。`,
+    confirmText: '确认删除',
+    tone: 'danger',
+  })
+  if (!okToGo) return
+
+  try {
+    await deleteActivity(row.id)
+    toast.success('草稿已删除')
     await load()
   } catch (err) {
     toast.error(err.message)
@@ -182,7 +201,16 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
             {{ action.label }}
           </InkButton>
         </template>
-        <InkButton size="sm" variant="ghost" :to="`/org/signups?activityId=${row.id}`"
+        <InkButton v-if="row.status === 'DRAFT'" size="sm" variant="ghost" @click="removeDraft(row)">
+          删除
+        </InkButton>
+        <!-- 草稿不显示报名审核：草稿不可能有报名（后端拒绝为非 PUBLISHED 活动报名），
+             点进去必然是空页；去掉它也让本列在 230px 内放得下新增的「删除」 -->
+        <InkButton
+          v-if="row.status !== 'DRAFT'"
+          size="sm"
+          variant="ghost"
+          :to="`/org/signups?activityId=${row.id}`"
           >报名审核</InkButton
         >
       </template>

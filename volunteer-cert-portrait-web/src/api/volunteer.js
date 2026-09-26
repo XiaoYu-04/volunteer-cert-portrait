@@ -6,6 +6,8 @@ export const getActivity = (id) => get(`/v1/activities/${id}`)
 export const createActivity = (data) => post('/v1/activities', data)
 export const updateActivity = (id, data) => put(`/v1/activities/${id}`, data)
 export const updateActivityStatus = (id, status) => put(`/v1/activities/${id}/status`, { status })
+/** 删除草稿活动。后端只接受草稿，其它状态会返回 10001 */
+export const deleteActivity = (id) => del(`/v1/activities/${id}`)
 
 /** 组织端概览（注意：静态段路由，后端需排在 /activities/{id} 之前） */
 export const getOrgOverview = (orgId) => get('/v1/activities/org-overview', { orgId })
