@@ -38,6 +38,10 @@ volunteer-cert-portrait/
 ```bash
 # 构建（11 个模块）
 cd volunteer-cert-portrait-server && mvn -B package -DskipTests
+# ⚠️ 若报 parent POM 解析失败 / Central 403：本机走 Maven Central 会被拒，
+#    改用指向阿里云镜像的临时 settings（`-o` 离线也不行，本地仓库的 repo 记号对不上）：
+#    mvn -B -s "$env:TEMP\mvn-aliyun-settings.xml" package -DskipTests
+#    详见同目录记忆 maven-central-403-use-aliyun（settings 文件也在那个路径）
 
 # 启动
 java -jar vcp-boot/target/vcp-boot-1.0.0.jar
@@ -99,6 +103,9 @@ vcp-dependencies  独立 BOM
 - 接口前缀 `/api/v1/`；统一返回 `{ code, message, data }`，成功 `code=0`
 - 权限标识格式 `域:资源:操作`（如 `system:user:list`）
 - 枚举里 `APPROVED`/`REJECTED`（状态）与 `APPROVE`/`REJECT`（审核动作）**不同形**，别混
+- 活动列表 `GET /api/v1/activities` 的 `keyword` **同时匹配活动名称与发布组织名**
+  （`VolunteerActivityMapper.xml` 的谓词，mock 同一口径）。学生首页「组织活跃度」点组织
+  就是跳到本页把组织名填进关键字 —— **别把它改回只匹配 `a.title`**，否则那一跳全是空结果
 
 ## ⚠️ 踩过的坑（改代码前先看）
 
