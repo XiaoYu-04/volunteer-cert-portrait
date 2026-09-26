@@ -14,27 +14,6 @@ const form = reactive({ username: '', password: '' })
 const errors = reactive({ username: '', password: '' })
 const loading = ref(false)
 
-/**
- * 演示账号，一键填入。
- *
- * 这里刻意**不写学号**：mock 与真后端是两套互不相干的演示数据
- * （真库 student → 张同学 / 20230001，mock → 陈思远 / 202210001），
- * 把其中一个学号写进这份共用代码，切到另一套就成了一句话假话。
- * 学号可登录这件事由输入框的 hint 说明，不靠演示区列值。
- */
-const demos = [
-  { role: '学生', username: 'student', password: '123456' },
-  { role: '组织管理员', username: 'org_admin', password: '123456' },
-  { role: '学校管理员', username: 'admin', password: '123456' },
-]
-
-function fill(demo) {
-  form.username = demo.username
-  form.password = demo.password
-  errors.username = ''
-  errors.password = ''
-}
-
 function validate() {
   errors.username = form.username.trim() ? '' : '请输入用户名或学号'
   errors.password = form.password ? '' : '请输入密码'
@@ -106,39 +85,7 @@ async function onSubmit() {
         <p class="auth-foot">
           还没有账号？<RouterLink to="/register">注册学生账号</RouterLink>
         </p>
-
-        <div class="auth-tip">
-          <p>演示账号（点击填入）：</p>
-          <p v-for="demo in demos" :key="demo.username">
-            <button type="button" class="auth-demo" @click="fill(demo)">
-              {{ demo.role }} · {{ demo.username }} / {{ demo.password }}
-            </button>
-          </p>
-        </div>
       </div>
     </main>
   </div>
 </template>
-
-<style scoped>
-.auth-demo {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  margin: 0 -6px;
-  padding: 2px 6px;
-  border: 0;
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--c-a2);
-  border-bottom: 1px solid var(--c-line);
-  transition: border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
-}
-
-.auth-demo:hover {
-  background: var(--c-hover);
-  border-bottom-color: var(--c-a2);
-}
-</style>
