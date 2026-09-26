@@ -554,15 +554,36 @@
 /* ---------- 登录页 ---------- */
 .auth{min-height:100vh; display:grid; grid-template-columns:1fr 1fr}
 .auth-aside{
-  background:var(--c-ink); color:rgba(255,255,255,.78);
+  /* 深色区改为「雷锋油画 + 压暗蒙版」。
+     用多重背景而不是 ::before 伪元素：面板里三块文字（品牌/引言/脚注）都是静态定位，
+     绝对定位的伪元素会盖在它们上面，还得逐个补 position+z-index；多重背景没有这个层叠问题。
+
+     蒙版左重右轻：文字全部左对齐，右侧留给画面主体（雷锋与红旗）；
+     上下各加重一档，因为品牌贴顶、脚注贴底。
+     用暖近黑 rgba(22,18,14) 而不是纯中性黑 —— 油画是暖调（赭石/土黄/橄榄绿），
+     冷色蒙版会把画面压成灰的。
+
+     ⚠️ 图上原来那套文字是给纯 #1A1A1A 底写的（白字 + .78 不透明度），
+     直接压到亮部（天空、红横幅）会读不清，所以下面的文字不透明度整体调高了。 */
+  background-color:var(--c-ink);
+  background-image:
+    linear-gradient(90deg, rgba(22,18,14,.88) 0%, rgba(22,18,14,.66) 42%, rgba(22,18,14,.28) 100%),
+    linear-gradient(180deg, rgba(22,18,14,.50) 0%, rgba(22,18,14,.06) 24%, rgba(22,18,14,.06) 66%, rgba(22,18,14,.58) 100%),
+    url('/auth-aside-leifeng.jpg');
+  background-size:cover;
+  background-position:center;
+  color:rgba(255,255,255,.86);
   padding:64px 56px; display:flex; flex-direction:column; justify-content:space-between;
 }
 .auth-aside-brand{display:flex; align-items:center; gap:16px}
 .auth-aside-brand .seal{width:48px; height:48px; font-size:15px}
 .auth-aside-name{font-family:var(--font-display); font-size:22px; letter-spacing:.08em; color:#fff; line-height:1.5}
-.auth-aside-quote{font-family:var(--font-display); font-size:clamp(24px,3vw,38px); line-height:1.6; letter-spacing:.06em; color:#fff; max-width:14em}
+/* max-width 从 14em 放宽到 16em：注册页那句「服务时长经审核后计入公益画像」正好 14 个汉字，
+   而中日韩字符宽约 1em，14 字 = 14em 恰好卡在边界，最后一个「像」会被挤到第三行单独成行。
+   登录页那句带显式 <br> 且每行 ≤9 字，放宽后不受影响。 */
+.auth-aside-quote{font-family:var(--font-display); font-size:clamp(24px,3vw,38px); line-height:1.6; letter-spacing:.06em; color:#fff; max-width:16em}
 .auth-aside-quote em{font-style:normal; color:#E8A79E}
-.auth-aside-foot{font-size:12px; letter-spacing:.18em; font-family:var(--font-mono); color:rgba(255,255,255,.5)}
+.auth-aside-foot{font-size:12px; letter-spacing:.18em; font-family:var(--font-mono); color:rgba(255,255,255,.72)}
 .auth-main{display:flex; align-items:center; justify-content:center; padding:56px 40px}
 .auth-card{width:100%; max-width:400px}
 .auth-title{font-family:var(--font-display); font-size:28px; letter-spacing:.08em; color:var(--c-ink)}
