@@ -84,7 +84,9 @@ case "$(uname -m)" in
 esac
 MEM_MB="$(awk '/^MemTotal:/{printf "%d", $2/1024}' /proc/meminfo)"
 info "内存：${MEM_MB} MB（CPU：$(nproc) 核）"
-[ "${MEM_MB:-0}" -ge 900 ] || warn "内存小于 1 GB，本脚本的参数是按 1~2 GB 定的，很可能不够用。"
+[ "${MEM_MB:-0}" -ge 900 ] || warn "内存只有 ${MEM_MB} MB（阿里云 1 GB 规格实测就是 ~700 MB 可用）。
+      脚本会按 TINY 档调 PG（shared_buffers 96MB）、03-deploy.sh 会把 JVM 降到 -Xmx288m，
+      能跑但余量很小；长期用建议升到 2 GB（改规格不用重装，快照/镜像都能迁）。"
 
 # ===========================================================================
 step "apt 源（阿里云内网镜像 + bookworm-backports）"
@@ -321,7 +323,9 @@ info "PostgreSQL 已就绪：$(psql --version)"
 PG_CONF_DIR="/etc/postgresql/${PG_MAJOR}/main/conf.d"
 if [ -d "/etc/postgresql/${PG_MAJOR}/main" ]; then
     install -d "$PG_CONF_DIR"
-    if [ "$MEM_MB" -lt 1536 ]; then PROFILE="1G"; else PROFILE="2G"; fi
+    if [ "$MEM_MB" -lt 900 ]; then PROFILE="TINY"
+    elif [ "$MEM_MB" -lt 1536 ]; then PROFILE="1G"
+    else PROFILE="2G"; fi
     if [ -f "${SCRIPT_DIR}/postgres-tuning.conf" ]; then
         {
             printf '# 由 01-install.sh 生成（%s，内存 %s MB → PROFILE-%s）\n' "$(date '+%F %T')" "$MEM_MB" "$PROFILE"
@@ -410,5 +414,5 @@ cat <<EOF
   swap    : $(free -h | awk '/^Swap:/{print $2" 总量 / "$4" 已用"}')
 
 下一步：跑数据库初始化（会交互询问数据库口令）
-  sudo bash deploy/small-server/02-database.sh
+  sudo bash ${SCRIPT_DIR}/02-database.sh
 EOF

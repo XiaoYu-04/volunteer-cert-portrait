@@ -154,7 +154,14 @@ fi
 step "生成 $ENV_FILE"
 # ===========================================================================
 MEM_MB="$(awk '/^MemTotal:/{printf "%d", $2/1024}' /proc/meminfo)"
-if [ "$MEM_MB" -lt 1536 ]; then
+# 三档（2026-09-27 补 TINY 档）：阿里云的「1 GB」规格实测 MemTotal 只有 ~700 MB，
+# 按 1G 档给 -Xmx384m 会连 PG 一起挤进 swap，所以 < 900 MB 单独降一档。
+# 想强制指定堆大小：sudo bash -c 'XMX=256m bash 03-deploy.sh'
+if [ -n "${XMX:-}" ]; then
+    MEM_TIER="手工指定（-Xmx${XMX}）"
+elif [ "$MEM_MB" -lt 900 ]; then
+    XMX="288m"; MEM_TIER="极小内存档（<900 MB，-Xmx288m）"
+elif [ "$MEM_MB" -lt 1536 ]; then
     XMX="384m"; MEM_TIER="1 GB 档（-Xmx384m）"
 else
     XMX="512m"; MEM_TIER="2 GB 档（-Xmx512m）"
