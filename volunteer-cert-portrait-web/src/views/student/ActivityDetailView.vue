@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getActivity, listSignups, createSignup } from '@/api/volunteer'
 import { useToast } from '@/composables/useToast'
 import { useDictStore } from '@/stores/dict'
@@ -15,6 +15,7 @@ import InkProgress from '@/components/common/InkProgress.vue'
 import StatusTag from '@/components/common/StatusTag.vue'
 
 const route = useRoute()
+const router = useRouter()
 const toast = useToast()
 const dict = useDictStore()
 const user = useUserStore()
@@ -68,6 +69,19 @@ onMounted(() => {
   load()
 })
 
+/**
+ * 返回上一页。
+ *
+ * 为什么用 history.state.back 判断而不是直接 router.back()：
+ * Vue Router 4 每次导航都会把「上一条路由」写进 history.state.back，从列表点进来时
+ * 它一定是列表页路径；而在新标签页里直接打开本页（分享链接、收藏夹）时它是 null，
+ * 此时 back() 会退出整个站点 —— 所以这种情况改为回活动列表，保证按钮永远有去处。
+ */
+function goBack() {
+  if (window.history.state?.back) router.back()
+  else router.push('/student/activities')
+}
+
 const dialogOpen = ref(false)
 const reason = ref('')
 const submitting = ref(false)
@@ -103,6 +117,10 @@ async function submitSignup() {
       <span class="sep" aria-hidden="true">/</span>
       <span aria-current="page">{{ activity?.title || '活动详情' }}</span>
     </nav>
+
+    <div class="page-back">
+      <InkButton size="sm" variant="ghost" @click="goBack">← 返回上一页</InkButton>
+    </div>
 
     <header class="page-head">
       <span class="hero-kicker">{{ activity?.type || '活动详情' }}</span>
@@ -248,6 +266,17 @@ async function submitSignup() {
 </template>
 
 <style scoped>
+/* 返回上一页：放在面包屑下面，与 App.vue 的「↑ 返回顶部」用同一套箭头 + 文案写法 */
+.page-back {
+  margin-top: 20px;
+}
+
+/* 本页顶部留白：其它页面的首屏有 .page-head 自带的 44px 上内边距，
+   而本页最上面是面包屑，直接贴着头像栏显得太挤，这里补一段。 */
+.wrap {
+  padding-top: 32px;
+}
+
 .sec-detail {
   padding: 36px 0 72px;
 }
