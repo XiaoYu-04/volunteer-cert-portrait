@@ -306,6 +306,10 @@ pwsh deploy/verify-deploy.ps1 -SiteUrl http://127.0.0.1 -ProdProfile -ExpectedSi
 
 ### Linux 服务器
 
+> **阿里云 ECS + Debian 12（1~2 GB 内存）请直接看 [`deploy/small-server/README.md`](deploy/small-server/README.md)** ——
+> 那套是给这台机器量身写的：三个脚本（装环境 / 建库 / 部署）+ systemd 单元 + PostgreSQL 小内存调参 +
+> nginx 站点配置，含验收清单与故障排查，照抄即可。
+
 参考仓库里的 `deploy/nginx.conf` 与 [docs/部署文档.md](docs/部署文档.md)（含 systemd 单元 `deploy/vcp.service`、验收脚本 `deploy/verify-deploy.ps1`、故障排查表）。两条硬要求：
 
 ```bash
