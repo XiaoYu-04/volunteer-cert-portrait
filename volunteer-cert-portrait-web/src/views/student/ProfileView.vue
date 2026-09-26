@@ -78,7 +78,7 @@ const quickLinks = [
       <div class="grid-2">
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">账号信息</span>
+            <h2 class="panel-title">账号信息</h2>
           </div>
 
           <div class="account">
@@ -115,7 +115,7 @@ const quickLinks = [
 
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">修改资料</span>
+            <h2 class="panel-title">修改资料</h2>
           </div>
 
           <form @submit.prevent="onSubmit">
@@ -162,7 +162,7 @@ const quickLinks = [
 
       <div class="panel panel-gap">
         <div class="panel-head">
-          <span class="panel-title">账号安全</span>
+          <h2 class="panel-title">账号安全</h2>
         </div>
         <p class="security-note">修改密码需先验证原密码；修改成功后，其它设备上的登录会被强制退出。</p>
         <InkButton size="sm" @click="pwdOpen = true">修改密码</InkButton>
@@ -170,7 +170,7 @@ const quickLinks = [
 
       <div class="panel">
         <div class="panel-head">
-          <span class="panel-title">快捷入口</span>
+          <h2 class="panel-title">快捷入口</h2>
         </div>
         <div class="quick-links">
           <InkButton v-for="link in quickLinks" :key="link.to" :to="link.to" size="sm">
@@ -185,9 +185,6 @@ const quickLinks = [
 </template>
 
 <style scoped>
-.panel-gap {
-  margin-top: 36px;
-}
 
 .security-note {
   margin-bottom: 18px;

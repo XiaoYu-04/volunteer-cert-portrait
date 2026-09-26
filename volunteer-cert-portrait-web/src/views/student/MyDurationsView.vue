@@ -208,30 +208,9 @@ function openDetail(row) {
 </template>
 
 <style scoped>
-.sec-list {
-  padding: 36px 0 72px;
-}
 
 .filter-gap {
   margin-top: 36px;
-}
-
-.ink-filter-actions {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 2px;
-}
-
-.row-link {
-  font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 0.03em;
-  color: var(--c-ink);
-  transition: color var(--t-fast) ease-out;
-}
-
-.row-link:hover {
-  color: var(--c-a2);
 }
 
 .remark-mute {

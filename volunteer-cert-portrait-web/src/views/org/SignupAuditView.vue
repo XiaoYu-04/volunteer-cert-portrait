@@ -172,7 +172,7 @@ async function batchApprove() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">报名记录</span>
+      <h2 class="panel-title">报名记录</h2>
       <span class="panel-extra">
         <span class="panel-note">共 {{ total }} 条</span>
         <InkButton size="sm" :disabled="!selected.length" @click="batchApprove">
@@ -295,44 +295,12 @@ async function batchApprove() {
 </template>
 
 <style scoped>
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
 
 /* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.cell-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
 
 /* 操作列整格带 .col-num（等宽体），驳回理由与占位符是中文说明，还原正文字体 */
 .ink-table td.col-num .cell-mute {
   font-family: var(--font-body);
-}
-
-.select-hint {
-  margin-top: var(--sp-4);
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
-
-.audit-desc {
-  grid-template-columns: 1fr;
-  margin-bottom: 22px;
 }
 
 .audit-field {

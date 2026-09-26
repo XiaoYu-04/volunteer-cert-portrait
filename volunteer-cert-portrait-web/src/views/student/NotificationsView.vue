@@ -72,7 +72,7 @@ async function onMarkRead(row) {
     </header>
 
     <section class="sec-list">
-      <InkTabs v-model="query.unreadOnly" :tabs="tabs" />
+      <InkTabs v-model="query.unreadOnly" :tabs="tabs" panel-id="notices" />
 
       <form class="ink-filter" @submit.prevent="search">
         <InkField label="关键字">
@@ -97,59 +97,57 @@ async function onMarkRead(row) {
         </div>
       </form>
 
-      <InkTable
-        :columns="columns"
-        :rows="rows"
-        :loading="loading"
-        empty-text="没有符合条件的通知"
-        empty-hint="放宽关键字或类型；开着「仅看未读」时可切回「全部通知」。"
+      <div
+        role="tabpanel"
+        :id="`notices-panel-${query.unreadOnly}`"
+        :aria-labelledby="`notices-tab-${query.unreadOnly}`"
       >
-        <template #title="{ row }">
-          <!-- 「顶」是缩写字形：role="img" + aria-label 让读屏念「置顶」而不是孤零零一个「顶」 -->
-          <RouterLink class="notice-link" :class="{ 'is-unread': !row.read }" :to="`/student/notifications/${row.id}`">
-            <span v-if="row.top" class="notice-flag" role="img" aria-label="置顶">顶</span>{{ row.title }}
-          </RouterLink>
-        </template>
+        <InkTable
+          :columns="columns"
+          :rows="rows"
+          :loading="loading"
+          empty-text="没有符合条件的通知"
+          empty-hint="放宽关键字或类型；开着「仅看未读」时可切回「全部通知」。"
+        >
+          <template #title="{ row }">
+            <!-- 「顶」是缩写字形：role="img" + aria-label 让读屏念「置顶」而不是孤零零一个「顶」 -->
+            <RouterLink class="notice-link" :class="{ 'is-unread': !row.read }" :to="`/student/notifications/${row.id}`">
+              <span v-if="row.top" class="notice-flag" role="img" aria-label="置顶">顶</span>{{ row.title }}
+            </RouterLink>
+          </template>
 
-        <template #type="{ row }">
-          <StatusTag type="notification_type" :value="row.type" />
-        </template>
+          <template #type="{ row }">
+            <StatusTag type="notification_type" :value="row.type" />
+          </template>
 
-        <template #date="{ row }">
-          <span class="col-num">{{ row.date }}</span>
-        </template>
+          <template #date="{ row }">
+            <span class="col-num">{{ row.date }}</span>
+          </template>
 
-        <template #read="{ row }">
-          <span class="ink-status" :class="row.read ? 'tone-mute' : 'tone-warn'">
-            {{ row.read ? '已读' : '未读' }}
-          </span>
-        </template>
+          <template #read="{ row }">
+            <span class="ink-status" :class="row.read ? 'tone-mute' : 'tone-warn'">
+              {{ row.read ? '已读' : '未读' }}
+            </span>
+          </template>
 
-        <template #actions="{ row }">
-          <InkButton :to="`/student/notifications/${row.id}`" size="sm" variant="ghost">
-            查看
-          </InkButton>
-          <InkButton v-if="!row.read" size="sm" variant="ghost" @click="onMarkRead(row)">
-            标记已读
-          </InkButton>
-        </template>
-      </InkTable>
+          <template #actions="{ row }">
+            <InkButton :to="`/student/notifications/${row.id}`" size="sm" variant="ghost">
+              查看
+            </InkButton>
+            <InkButton v-if="!row.read" size="sm" variant="ghost" @click="onMarkRead(row)">
+              标记已读
+            </InkButton>
+          </template>
+        </InkTable>
 
-      <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+        <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+      </div>
+
     </section>
   </div>
 </template>
 
 <style scoped>
-.sec-list {
-  padding: 36px 0 72px;
-}
-
-.ink-filter-actions {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 2px;
-}
 
 .notice-link {
   font-family: var(--font-display);

@@ -130,7 +130,7 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">活动列表</span>
+      <h2 class="panel-title">活动列表</h2>
       <span class="panel-extra">
         <InkButton to="/org/activities/new" variant="primary" size="sm">发布活动</InkButton>
       </span>
@@ -193,16 +193,6 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
 </template>
 
 <style scoped>
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
 
 .cell-activity {
   display: flex;
