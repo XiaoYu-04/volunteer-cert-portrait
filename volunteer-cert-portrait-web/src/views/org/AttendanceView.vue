@@ -55,7 +55,23 @@ function resetQuery() {
   search()
 }
 
-/* ---------- 手动修正签到记录 ---------- */
+/* ---------- 手动修正签到记录 ----------
+   两个时间用原生 input[type=datetime-local]（与发布活动页的 date/time 输入同一路子），
+   不再让用户手敲时间串。它只认 `yyyy-MM-ddTHH:mm` 这种带 T 的串，而接口两头都不是这个形态：
+   接口返回 'yyyy-MM-dd HH:mm:ss'（DateTimeUtils.DATE_TIME），后端收 'yyyy-MM-dd HH:mm[:ss]'
+   （VolunteerTimeUtils.toFlexibleDateTime **不认 T**，见踩坑）。所以进出各转一次 ——
+   中间用 T 只在输入框里存在，不落到接口上。秒级一律截到分钟：与表格列、原 placeholder 同精度。 */
+
+/** 接口串 'yyyy-MM-dd HH:mm[:ss]' → 输入框要的 'yyyy-MM-ddTHH:mm' */
+function toPickerValue(value) {
+  return value ? value.trim().replace(' ', 'T').slice(0, 16) : ''
+}
+
+/** 反向：输入框的 'yyyy-MM-ddTHH:mm' → 接口接受的空格形态（空串表示未签到/未签退） */
+function toApiValue(value) {
+  return (value || '').trim().replace('T', ' ')
+}
+
 const dialog = ref({ open: false, row: null, status: '', signInAt: '', signOutAt: '' })
 
 function openFix(row) {
@@ -63,16 +79,15 @@ function openFix(row) {
     open: true,
     row,
     status: row.status,
-    // 预填到分钟：与表格列、输入框 placeholder 同一精度（接口两种格式都收）
-    signInAt: row.signInAt ? formatDateTime(row.signInAt) : '',
-    signOutAt: row.signOutAt ? formatDateTime(row.signOutAt) : '',
+    signInAt: toPickerValue(row.signInAt),
+    signOutAt: toPickerValue(row.signOutAt),
   }
 }
 
 async function submitFix() {
   const { row, status, signInAt, signOutAt } = dialog.value
   // 记为已签退却没有签退时间，等于凭空造出时长，这里挡一道
-  if (status === 'SIGNED_OUT' && !signOutAt.trim()) {
+  if (status === 'SIGNED_OUT' && !signOutAt) {
     toast.warn('置为已签退时必须填写签退时间')
     return
   }
@@ -80,8 +95,8 @@ async function submitFix() {
   try {
     await updateAttendance(row.id, {
       status,
-      signInAt: signInAt.trim(),
-      signOutAt: signOutAt.trim(),
+      signInAt: toApiValue(signInAt),
+      signOutAt: toApiValue(signOutAt),
     })
     toast.success('签到记录已更新')
     dialog.value.open = false
@@ -194,12 +209,12 @@ async function submitFix() {
         </select>
       </InkField>
 
-      <InkField label="签到时间" hint="格式 2025-03-22 08:45，缺省表示未签到">
-        <input v-model.trim="dialog.signInAt" class="ink-input" type="text" placeholder="2025-03-22 08:45" />
+      <InkField label="签到时间" hint="留空表示未签到">
+        <input v-model="dialog.signInAt" class="ink-input" type="datetime-local" step="60" />
       </InkField>
 
       <InkField label="签退时间" hint="置为「已签退」时必填">
-        <input v-model.trim="dialog.signOutAt" class="ink-input" type="text" placeholder="2025-03-22 12:05" />
+        <input v-model="dialog.signOutAt" class="ink-input" type="datetime-local" step="60" />
       </InkField>
     </template>
 
