@@ -57,9 +57,15 @@
              PostgreSQL 推不出 ? 的类型，直接报 "could not determine data type of parameter"，
              前端只看到 code=10000「系统繁忙」（关键字查询整条不可用）。
              同类写法在 AttendanceRecordMapper / ActivitySignupMapper / PortraitAggregateMapper
-             里也有，已一并加 ::text。 -->
+             里也有，已一并加 ::text。
+
+             关键字同时匹配**活动名称与发布组织名**：学生首页「组织活跃度」点某个组织会跳到
+             本页并把组织名填进关键字（/student/activities?keyword=计算机学院青年志愿者协会），
+             只匹配 a.title 的话这一跳必然空结果 —— 活动名里通常不含组织名。
+             两处 ::text 都要留，别只给左边那个加。 -->
         <if test="q.keyword != null and q.keyword != ''">
-            AND a.title ILIKE CONCAT('%', #{q.keyword}::text, '%')
+            AND (a.title ILIKE CONCAT('%', #{q.keyword}::text, '%')
+                 OR o.org_name ILIKE CONCAT('%', #{q.keyword}::text, '%'))
         </if>
         <if test="q.type != null and q.type != ''">
             AND c.category_name = #{q.type}

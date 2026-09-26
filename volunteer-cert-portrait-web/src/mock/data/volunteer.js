@@ -11,6 +11,14 @@ function belongsToOrg(row, orgId) {
   return activity ? activity.orgId === Number(orgId) : false
 }
 
+/**
+ * 活动的发布组织名。活动行上只存 orgId，名字要从 orgs 里反查 ——
+ * 与真库 `LEFT JOIN org_info o` 取 o.org_name 同口径。
+ */
+function orgNameOf(activity) {
+  return (orgList.find((o) => o.id === activity.orgId) || {}).name || ''
+}
+
 /** 活动「日期 + 开始时间 + 时长」推出结束时间；与后端 endTimeOf(start, hours) 同口径 */
 function activityEndAt(activity) {
   const d = new Date(`${activity.date}T${activity.time}:00`)
@@ -106,8 +114,10 @@ export default [
     method: 'get',
     path: '/v1/activities',
     handler: ({ query }) => {
+      // 关键字同时匹配活动名与组织名，与后端 selectActivityPage 的谓词一致
+      // （学生首页「组织活跃度」点组织 → 跳这里并把组织名当关键字）
       let rows = activities
-        .filter((a) => like(a.title, query.keyword))
+        .filter((a) => like(a.title, query.keyword) || like(orgNameOf(a), query.keyword))
         .filter((a) => eq(a.type, query.type))
         .filter((a) => eq(a.status, query.status))
         .filter((a) => eq(a.orgId, query.orgId))

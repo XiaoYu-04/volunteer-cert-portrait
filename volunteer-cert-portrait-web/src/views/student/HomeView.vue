@@ -185,7 +185,8 @@ const {
 
         <div>
           <h3 class="sub-head">组织活跃度</h3>
-          <OrgList :rows="data?.orgs || []" />
+          <!-- 组织名可点：跳到志愿活动列表并把组织名填进关键字（关键字同时匹配活动名与组织名） -->
+          <OrgList :rows="data?.orgs || []" link-base="/student/activities" />
 
           <h3 class="sub-head sub-head-gap">通知公告</h3>
           <NoticeList :rows="data?.notices || []" :limit="5" />

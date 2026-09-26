@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { listActivities, listCategories } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/stores/dict'
@@ -11,13 +12,24 @@ import InkEmpty from '@/components/common/InkEmpty.vue'
 import ActivityGridCard from '@/components/biz/ActivityGridCard.vue'
 
 const dict = useDictStore()
+const route = useRoute()
 
 // pageSize 取 12 而不是 useTable 的默认 10：本页 .act-grid 是**固定 3 列**，
 // 10 条会排成 3+3+3+1，最后一行只落 1 张卡、空出 2 格（曾被报为「底部少了两个」）。
 // 12 = 3×4，整四行铺满，不留空格。
 // 配套前提：InkPagination 的每页条数下拉必须含 12，否则下拉选不中任何一项、显示与实际不一致。
+//
+// keyword 的初值取自路由 query：学生首页「组织活跃度」点组织会跳到
+// `/student/activities?keyword=<组织名>`。必须在 **setup 阶段**读进 defaultQuery ——
+// useTable 是 onMounted(load) 取首次数据，挂在 onMounted 里再赋值就已经晚了一轮、
+// 首屏会闪一次全量列表。
 const { rows, total, loading, query, search } = useTable(listActivities, {
-  defaultQuery: { pageSize: 12, keyword: '', type: '', status: 'PUBLISHED' },
+  defaultQuery: {
+    pageSize: 12,
+    keyword: typeof route.query.keyword === 'string' ? route.query.keyword : '',
+    type: '',
+    status: 'PUBLISHED',
+  },
 })
 
 function resetQuery() {
@@ -54,7 +66,7 @@ const statusOptions = computed(() => dict.options('activity_status', { exclude: 
             v-model.trim="query.keyword"
             class="ink-input"
             type="search"
-            placeholder="活动名称"
+            placeholder="活动名称或组织"
           />
         </InkField>
 
@@ -103,7 +115,7 @@ const statusOptions = computed(() => dict.options('activity_status', { exclude: 
       <InkEmpty
         v-else
         text="没有符合条件的活动"
-        hint="试试换个关键字，或把类型与状态放宽到「全部」。"
+        hint="关键字同时匹配活动名称与发布组织（首页「组织活跃度」点组织就是按组织名搜的）；也可把类型与状态放宽到「全部」。"
       />
 
       <InkPagination
