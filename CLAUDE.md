@@ -49,19 +49,19 @@ java -jar vcp-boot/target/vcp-boot-1.0.0.jar
 # 接口文档
 open http://localhost:8080/doc.html
 
-# 重建数据库（会清空数据）—— 顺序不能换：04 是 07 的硬前置、10 供学院字典、12 放最后
+# 重建数据库（会清空数据）—— 顺序不能换：05/06 补列必须在 04 之前、10 供学院字典、12 放最后
 cd sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
-psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backend_gap_fix2.sql
-psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 10_base_and_test_accounts.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 11_activity_images.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 12_activity_images_demo.sql
 # 老库另需 08_password_bcrypt.sql（把明文口令刷成 BCrypt 密文；新库不用）
-# 整链实测约 16 秒；动 DDL 前先清 idle in transaction 陈旧会话（见「踩过的坑」第 19 条）
+# 整链实测约 6 秒；动 DDL 前先清 idle in transaction 陈旧会话（见「踩过的坑」第 19 条）
+# 07_demo_scale.sql 已于 2026-09-27 删除（1500 学生放大口径并入 04）
 
 # 一致性自检（只读、可重复执行，前置条件 01~06；20 项违规数全 0 即通过）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
@@ -72,6 +72,9 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consis
 （已 gitignore，模板见同目录 `application-local.yml.example`），仓库内文件不含任何密钥。
 默认账号：`admin` / `org_admin` / `student`（密码均为 `123456`，**库内存 BCrypt 密文、明文不落库**；
 老库需跑 `sql/08_password_bcrypt.sql` 刷密文，新库不用）。
+演示数据集（2026-09-27 起）：10 学院 / 1000 学生（**用户名 = 学号**，如 `202301010001`）/
+10 名学校管理员（`school_admin_01`~`10`）/ 10 名组织管理员（`org_admin_01`~`10`）/ 11 个组织 /
+10 场活动（7 场已结束 + 3 场已发布，共 40 张图片）/ 2349 条报名；详见 `sql/README.md` 第一节。
 
 ## 后端模块结构
 
@@ -449,8 +452,9 @@ vcp-dependencies  独立 BOM
 前端 29 个页面与 `src/api/` 的 **71 个调用**已与后端契约对齐，0 缺失
 （含 2026-09-24 新增的两条改密接口与学校管理端学院管理的 4 条接口，
 以及 2026-09-26 B24 的学生自助签到接口）。
-活动图片上传已落地：`POST /api/v1/attachments/images`，PostgreSQL 只存附件元数据，
-图片本体写入 `uploads/`；发布页支持 1 张封面 + 最多 6 张带说明图片。
+活动图片上传已落地：`POST /api/v1/attachments/images`，图片二进制入库
+（`attachment.file_data`），读取走 `/api/v1/attachments/{id}/content`；
+`/uploads/**` 仅兼容历史数据。发布页支持 1 张封面 + 最多 6 张带说明图片。
 
 **2026-09-26（B24 学生自助签到闭环 + 两个横切缺陷）**：新增 `GET /api/v1/attendance/mine`
 （学生本人签到记录，只挂 `@SaCheckLogin`、数据范围只看登录态），`AttendanceVO` 补
