@@ -137,7 +137,10 @@ SELECT '16 表已有统计信息（期望 16）',
   JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = 'public'
    AND c.relkind = 'r'
-   AND c.reltuples >= 0
-   AND EXISTS (SELECT 1 FROM pg_statistic s WHERE s.starelid = c.oid);
+   -- 只看 reltuples：ANALYZE 过就是 >= 0，没分析过是 -1。
+   -- ⚠️ 不要在这里查 pg_statistic —— 它只对超级用户/pg_read_all_stats 可见，
+   -- 而本脚本在部署脚本里是以应用角色（非超级用户）执行的，会直接
+   -- "permission denied for table pg_statistic" 把整条链打断（真机实测踩到）。
+   AND c.reltuples >= 0;
 
 -- 期望：前两行 ok = 1，第三行 16
