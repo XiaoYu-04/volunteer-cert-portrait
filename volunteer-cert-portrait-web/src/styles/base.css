@@ -5,7 +5,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 
 body {
   margin: 0;
@@ -33,10 +33,17 @@ table { border-collapse: collapse; width: 100%; }
 h1, h2, h3, h4 { font-family: var(--font-display, inherit); color: var(--c-ink, #101318); }
 
 /* ---------- 键盘可达与焦点态 ---------- */
+/* 方角是这套水墨语言的骨架（--r-* 全 0），焦点环也必须是方的：
+   原来的 border-radius:3px 会让按钮/输入框的焦点环变成圆角，和零圆角语言打架。 */
 :focus-visible {
   outline: 2px solid var(--c-focus, var(--c-a1, #1b46c8));
   outline-offset: 2px;
-  border-radius: 3px;
+}
+
+/* 选中态：朱砂的一层淡染，而不是浏览器默认的蓝 */
+::selection {
+  background: rgba(176, 58, 46, .16);
+  color: var(--c-ink, #101318);
 }
 
 .skip {
@@ -49,10 +56,9 @@ h1, h2, h3, h4 { font-family: var(--font-display, inherit); color: var(--c-ink, 
   left: 12px;
   top: 12px;
   padding: 10px 16px;
-  border-radius: 6px;
   background: var(--c-panel, #fff);
   color: var(--c-ink, #101318);
-  border: 1px solid var(--c-line, #e3e6ec);
+  border: 1px solid var(--c-ink, #101318);
 }
 
 .sr-only {

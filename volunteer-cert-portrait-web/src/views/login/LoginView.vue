@@ -122,16 +122,23 @@ async function onSubmit() {
 
 <style scoped>
 .auth-demo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 0 -6px;
+  padding: 2px 6px;
   border: 0;
   background: transparent;
-  padding: 0;
   font-family: var(--font-mono);
   font-size: 12px;
+  line-height: 1.6;
   color: var(--c-a2);
   border-bottom: 1px solid var(--c-line);
+  transition: border-color var(--t-fast) ease-out, background-color var(--t-fast) ease-out;
 }
 
 .auth-demo:hover {
+  background: var(--c-hover);
   border-bottom-color: var(--c-a2);
 }
 </style>

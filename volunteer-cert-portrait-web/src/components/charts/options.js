@@ -32,6 +32,8 @@ export function theme() {
     ok: tok('--c-ok', '#3E6B4A'),
     warn: tok('--c-warn', '#A8894A'),
     bad: tok('--c-bad', '#B03A2E'),
+    // 浮层阴影与页面同一令牌：图表提示框不能比弹窗还重
+    shadowPop: tok('--shadow-pop', '0 10px 30px rgba(26,26,26,.12)'),
     series: [
       tok('--c-a1', '#1A1A1A'),
       tok('--c-a2', '#B03A2E'),
@@ -84,7 +86,8 @@ function base() {
       borderWidth: 1,
       padding: [8, 12],
       textStyle: { color: t.ink, fontFamily: t.font, fontSize: 12 },
-      extraCssText: 'border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.14);',
+      // 零圆角是页面语言；提示框跟随，不单独做圆角与发光
+      extraCssText: `border-radius:0;box-shadow:${t.shadowPop};`,
     },
   }
 }

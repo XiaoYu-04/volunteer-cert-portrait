@@ -22,6 +22,25 @@
   --font-mono:"JetBrains Mono","Cascadia Code",ui-monospace,Consolas,monospace;
   --wrap:1180px; --pad:28px;
   --r-sm:0; --r-md:0; --r-lg:0;
+
+  /* ---------- 间距刻度（4px 基准）与板块节奏 ---------- */
+  --sp-1:4px;  --sp-2:8px;  --sp-3:12px; --sp-4:16px; --sp-5:22px;
+  --sp-6:28px; --sp-7:36px; --sp-8:44px; --sp-9:64px; --sp-10:88px;
+  --sec-pad:88px;   /* 桌面板块上下留白；窄屏在 ink.css 里收到 --sp-9 */
+  --gutter:36px;    /* 12 栏网格列间距 */
+
+  /* ---------- 动效：150–250ms ease-out，只做透明度/边框/底色 ---------- */
+  --t-fast:150ms;
+  --t-base:200ms;
+  --t-slow:300ms;
+
+  /* ---------- 阴影：只允许这两种，禁止发光 ---------- */
+  --shadow-1:0 1px 2px rgba(26,26,26,.06);        /* 静态元素 */
+  --shadow-pop:0 10px 30px rgba(26,26,26,.12);    /* 浮层（弹窗、轻提示） */
+
+  /* ---------- 交互底色：纸白之上的一层淡墨 ---------- */
+  --c-hover:#FBFAF7;   /* 白面板内的悬停底（原 #fff 在白面板里不可见） */
+  --c-press:#EFEDE7;   /* 按压底 */
 }
 
 /* ---------- 动效降级 ---------- */
