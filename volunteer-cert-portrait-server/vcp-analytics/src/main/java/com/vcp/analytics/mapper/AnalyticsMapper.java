@@ -238,36 +238,56 @@ public interface AnalyticsMapper {
      * <p>分母为 0 时（有活动但还没有报名/时长）用 {@code COALESCE} 兜成 0 而不是 NULL：
      * 前端是 {@code Math.round(d.signRate * 100)}，收到 null 会渲染出 "NaN%"。
      *
-     * <p>{@code EXISTS} 把<b>没有活动的组织排除</b>在排名之外（待审核组织就是这种）：
-     * 它们会占掉一行却什么都说明不了。
+     * <p>只返回<b>至少有一场未删除活动</b>的组织（待审核组织就是这种）：
+     * 它们会占掉一行却什么都说明不了。这由 {@code activity_counts} 的 INNER JOIN 实现，
+     * 与原先前置的 {@code EXISTS} 等价。
+     *
+     * <p>两张明细表各自<b>只扫一遍</b>：先按 {@code org_id} 分组聚合，再 LEFT JOIN 回组织表。
+     * 原先每个组织都要把签到表、时长表各扫一次（相关子查询按组织循环执行），
+     * 明细表一多就是 O(组织数 × 明细行数)；改成一次聚合后扫描次数与组织数无关，
+     * 没有明细的组织仍由 LEFT JOIN + {@code COALESCE} 兜成 0。
      *
      * @return 组织活跃度，按活动场次降序
      */
     @Select("""
+            WITH activity_counts AS (
+                SELECT a.org_id,
+                       COUNT(*) AS activities
+                  FROM volunteer_activity a
+                 WHERE a.deleted = 0
+                 GROUP BY a.org_id
+            ),
+            sign_agg AS (
+                SELECT a.org_id,
+                       COUNT(*) FILTER (WHERE ar.sign_in_time IS NOT NULL) AS signed,
+                       COUNT(*) AS total
+                  FROM attendance_record ar
+                  JOIN activity_signup sg ON sg.id = ar.signup_id
+                  JOIN volunteer_activity a ON a.id = sg.activity_id
+                 WHERE ar.deleted = 0
+                   AND a.deleted = 0
+                 GROUP BY a.org_id
+            ),
+            duration_agg AS (
+                SELECT a.org_id,
+                       COUNT(*) FILTER (WHERE sd.status = 'APPROVED') AS approved,
+                       COUNT(*) AS total
+                  FROM service_duration sd
+                  JOIN volunteer_activity a ON a.id = sd.activity_id
+                 WHERE sd.deleted = 0
+                   AND a.deleted = 0
+                   AND sd.status IN ('APPROVED', 'PENDING_AUDIT', 'REJECTED')
+                 GROUP BY a.org_id
+            )
             SELECT o.org_name AS org,
-                   (SELECT COUNT(*)
-                      FROM volunteer_activity a
-                     WHERE a.org_id = o.id AND a.deleted = 0) AS activities,
-                   COALESCE((SELECT ROUND((COUNT(*) FILTER (WHERE ar.sign_in_time IS NOT NULL))::numeric
-                                          / NULLIF(COUNT(*), 0), 4)
-                               FROM attendance_record ar
-                               JOIN activity_signup sg ON sg.id = ar.signup_id
-                               JOIN volunteer_activity a ON a.id = sg.activity_id
-                              WHERE a.org_id = o.id
-                                AND a.deleted = 0
-                                AND ar.deleted = 0), 0) AS sign_rate,
-                   COALESCE((SELECT ROUND((COUNT(*) FILTER (WHERE sd.status = 'APPROVED'))::numeric
-                                          / NULLIF(COUNT(*), 0), 4)
-                               FROM service_duration sd
-                               JOIN volunteer_activity a ON a.id = sd.activity_id
-                              WHERE a.org_id = o.id
-                                AND a.deleted = 0
-                                AND sd.deleted = 0
-                                AND sd.status IN ('APPROVED', 'PENDING_AUDIT', 'REJECTED')), 0) AS pass_rate
+                   ac.activities AS activities,
+                   COALESCE(ROUND(sa.signed::numeric / NULLIF(sa.total, 0), 4), 0) AS sign_rate,
+                   COALESCE(ROUND(da.approved::numeric / NULLIF(da.total, 0), 4), 0) AS pass_rate
               FROM org_info o
+              JOIN activity_counts ac ON ac.org_id = o.id
+              LEFT JOIN sign_agg sa ON sa.org_id = o.id
+              LEFT JOIN duration_agg da ON da.org_id = o.id
              WHERE o.deleted = 0
-               AND EXISTS (SELECT 1 FROM volunteer_activity a
-                            WHERE a.org_id = o.id AND a.deleted = 0)
              ORDER BY activities DESC, o.id ASC
             """)
     List<OrgStatVO> selectOrgStats();

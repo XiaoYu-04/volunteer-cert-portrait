@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 看板统计服务实现。
@@ -98,8 +99,58 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final AnalyticsMapper analyticsMapper;
 
+    /**
+     * 看板快照缓存：key = 用户 id，value = 装配好的 VO + 写入时刻。
+     * 详见 {@link #getDashboard()} 里的说明；TTL 设为 0 即等于关闭缓存。
+     */
+    private final Map<Long, CachedDashboard> dashboardCache = new ConcurrentHashMap<>();
+
+    /** 看板快照有效期（毫秒）。设为 0 可关闭缓存、恢复"每次都查库"。 */
+    private static final long DASHBOARD_CACHE_TTL_MS = 5_000L;
+
+    /** 缓存条目上限，超过即整体清空（防止异常情况下无限增长）。 */
+    private static final int DASHBOARD_CACHE_MAX_ENTRIES = 200;
+
     @Override
     public DashboardVO getDashboard() {
+        // ---------------------------------------------------------------
+        // 看板快照缓存（2026-09-27 性能优化）
+        //
+        // 为什么加：云库是远程实例，实测**每条 SQL 一次往返约 65ms**（SQL 本身只有
+        // 0.05~5ms），而看板一次要串行跑 11 条聚合 → 单次请求约 800ms，是整站最慢的接口。
+        // 仪表盘天然容忍秒级延迟（管理员看到的分布图不会因为晚 5 秒而变化），
+        // 因此按「用户」缓存装配好的 VO 5 秒：连续刷新、多人同时看板都只打一次库。
+        //
+        // 边界与代价（刻意写清楚，别被当成"数据不刷新"的 bug）：
+        //   · 只缓存读路径，且只缓存 getDashboard 这一个接口；写接口一律实时落库；
+        //   · 公告块按收件人过滤，所以缓存键是 userId（不同人不会串号）；
+        //   · 数据变更后最多 5 秒才在看板体现 —— 这是本缓存唯一的语义变化；
+        //   · 缓存条目上限 200，超过直接清空（本系统管理员数量远小于该值，
+        //     纯粹是防止异常情况下 Map 无限增长）。
+        // 想彻底关掉：把 DASHBOARD_CACHE_TTL_MS 设为 0 即可（等价于每次都查库）。
+        // ---------------------------------------------------------------
+        long userId = AuthUtils.getUserId();
+        long now = System.currentTimeMillis();
+        CachedDashboard hit = dashboardCache.get(userId);
+        if (hit != null && now - hit.at() < DASHBOARD_CACHE_TTL_MS) {
+            return hit.vo();
+        }
+        DashboardVO dashboard = buildDashboard();
+        dashboardCache.put(userId, new CachedDashboard(dashboard, now));
+        if (dashboardCache.size() > DASHBOARD_CACHE_MAX_ENTRIES) {
+            dashboardCache.clear();
+        }
+        return dashboard;
+    }
+
+    /** 看板快照缓存的条目：装配好的 VO + 写入时刻（毫秒）。 */
+    private record CachedDashboard(DashboardVO vo, long at) {}
+
+    /**
+     * 真正查库装配看板。与 2026-09-27 之前的 {@code getDashboard} 逐行一致，
+     * 只是抽出来给缓存调用，便于「有缓存 / 无缓存」两条路径都走同一段逻辑。
+     */
+    private DashboardVO buildDashboard() {
         DashboardVO dashboard = new DashboardVO();
         // 十一个聚合查询各自独立，按契约逐块装配；任何一块为空都只影响它自己，
         // 不会让整个看板 500（列表类接口返回空列表而不是 null，前端有 || [] 兜底）

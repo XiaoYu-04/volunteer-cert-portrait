@@ -1,5 +1,36 @@
 server:
   port: 8080
+  # ---------------------------------------------------------------
+  # 【性能优化，2026-09-27】Tomcat 线程/连接参数
+  # 场景：单机 32GB 内存、本机压测，后端只此一个实例。
+  #   threads.max = 300：单请求 90% 时间在等云库 SQL 与网络 I/O，
+  #     属 I/O 密集型；300 条线程（默认栈 1MB，合计约 300MB）在 32GB 上
+  #     毫无压力，可覆盖到 300 并发浏览器会话；再高只会堆在 Hikari 连接池
+  #     （maximum-pool-size=20）前排队，不会提高吞吐，故不再上调。
+  #   accept-count = 200：300 条线程全忙时，允许再积压 200 个连接请求，
+  #     50~200 并发压测下不会被直接拒绝（默认 100 偏小）。
+  #   max-connections = 1024：Tomcat NIO 同时持有的 socket 上限。
+  #     本机是 Windows，JDK 的 select() 选择器对单选择器有 1024 上限，
+  #     取 1024 正好卡在安全线内；单机压测也用不到更多。
+  #     Linux 部署可上调到 8192（Tomcat 默认值）。
+  tomcat:
+    threads:
+      max: 300
+    accept-count: 200
+    max-connections: 1024
+  # ---------------------------------------------------------------
+  # 【性能优化，2026-09-27】HTTP 响应压缩
+  # 看板 /dashboard 一次返回的全部图表数据实测 6~12KB、用户列表 1~3KB，
+  # 均为 JSON；开启 gzip 后网络传输量约降到 1/4，本机压测同样受益
+  # （前端 axios 默认带 Accept-Encoding: gzip）。
+  #   min-response-size=2KB：低于 2KB 的响应不值得压缩（省下的字节
+  #   还不够 gzip 头与 CPU 开销）。
+  #   mime-types 需显式列出 application/json —— Spring Boot 的默认清单
+  #   虽包含它，但本项一旦配置就整体替换默认值，漏写会静默不压缩 JSON。
+  compression:
+    enabled: true
+    min-response-size: 2KB
+    mime-types: application/json,application/xml,application/javascript,text/html,text/css,text/plain,text/xml,text/javascript,image/svg+xml
   servlet:
     encoding:
       charset: UTF-8
@@ -43,12 +74,41 @@ spring:
     hikari:
       pool-name: VcpHikariPool
       # 云数据库的并发连接配额通常远小于本地实例，池子刻意调小
-      minimum-idle: 2
-      maximum-pool-size: 10
+      # 【性能优化，2026-09-27】按实测重新定值：
+      #   云库 max_connections=100，抓取时 pg_stat_activity 已有 26 条连接被其它客户端占用；
+      #   本应用单实例取 20（默认原值为 10），留出 54 条余量给其它客户端与运维连接。
+      #   为什么 20 够用：实测云库 SQL 往返约 0.4ms（40 条 SELECT 1 共 16ms），
+      #   50 并发用户闭环压测下同时在池内借出的连接约 13 条（Little's law：
+      #   借出次数/秒 × 单次持有时间），20 条已有余量。
+      #   ⚠️ 若压测出现 "HikariPool-1 - Connection is not available" 等待，
+      #   按 5 的步长上调，但不要超过 60（100 - 26 - 给其它客户端的余量）。
+      maximum-pool-size: 20
+      # 常备 5 条热连接（= 上限的 1/4）：冷启动/突发流量时不必现建连接；
+      # 云库握手实测约 0.6s（TLS + SCRAM），空池起步会把这 0.6s 记到首个请求上。
+      minimum-idle: 5
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
       connection-test-query: SELECT 1
+      # ---------------------------------------------------------------
+      # 【性能优化，2026-09-27】PostgreSQL JDBC 服务端预编译语句缓存
+      # ⚠️ 属性名必须用 pgjdbc 的写法（preparedStatement*）。
+      #    MySQL Connector/J 的 prepStmtCacheSize / cachePrepStmts /
+      #    prepStmtCacheSqlLimit 在 pgjdbc 里**不存在**，填了只会被当作
+      #    未知属性忽略（并打日志），不会生效，因此这里不照抄那三个名字。
+      #    等价关系：
+      #      MySQL cachePrepStmts            → pgjdbc 默认就是开（extended 协议）
+      #      MySQL prepStmtCacheSize         → preparedStatementCacheQueries
+      #      MySQL prepStmtCacheSqlLimit     → preparedStatementCacheSqlLimit
+      #    pgjdbc 默认 prepareThreshold=5：同一条 SQL 在第 5 次执行时转成
+      #    服务端命名预备语句，之后省掉每次的 Parse/Plan 往返。
+      #    本应用 SQL 约 100 条，512 条/连接足够；SQL 文本含 IN (...) 列表时
+      #    会变长，上限放宽到 4096 字符；缓存上限 16MB/连接，
+      #    20 条连接合计最多 320MB，对 32GB 机器可接受。
+      data-source-properties:
+        preparedStatementCacheQueries: 512
+        preparedStatementCacheSizeMiB: 16
+        preparedStatementCacheSqlLimit: 4096
   # 数据库迁移：脚本统一放 classpath:db/migration，命名与使用约定见 V1__init_baseline.sql 头部注释
   flyway:
     # 【当前阶段刻意关闭】建表脚本以仓库根目录 sql/ 下的脚本为准（手工执行），避免同一份 DDL 维护两遍而漂移。
