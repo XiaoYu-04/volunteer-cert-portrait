@@ -34,15 +34,12 @@ onMounted(async () => {
 const trendOption = computed(() => (data.value ? charts.trend(data.value.trend) : null))
 const typePieOption = computed(() => (data.value ? charts.typePie(data.value.types) : null))
 const collegeOption = computed(() => (data.value ? charts.college(data.value.colleges) : null))
-const auditOption = computed(() => (data.value ? charts.audit(data.value.audit.items) : null))
-const signOption = computed(() => (data.value ? charts.sign(data.value.signin) : null))
 
 const topActivities = computed(() => (data.value?.activities || []).slice(0, 6))
 const topColleges = computed(() => (data.value?.colleges || []).slice(0, 8))
 
 /* 图注与无障碍描述一律从接口数据现算，见 composables/useDashboardText.js 的说明 */
 const {
-  signin,
   trendRange,
   trendTotal,
   trendDesc,
@@ -51,8 +48,6 @@ const {
   typeCaption,
   collegeLabel,
   collegeDesc,
-  auditLabel,
-  signinLabel,
   portraitDesc,
 } = useDashboardText(data)
 </script>
@@ -195,38 +190,6 @@ const {
           <h3 class="sub-head sub-head-gap">通知公告</h3>
           <NoticeList :rows="data?.notices || []" :limit="5" />
         </div>
-      </div>
-    </InkSection>
-
-    <!-- ==================== 审核与签到 ==================== -->
-    <InkSection
-      no="06 / 审核"
-      title="时长审核与签到"
-      desc="审核按条、签到按人次统计；两项比率以记录总数为分母。"
-    >
-      <div class="grid-2">
-        <figure class="fig-frame">
-          <InkChart
-            :option="auditOption"
-            :loading="loading"
-            height="240px"
-            :label="auditLabel"
-          />
-          <figcaption class="fig-cap"><b>图四</b>志愿服务时长审核三态分布（条）。</figcaption>
-        </figure>
-
-        <figure class="fig-frame">
-          <InkChart
-            :option="signOption"
-            :loading="loading"
-            height="240px"
-            :label="signinLabel"
-          />
-          <figcaption class="fig-cap">
-            <b>图五</b>活动签到率，应签到 {{ formatNumber(signin.total) }} 人次、实签到
-            {{ formatNumber(signin.signed) }} 人次。
-          </figcaption>
-        </figure>
       </div>
     </InkSection>
   </div>

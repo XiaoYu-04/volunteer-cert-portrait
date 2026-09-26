@@ -352,7 +352,17 @@ vcp-dependencies  独立 BOM
     （`.console-nav a:focus-visible{outline-offset:-2px}` 早就是这个做法，新加可聚焦元素时照抄）。
     回归脚本 `.tmp-shots/probe-tabs-fixed.cjs` / `probe-tabs-fixed2.cjs`（4 个 tab 页 + 375px 窄屏）。
 
-17. **`input[type=datetime-local]` 的值形态与后端收的形态**不是**一回事**（2026-09-26，签到管理「修正」弹窗）
+17. **环形 / 玫瑰图的外侧「强调标签」会被画布裁掉 —— 悬停信息统一走 tooltip**（2026-09-26 实测）
+    当圆环占满大半高度时（审核三态：`center 46% / radius 84%`，顶部只剩 8px），
+    ECharts 的 `emphasis.label`（`position:'outer'`）画在环外，**顶部 / 底部扇区的标签会超出画布、
+    被 canvas 上 / 下边缘裁掉** —— 现场：学校端 hover「已驳回」，标签第一行只剩一半（用户所说「显示不全」）。
+    该标签与 tooltip 内容重复，故把 `pieEmphasis()` 改为「只放大扇区、不画标签」
+    （`{ scale:true, scaleSize:6 }`），悬停数值一律交给 tooltip（不受画布裁剪、字段更全）；
+    三个环图（`typePie` / `profile` / `audit`）共用该 helper，会一起变。
+    附带：`sign`（签到仪表盘）默认 tooltip 只显示裸数值（`90.1` 加一个无意义色点），
+    已改用 formatter 输出「活动签到率 / 90.1%」。
+
+18. **`input[type=datetime-local]` 的值形态与后端收的形态**不是**一回事**（2026-09-26，签到管理「修正」弹窗）
     原生选择器只认 `yyyy-MM-ddTHH:mm`（带 T），而后端 `VolunteerTimeUtils.toFlexibleDateTime`
     只认 `yyyy-MM-dd HH:mm[:ss]`（**不认 T**，传进去就是 10001「格式不正确」），
     而 `DateTimeUtils.formatDateTime` 读出来又是带秒的 `yyyy-MM-dd HH:mm:ss`。
@@ -361,6 +371,7 @@ vcp-dependencies  独立 BOM
     配 `step="60"` 保住分钟精度（与原 placeholder 一致）。同类改动照这个套路办，
     验收时务必**拦截 PUT 请求体断言**，只看界面看不出带没带 T。
     回归脚本 `.tmp-shots/probe-attendance-fix-picker.cjs`（真后端 14 项 / mock 10 项，含回滚）。
+    （本条原编号 17，与并行会话同批新增的第 17 条冲突，合并时顺延为 18。）
 
 ## 当前进度
 

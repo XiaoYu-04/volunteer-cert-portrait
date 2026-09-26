@@ -129,18 +129,16 @@ function legend() {
   }
 }
 
-/** 环形图通用的 emphasis 标签：默认隐藏，悬停才显示 */
+/**
+ * 环形 / 玫瑰图的 emphasis 态。
+ *
+ * 只做轻微放大，数值交给 tooltip —— **不再画外侧强调标签**：
+ * 环图一旦占满大半高度，顶部 / 底部扇区的外侧标签就会超出画布、被上/下边缘裁掉
+ * （2026-09-26 实测：学校端「审核三态」环图 hover「已驳回」，标签只剩半行）。
+ * tooltip 不受画布裁剪，且字段更全（名称 + 数值 + 占比），悬停信息统一走 tooltip。
+ */
 function pieEmphasis() {
-  const t = theme()
-  return {
-    label: {
-      show: true,
-      fontSize: 12,
-      fontWeight: 600,
-      color: t.ink,
-      formatter: '{b}\n{d}%',
-    },
-  }
+  return { scale: true, scaleSize: 6 }
 }
 
 const monthLabel = (month) => `${Number(month.slice(5))}月`
@@ -384,16 +382,25 @@ export function orgBar(data) {
   return o
 }
 
-/** 单个组织的活跃度雷达 */
-export function orgRadar(org) {
+/**
+ * 单个组织的活跃度雷达
+ * @param {object} org
+ * @param {{ activityMax?: number }} [opts] 「活动场次」轴的量程上限，默认 40。
+ *   调用方应按全校组织的最大活动数传入；**量程必须不小于数据**，否则 ECharts 不做截断，
+ *   三角形顶点会冲出外圈、被画布上缘裁掉（2026-09-26 实测：某组织 68 场 vs 量程 40）。
+ */
+export function orgRadar(org, { activityMax = 40 } = {}) {
   const t = theme()
   const o = base()
   o.tooltip = Object.assign({}, o.tooltip, {})
   o.radar = {
-    center: ['50%', '50%'],
-    radius: '62%',
+    // 三角形尖朝上：外接圆圆心在画布正中时，三角形的视觉中心比圆心高 r/4。
+    // 规则：圆心纵向下移 r/4 才能让三角形居中 —— radius 每 +1%，center 纵向约 +0.125%。
+    // 当前 radius 78%（r≈109px）时 r/4≈27px，即 10% → center 纵向取 60%。
+    center: ['50%', '60%'],
+    radius: '78%',
     indicator: [
-      { name: '活动场次', max: 40 },
+      { name: '活动场次', max: activityMax },
       { name: '签到率 %', max: 100 },
       { name: '审核通过率 %', max: 100 },
     ],
@@ -490,8 +497,11 @@ export function audit(items) {
   o.series = [
     {
       type: 'pie',
-      radius: ['56%', '76%'],
-      center: ['50%', '43%'],
+      // 环形居中：底部图例（legend bottom:0）占了约 30px，圆心不能取 50%，
+      // 取 46% 让环形在「画布顶部 ↔ 图例顶部」之间上下留白相等。
+      // radius 同步放大到 84%（细环比例不变，内径 62%），比原 76% 更饱满。
+      radius: ['62%', '84%'],
+      center: ['50%', '46%'],
       itemStyle: { borderColor: t.panel, borderWidth: 2 },
       label: { show: false },
       labelLine: { show: false },
@@ -510,6 +520,11 @@ export function audit(items) {
 export function sign({ rate }) {
   const t = theme()
   const o = base()
+  // 仪表盘默认 tooltip 只显示裸数值（如 "90.1"，还带一个无意义的系列色点）；
+  // 这里补上名称与百分号，和其余图表的 tooltip 口径一致。
+  o.tooltip = Object.assign({}, o.tooltip, {
+    formatter: (p) => `活动签到率<br/><b>${p.value}%</b>`,
+  })
   o.series = [
     {
       type: 'gauge',
