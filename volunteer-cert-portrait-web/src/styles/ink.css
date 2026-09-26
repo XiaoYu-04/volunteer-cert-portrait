@@ -68,7 +68,13 @@
 .ink-stat-delta.is-down .ink-stat-arrow{color:var(--c-a5)}
 
 /* ---------- 图表框 ---------- */
-.fig-frame{border:1px solid var(--c-line); background:#fff; padding:26px 28px}
+/* 图框的「高度」与图表的「大小」分开控制：
+   - 图形大小 = InkChart 的 height（画布高度），要原尺寸就别动它；
+   - 框的留白 = 这里的上下内边距，想让框更高就只加 padding。
+   2026-09-26：框整体加高约 60px，画布保持不变，避免图形被一起放大。
+   .fig-frame 上下 26→56（净增 60）；.dash-fig 在 .panel 内原本没有内边距，补 30px×2。 */
+.fig-frame{border:1px solid var(--c-line); background:#fff; padding:56px 28px}
+.dash-fig{padding-top:30px; padding-bottom:30px}
 .fig-cap{margin-top:18px; padding-top:12px; border-top:1px solid var(--c-line-2); font-family:var(--font-display); font-size:13px; letter-spacing:.06em; color:var(--c-ink-3)}
 .fig-cap b{color:var(--c-a2); margin-right:8px; font-family:var(--font-mono); font-size:11px; letter-spacing:.16em}
 .chart-240{height:240px}
