@@ -663,7 +663,6 @@
 .auth-sub{margin-top:10px; margin-bottom:36px; font-size:14px; color:var(--c-ink-3)}
 .auth-foot{margin-top:26px; font-size:13px; color:var(--c-ink-3); text-align:center}
 .auth-foot a{color:var(--c-a2); border-bottom:1px solid var(--c-a2)}
-.auth-tip{margin-top:24px; padding:14px 16px; border:1px dashed var(--c-line); font-size:12px; line-height:1.9; color:var(--c-ink-3); font-family:var(--font-mono)}
 
 /* ============================================================
    四、响应式（与原型断点一致）
