@@ -7,17 +7,18 @@
 # 用法（文件在 deploy/small-server/ 下，从**仓库根目录**执行最省事）：
 #     sudo bash deploy/small-server/01-install.sh
 #     sudo bash -c 'USE_ALIYUN_MIRROR=0 bash deploy/small-server/01-install.sh'   # 不用阿里云内网源
-#     sudo bash -c 'JDK_SOURCE=temurin bash deploy/small-server/01-install.sh'    # 直接下 Temurin
+#     sudo bash -c 'JDK_SOURCE=oracle bash deploy/small-server/01-install.sh'     # 只用 Oracle JDK
+#     sudo bash -c 'JDK_SOURCE=temurin bash deploy/small-server/01-install.sh'    # 只用清华 Temurin
 #     sudo bash -c 'NGINX_FROM_OFFICIAL=1 bash deploy/small-server/01-install.sh' # nginx.org 官方源
 #
 # 幂等：重复执行会跳过已装好的部分；被改动的系统文件会先备份成 *.vcp.bak
 #
 # 为什么这么选（细节在各步骤注释里）：
 #   * apt 源换阿里云**内网**镜像 mirrors.cloud.aliyuncs.com：ECS 内网、免流量、快
-#   * JDK 21：先试 bookworm-backports 的 openjdk-21-jdk-headless，装不上则回退
-#     清华 TUNA 的 Temurin 21 压缩包解到 /opt/jdk-21
+#   * JDK 21：先试 bookworm-backports 的 openjdk-21-jdk-headless，装不上则按顺序
+#     下载压缩包解到 /opt/jdk-21：**Oracle 官方 tar.gz（首选）→ 清华 TUNA 的 Temurin（回退）**
 #     （2026-09-27 实测提醒：Debian 的 bookworm-backports **并没有** openjdk-21，
-#      只有 trixie/forky/sid 有 —— 所以正常路径就是下面的 Temurin 回退分支）
+#      只有 trixie/forky/sid 有 —— 所以正常路径就是下面的压缩包分支）
 #   * PostgreSQL 18：Debian 12 官方源里没有，必须走 PGDG 源；
 #     默认用阿里云镜像的 PGDG（内网 mirrors.cloud.aliyuncs.com/postgresql/repos/apt）
 #   * nginx：默认用 Debian 自带的 1.22（proxy / gzip_static / http2 都有，够用）；
@@ -31,8 +32,13 @@ set -euo pipefail
 USE_ALIYUN_MIRROR="${USE_ALIYUN_MIRROR:-1}"      # 1=apt 源换阿里云内网镜像
 PGDG_MIRROR="${PGDG_MIRROR:-aliyun}"             # aliyun（默认，内网）| official（PGDG 官方脚本）| tuna
 NGINX_FROM_OFFICIAL="${NGINX_FROM_OFFICIAL:-0}"  # 1=nginx.org 官方源；0=Debian 自带
-JDK_SOURCE="${JDK_SOURCE:-auto}"                 # auto | backports | temurin
-JDK_DIR="${JDK_DIR:-/opt/jdk-21}"                # Temurin 的解压目录
+JDK_SOURCE="${JDK_SOURCE:-auto}"                 # auto | oracle | temurin | backports
+JDK_DIR="${JDK_DIR:-/opt/jdk-21}"                # JDK 解压目录（systemd 单元按这个路径写死）
+# Oracle JDK 的下载地址（2026-09-27 起 auto 的首选）。留空=按架构自动拼：
+#   x64     → https://download.oracle.com/java/21/latest/jdk-21_linux-x64_bin.tar.gz
+#   aarch64 → .../jdk-21_linux-aarch64_bin.tar.gz
+# 路径里的 latest 永远指向最新 21.x，不用跟小版本号。
+ORACLE_JDK_URL="${ORACLE_JDK_URL:-}"
 TEMURIN_MIRROR="${TEMURIN_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/Adoptium}"
 TEMURIN_TARBALL="${TEMURIN_TARBALL:-}"           # 留空=自动取镜像里最新的；也可写死文件名
 SWAP_SIZE_MB="${SWAP_SIZE_MB:-2048}"             # 0=不建 swap（不建议）
@@ -78,8 +84,8 @@ case "${ID:-}" in
 esac
 [ "${VERSION_CODENAME:-}" = "bookworm" ] || warn "版本代号是 ${VERSION_CODENAME:-unknown}，不是 bookworm；apt 源与包名可能对不上，请自行核对。"
 case "$(uname -m)" in
-    x86_64)  TEMURIN_ARCH="x64" ;;
-    aarch64) TEMURIN_ARCH="aarch64" ;;
+    x86_64)  JDK_ARCH="x64"; TEMURIN_ARCH="x64" ;;
+    aarch64) JDK_ARCH="aarch64"; TEMURIN_ARCH="aarch64" ;;
     *)       die "不支持的 CPU 架构：$(uname -m)（只写了 x86_64 / aarch64 两种情况）" ;;
 esac
 MEM_MB="$(awk '/^MemTotal:/{printf "%d", $2/1024}' /proc/meminfo)"
@@ -218,19 +224,79 @@ install_temurin_tarball() {
     [ -n "$tarball" ] || die "解析不到 Temurin 包名。请手工下载后重跑：
         https://mirrors.tuna.tsinghua.edu.cn/Adoptium/21/jdk/${TEMURIN_ARCH}/linux/
         例：sudo bash -c 'TEMURIN_TARBALL=OpenJDK21U-jdk_${TEMURIN_ARCH}_linux_hotspot_21.0.12.1_1.tar.gz bash $0'"
+    install_jdk_tarball "${dir_url}${tarball}" "Temurin（清华镜像）" || return 1
+    register_jdk
+}
+
+# ---------------------------------------------------------------------------
+# Oracle JDK 21（用户指定路径，2026-09-27 起为 auto 的首选）
+#
+# URL 形如 https://download.oracle.com/java/21/latest/jdk-21_linux-x64_bin.tar.gz
+#   · 路径里的 "latest" 永远指向最新的 21.x，不用跟着小版本号改脚本；
+#   · x64 / aarch64 两种架构都有，按 uname -m 自动选；
+#   · 下载用 -C -（断点续传）+ --retry，190 MB 在国内链路上偶尔会断，续传比重下划算。
+#
+# ⚠️ 许可提醒（脚本不替你决定，只把话说明白）：Oracle JDK 21 的更新在 2026-09 之后
+#    转为 OTN 许可，公网生产使用可能涉及费用。校内演示/毕设一般无碍；
+#    想完全避开许可问题就用 JDK_SOURCE=temurin（Eclipse Temurin，GPLv2+CE，免费）。
+# ---------------------------------------------------------------------------
+install_oracle_tarball() {
+    local url="${ORACLE_JDK_URL}"
+    if [ -z "$url" ]; then
+        case "$JDK_ARCH" in
+            x64)     url="https://download.oracle.com/java/21/latest/jdk-21_linux-x64_bin.tar.gz" ;;
+            aarch64) url="https://download.oracle.com/java/21/latest/jdk-21_linux-aarch64_bin.tar.gz" ;;
+            *) die "不认识的架构：$(uname -m)（Oracle 只提供 x64 / aarch64）" ;;
+        esac
+    fi
+    info "下载 Oracle JDK 21：$url"
+    install_jdk_tarball "$url" "Oracle JDK（官方 CDN）" || return 1
+    register_jdk
+}
+
+# 下载 + 校验 + 解压到 $JDK_DIR（两种发行版共用；失败返回 1，由调用方决定是否回退）
+install_jdk_tarball() {
+    local url="$1" label="$2"
+    local tarball="/tmp/$(basename "${url%%\?*}")"
 
     if [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -qE 'version "21\.'; then
-        info "已存在可用的 $JDK_DIR，跳过下载"
-    else
-        info "下载 $tarball（约 190 MB，国内走清华镜像）..."
-        curl -fL --retry 2 -o "/tmp/$tarball" "${dir_url}${tarball}"
-        rm -rf "$JDK_DIR"
-        install -d "$JDK_DIR"
-        tar -xzf "/tmp/$tarball" -C "$JDK_DIR" --strip-components=1
-        rm -f "/tmp/$tarball"
-        info "已解压到 $JDK_DIR"
+        info "已存在可用的 $JDK_DIR（$( "$JDK_DIR/bin/java" -version 2>&1 | head -n 1 | cut -d'"' -f2 )），跳过下载"
+        return 0
     fi
-    # 用 update-alternatives 把它挂成系统默认 java/javac（优先级 2100 高于 Debian 的 17xx）
+
+    info "下载中：$label（约 190 MB，可用 -C - 续传）..."
+    # -f 失败不写文件；-L 跟重定向；-C - 断点续传；--retry 3 网络抖动重试
+    if ! curl -fL -C - --retry 3 --retry-delay 3 --connect-timeout 20 \
+              -o "$tarball" "$url"; then
+        warn "下载失败：$url"
+        rm -f "$tarball"
+        return 1
+    fi
+
+    # 校验：至少 100 MB，且是 gzip（tar.gz 的魔数 1f 8b）
+    local bytes magic
+    bytes="$(stat -c%s "$tarball" 2>/dev/null || echo 0)"
+    magic="$(head -c 2 "$tarball" 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    if [ "${bytes:-0}" -lt 100000000 ] || [ "$magic" != "1f8b" ]; then
+        warn "下载的文件不完整（${bytes} 字节，魔数 $magic）—— 多半是被网关拦了或没下完"
+        rm -f "$tarball"
+        return 1
+    fi
+    info "下载完成：$(du -h "$tarball" | cut -f1)"
+
+    rm -rf "$JDK_DIR"
+    install -d "$JDK_DIR"
+    # Oracle 与 Temurin 的包都带一层顶层目录（jdk-21.0.x / jdk-21.0.x+y），strip 掉
+    tar -xzf "$tarball" -C "$JDK_DIR" --strip-components=1
+    rm -f "$tarball"
+    info "已解压到 $JDK_DIR"
+    [ -x "$JDK_DIR/bin/java" ] || { warn "$JDK_DIR/bin/java 不存在，包结构可能变了"; return 1; }
+    return 0
+}
+
+# 把 $JDK_DIR 挂成系统默认 java/javac，并写 JAVA_HOME
+register_jdk() {
+    # 优先级 2100 高于 Debian 自带的 17xx
     update-alternatives --install /usr/bin/java  java  "$JDK_DIR/bin/java"  2100 >/dev/null
     update-alternatives --install /usr/bin/javac javac "$JDK_DIR/bin/javac" 2100 >/dev/null
     printf 'export JAVA_HOME=%s\nexport PATH="$JAVA_HOME/bin:$PATH"\n' "$JDK_DIR" > /etc/profile.d/jdk21.sh
@@ -240,10 +306,14 @@ install_temurin_tarball() {
 
 case "$JDK_SOURCE" in
     backports)
-        if ! has_jdk21; then try_jdk_backports || die "backports 里没有 openjdk-21；改用 JDK_SOURCE=temurin 重跑"; fi
+        if ! has_jdk21; then try_jdk_backports || die "backports 里没有 openjdk-21；改用 JDK_SOURCE=oracle 或 temurin 重跑"; fi
+        ;;
+    oracle)
+        has_jdk21 || install_oracle_tarball || die "Oracle JDK 下载/解压失败。可改用清华镜像重跑：
+        sudo bash -c 'JDK_SOURCE=temurin bash $0'"
         ;;
     temurin)
-        has_jdk21 || install_temurin_tarball
+        has_jdk21 || install_temurin_tarball || die "Temurin 下载/解压失败，检查网络后重跑"
         ;;
     auto)
         if has_jdk21; then
@@ -251,12 +321,17 @@ case "$JDK_SOURCE" in
         elif try_jdk_backports; then
             info "从 backports 装上了 openjdk-21"
         else
-            warn "backports 没有 openjdk-21（符合预期），回退到清华 TUNA 的 Temurin 21 压缩包"
-            install_temurin_tarball
+            warn "backports 没有 openjdk-21（符合预期），按指定路径下载 Oracle JDK 21"
+            if install_oracle_tarball; then
+                :
+            else
+                warn "Oracle 下载失败，回退到清华 TUNA 的 Temurin 21"
+                install_temurin_tarball || die "Oracle 与 Temurin 都失败了；手工下载后放到 $JDK_DIR 再重跑本脚本"
+            fi
         fi
         ;;
     *)
-        die "JDK_SOURCE 只能是 auto / backports / temurin，当前是 $JDK_SOURCE"
+        die "JDK_SOURCE 只能是 auto / oracle / temurin / backports，当前是 $JDK_SOURCE"
         ;;
 esac
 hash -r 2>/dev/null || true
