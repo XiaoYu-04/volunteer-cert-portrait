@@ -34,9 +34,9 @@ INSERT INTO sys_role (id, role_code, role_name, remark) VALUES
 -- 二、账号（三个角色各一个）
 -- =============================================================
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status) VALUES
-(1, 'admin',     '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '学校管理员', '13800000001', 'admin@example.com',   1),
-(2, 'org_admin', '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '组织管理员', '13800000002', 'org@example.com',     1),
-(3, 'student',   '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '张同学',     '13800000003', 'student@example.com', 1);
+(1, 'admin',     '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '高志远', '13800000001', 'admin@example.com',   1),
+(2, 'org_admin', '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '赵启明', '13800000002', 'org@example.com',     1),
+(3, 'student',   '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '林书瑶', '13800000003', 'student@example.com', 1);
 
 INSERT INTO sys_user_role (user_id, role_id) VALUES
 (1, 3),   -- admin     → 学校管理员
@@ -45,16 +45,21 @@ INSERT INTO sys_user_role (user_id, role_id) VALUES
 
 -- =============================================================
 -- 三、学生档案（对应 student 账号）
---     total_duration 初始为 0，公开等级暂用文档中出现的唯一取值
+--     学号与 04_demo_data.sql 生成的 1000 名学生同一套规则：
+--     入学年份(4) + 学院码(2) + 专业码(2) + 班内序号(4)。
+--     测试学生是 2022 级计算机学院软件工程专业，学号 202201010001；
+--     04 里的 1000 名学生是 2023 / 2024 级，学号不会与它相撞。
+--     gender / grade 两列由 06 补，本脚本执行时还不存在，
+--     故留空由 04_demo_data.sql 补齐（见该脚本第四节末尾的 UPDATE）。
 -- =============================================================
 INSERT INTO student_info (id, user_id, student_no, college, major, class_name, total_duration, public_welfare_level) VALUES
-(1, 3, '20230001', '计算机学院', '软件技术', '软件2301', 0, '普通志愿者');
+(1, 3, '202201010001', '计算机学院', '软件工程', '软件2201', 0, '普通志愿者');
 
 -- =============================================================
 -- 四、志愿组织（1 个，已通过审核，供 org_admin 账号使用）
 -- =============================================================
 INSERT INTO org_info (id, contact_user_id, org_name, org_type, contact_name, phone, email, description, status) VALUES
-(1, 2, '计算机学院青年志愿者协会', '学院组织', '组织管理员', '13800000002', 'org@example.com',
+(1, 2, '计算机学院青年志愿者协会', '学院组织', '赵启明', '13800000002', 'org@example.com',
  '计算机学院下属志愿服务组织，长期开展校园服务与社区帮扶活动。', 'APPROVED');
 
 -- =============================================================

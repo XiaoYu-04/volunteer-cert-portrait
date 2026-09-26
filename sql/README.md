@@ -12,82 +12,100 @@
 |---|---|---|---|
 | 1 | `01_create_database.sql` | 创建数据库 `volunteer_cert_portrait` | 必需 |
 | 2 | `02_schema.sql` | 建表脚本：16 张表 + 表/字段注释 + 索引 | 必需 |
-| 3 | `03_init_data.sql` | 基础初始化数据：角色、账号、学生档案、组织、活动分类、数据字典 | 必需 |
-| 4 | `04_demo_data.sql` | 演示数据：8 组织 / 20 活动 / 31 学生 / 149 条报名及对应签到与时长 | **跑 `07` 时必需**（`07` 的硬前置，见下方说明）；只做接口联调、不跑 `07` 时可跳过 |
-| 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖） |
-| 6 | `06_backend_gap_fix2.sql` | 后端联调补列（第二批）：活动报名截止/联系方式、报名理由、分类编码、学生性别年级、时长证明与所属组织，并补齐签到聚合与外键列索引 | 必需（后端接口依赖） |
-| 7 | `07_demo_scale.sql` | 演示数据放大（增量，可选，仅供开发调试与答辩演示） | 可选（**跑之前必须先执行 `04`**，见下方说明） |
+| 3 | `03_init_data.sql` | 基础初始化数据：3 角色、3 个测试账号（`admin` / `org_admin` / `student`，全名）、测试学生档案、1 个组织、6 个活动分类、7 类状态字典 | 必需 |
+| 4 | `04_demo_data.sql` | **演示数据（2026-09-27 重写）**：10 学院字典 / 10 学校管理员 / 10 组织管理员 + 11 个组织 / **1000 名学生** / **10 场活动** / 报名 + 签到 + 时长 + 审核流水 + 公益画像 | 可选（演示与联调用；**依赖 05 / 06 先补列**，见下方说明） |
+| 5 | `05_backend_gap_fix.sql` | 后端联调补列：字典色调、用户最近登录、通知、操作日志、组织档案字段与索引 | 必需（后端接口依赖，**必须在 `04` 之前**） |
+| 6 | `06_backend_gap_fix2.sql` | 后端联调补列（第二批）：活动报名截止/联系方式、报名理由、分类编码、学生性别年级、时长证明与所属组织，并补齐签到聚合与外键列索引 | 必需（后端接口依赖，**必须在 `04` 之前**） |
+| 7 | ~~`07_demo_scale.sql`~~ | ~~演示数据放大到 1500 学生 / 386 活动~~ | **已删除（2026-09-27）**：放大口径并入 `04`（直接给 1000 名学生），不再需要单独的放大脚本 |
 | 8 | `08_password_bcrypt.sql` | 口令明文转 BCrypt 密文（增量，仅「先建库、后升级到加密版代码」的老库需要） | 老库必需 |
-| 9 | `09_consistency_check.sql` | **一致性自检（20 项）**：外键悬空 6 / 汇总字段与明细不符 4 / 状态与审核字段矛盾 4 / 学院专业错配 1 / 时间异常 2 / 演示数据完整性 3，输出 **20 行 + 1 行汇总**（`check_no = 99`），**违规数全 0 即通过**（2026-09-24 云库实跑，违规合计 0） | 可选（**只读，不改变数据**，可重复执行） |
-| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + 新增 `college` 学院字典 5 条），**不含演示数据、也不含 `student` 账号**（学生走自助注册）；学院字典 5 条只是**初始种子**，运行时增删启停走学校管理端的「学院管理」页 | **新环境必需**（`college` 学院字典的**唯一来源**，缺了注册页下拉为空、注册必被拒；可重复执行） |
+| 9 | `09_consistency_check.sql` | **一致性自检（20 项）**：外键悬空 6 / 汇总字段与明细不符 4 / 状态与审核字段矛盾 4 / 学院专业错配 1 / 时间异常 2 / 演示数据完整性 3，输出 **20 行 + 1 行汇总**（`check_no = 99`），**违规数全 0 即通过** | 可选（**只读，不改变数据**，可重复执行） |
+| 10 | `10_base_and_test_accounts.sql` | **清库后重灌基础数据**：3 个角色 / 2 个测试管理员账号（`admin`、`org_admin`，口令 `123456`）/ 1 个已通过审核的组织 / 6 个活动分类 / 8 类字典（7 类状态字典 + **`college` 学院字典 10 条**），**不含演示数据、也不含 `student` 账号**（学生走自助注册） | **新环境必需**（`college` 学院字典的**唯一来源**，缺了注册页下拉为空、注册必被拒；可重复执行） |
 | 11 | `11_activity_images.sql` | 活动图片增量字段：`attachment.content_type` / `caption` / `sort_order` 与业务排序索引 | 联调必需（增量、可重复执行） |
-| 12 | `12_activity_images_demo.sql` | 少量图文演示：5 个账号（3 学生 + 1 组织管理员 + 1 学校管理员）、1 个组织、3 个已发布活动及 3 张 GPT-Image2 图片元数据 | 演示可选（增量、可重复执行） |
+| 12 | `12_activity_images_demo.sql` | **活动图片元数据（2026-09-27 重写）**：`04` 里 10 场活动各 1 张封面 + 3 张内部图，共 40 条 `attachment` 记录；`file_url` 回写为内容接口地址，`volunteer_activity.cover` 取 `sort_order = 0` 的那张 | 演示可选（增量、可重复执行） |
+| 13 | `13_attachment_binary.sql` | **活动图片二进制入库（2026-09-27 新增）**：给 `attachment` 加 `file_data BYTEA` / `sha256`，并把 40 张图（base64，约 9.3 MB 文本）解码回填。图片从此**只存在数据库里**，本地不再保留 jpg | 演示可选（增量、可重复执行） |
+| 14 | `14_performance_indexes.sql` | **性能索引（2026-09-27 新增）**：看板热点的两条 partial 索引（`student_info(total_duration) WHERE deleted=0`、`activity_signup(signup_time) WHERE deleted=0`，均附 EXPLAIN 前后对比）+ 16 张表 `ANALYZE`；不改数据、不改结构 | 可选但推荐（可重复执行） |
 
 `02_schema.sql` 开头会 `DROP TABLE IF EXISTS`，**可重复执行**（会清空数据）。若要重新生成一套完整的演示数据，
-**顺序不能换**（2026-09-25 云库整库重建实测，整链约 **16 秒**）：
+**顺序不能换**（2026-09-27 重排：补列脚本提到数据脚本之前）：
 
 ```text
-02_schema.sql → 03_init_data.sql → 04_demo_data.sql → 05_backend_gap_fix.sql
-→ 06_backend_gap_fix2.sql → 07_demo_scale.sql → 10_base_and_test_accounts.sql
-→ 11_activity_images.sql → 12_activity_images_demo.sql
+02_schema.sql → 03_init_data.sql → 05_backend_gap_fix.sql → 06_backend_gap_fix2.sql
+→ 04_demo_data.sql → 10_base_and_test_accounts.sql → 11_activity_images.sql
+→ 12_activity_images_demo.sql → 13_attachment_binary.sql
 （最后只读跑 09_consistency_check.sql 验收：检查项总数 20、违规合计 0）
 ```
 
-三条容易踩的顺序理由（详见 `CLAUDE.md` 的「踩过的坑」第 20 条）：
+三条容易踩的顺序理由：
 
-- **`04` 是 `07` 的硬前置**：`07` 的新活动按 `org_id = 1 + (g % 6)` 取组织，要求 `org_info` 里存在 id 1~6，
-  而 **id 2~8 全部由 `04` 创建** —— 跳过 `04` 直接跑 `07`，新活动的组织外键就会落错。
-- **学院字典只在 `10` 里**（`03` 的 8 类字典没有 `college`）：新环境必须跑到 `10`，否则注册必被拒。
-- **`12` 放最后**：它给三场图文演示活动定的名额是 20 / 35 / 18，先跑 `12` 再跑 `07` 的话，
-  `07` 的「名额 < 46 一律抬到 46」回填会把这几个数改掉。
+- **`05` / `06` 必须在 `04` 之前**（2026-09-27 新增的唯一硬顺序）：`04` 会写 `05` / `06` 补的列
+  （`org_info.code/college/member_count/founded_at`、`student_info.gender/grade`、
+  `volunteer_activity.deadline/contact`、`service_duration.org_id/activity_type`、
+  `notification.source/is_top`），列不存在时整脚本直接报错。
+  两者都是纯增量、可重复执行的补列脚本，提前跑不会改坏数据。
+- **学院字典在 `10` 里、`04` 里也有一份**（`03` 的 7 类状态字典没有 `college`）：两处清单**必须逐字一致**，
+  否则注册页下拉、按学院筛选学生与按学院筛选组织三处会对不上（09 自检第 ⑮ 项）。
 - ⚠️ 动 `02` 这种 DDL 前，先清掉库里 `idle in transaction` 的陈旧会话，否则 `DROP TABLE` 会一直等锁
   （2026-09-25 实测白等 618 秒；排查与处理见 `CLAUDE.md` 同一条）。
 
 `05`、`06` 是**纯增量、可重复执行**的补列脚本：已有库（含已导入演示数据的库）直接按序号接着执行即可，
 不必重跑 `02`；重跑也不会改坏数据（只建缺失的列/索引，回填只填 NULL 行）。
 
-`07_demo_scale.sql` 是**演示数据放大**脚本（增量，可选，仅供开发调试与答辩演示），性质与 `05`、`06` 相同：
-**纯增量、可重复执行**，**前置条件是先跑完 `01` → `06`**；其中 **`04` 是硬前置**
-（`07` 的新活动按 `org_id = 1 + (g % 6)` 取组织，id 2~8 全部由 `04` 创建）。
+> **`07_demo_scale.sql` 已删除（2026-09-27）**：旧的「放大到 1500 学生 / 386 活动」口径不再维护，
+> `04_demo_data.sql` 现在直接生成 1000 名学生与 10 场活动。删掉的文件在 git 历史里仍可找回
+> （`git show <commit>:sql/07_demo_scale.sql`）。
 
 `08_password_bcrypt.sql` 是**口令加密迁移**脚本（增量，可重复执行），只服务于老库：
 后端 B15 把口令校验从明文相等改成了 BCrypt 比对（`PasswordUtils.matches` 对明文记录一律返回 false），
 所以**升级代码前就已建好的库必须跑它**，否则所有账号都登录不了。
 
-`12_activity_images_demo.sql` 引用的 3 张图片位于
-`volunteer-cert-portrait-server/uploads/demo/activities/`。部署到服务器时，请把整个
-`uploads/demo/` 同步到后端的 `./uploads/demo/`（systemd 示例对应 `/opt/vcp/uploads/demo/`），
-否则演示活动会显示图片 404。
-`03` / `04` / `07` 的种子口令已同步换成密文，**新库不需要跑**。
+`12_activity_images_demo.sql` + `13_attachment_binary.sql` 负责 10 场活动的 40 张图片
+（1 封面 + 3 内部图，JPEG）：`12` 写元数据并把 `file_url` 指向内容接口，
+`13` 把二进制（base64 解码）与 sha256 灌进 `attachment.file_data` / `sha256`。
+**图片只存在数据库里**，本地与服务器都不需要 `uploads/` 目录 —— 部署时少同步一份东西，
+备份/回滚也只涉及数据库。读取走 `GET /api/v1/attachments/{id}/content`（免登录、带 ETag 与长缓存）。
+`03` / `04` 的种子口令已同步换成密文，**新库不需要跑** `08`。
 脚本只更新「口令恰好是明文 123456」的行（演示数据里全部账号都是这个口令），
 跑完会报出残留的明文账号数；若库里存在口令不是 123456 的明文账号，
 必须由管理员用「重置密码」接口（`PUT /api/v1/system/users/{id}/password`）单独处理。
 
 `09_consistency_check.sql` 是**一致性自检**脚本（**只读，不改变数据**，可重复执行）：输出 20 行检查结果 + 1 行汇总
 （汇总行 `check_no = 99`，文案形如「检查项总数 20，违规合计 N」），**违规数全 0 即通过**。
-它**可在任意阶段执行，不改变上面的执行顺序**；建议在 `07` 之后跑一次作为验收。
-前置条件：`01`~`06` 必须已执行（脚本用到 `05` 补的 `org_info.college`）；`07` 可选 ——
-没跑过 `07` 的库也能执行不报错，只是第 15、20 项会命中非 0（演示数据规模不足的正常现象）。
-2026-09-24 在云库（PostgreSQL 18.6）实跑：20 项违规数全 0、汇总行「检查项总数 20，违规合计 0」。
+它**可在任意阶段执行，不改变上面的执行顺序**；建议在 `12` 之后跑一次作为验收。
+前置条件：`01`~`06` 必须已执行（脚本用到 `05` 补的 `org_info.college`）；`04` 可选 ——
+没跑过 `04` 的库也能执行不报错，只是第 15、20 项会命中非 0（没有演示数据时的正常现象）。
+2026-09-27 在云库（PostgreSQL 18.6）按新数据集实跑：20 项违规数全 0、汇总行「检查项总数 20，违规合计 0」。
 
-- **不重建库，`04` 的规模参数保持不动**：`04` 仍是「干净起步」的基线（8 组织 / 20 活动 / 31 学生 / 149 条报名），
-  `07` 只在其之上做增量放大，已在联调的后端不需要重建数据库。
-- **可重复执行**：整体包在一个事务里，各节都带「还不够才补」的守卫；活动数已 ≥ 386 即视为放大过、整体跳过，
-  中途失败则整批回滚，不会留下半套数据。
-- **含一处补列**：`ALTER TABLE activity_category ADD COLUMN IF NOT EXISTS remark VARCHAR(255)` ——
-  所以跑完 `07` **必须重启后端**，否则分类接口会查这个不存在的列而报错。
-- **执行后应达到的规模**：组织 8 个（不变）、活动 386 场、学生约 1500 人、报名约 1 万条。
-  实测（2026-09-24 实跑，脚本末尾 6 项 / 9 条断言全部通过）：学生 **1500** 人、活动 **386** 场、报名 **10719** 条、
-  累计时长 **19319.3** 小时；六档等级齐全（普通 118 / 一星 168 / 二星 299 / 三星 687 / 四星 207 / 五星 21）；
-  演示账号 `student`（学生档案 id=1）22.6 小时、四星志愿者、9 场活动、3 个画像标签。
-- **顺带回填了一直为空的字段**：`org_info` 的 `code` / `college` / `founded_at` / `member_count`、
-  `activity_signup.reason`、`activity_category.remark`；新增学生账号自 `stu100001` 起（6 位序号，与 `04` 的 `stu0001`~`stu0030` 不冲突）。
+`04_demo_data.sql` 的要点（2026-09-27 重写）：
 
-> ⚠️ 这个脚本**不是「一次跑通」的**：首次实跑暴露了 3 个缺陷并已修复 ——
-> ① 第 108 行 `date + bigint` 缺 `::int`（PostgreSQL 没有这个运算符）；
-> ② 每场报名上限 8..39 会让「五星志愿者（≥40 小时）」一档恒为空、末尾自检失败，已改为 16..45；
-> ③ 新增「十之二」节定向给高活跃学生补记录，否则 40 小时以上无人能达到。
-> 另外第十节与第十之二节原先缺 `should_scale` 幂等守卫，已补。（脚本由 `0a668d7` 新增，缺陷修复与实跑见 `1138eaa`。）
+- **规模**：学院字典 10 条、学校管理员 10 名、组织管理员 10 名 + 11 个已审核组织、学生 **1000 名**
+  （另有 `03` 建的测试学生，共 1001 条学生档案）、活动 **10 场**（7 场已结束 + 3 场已发布）。
+- **学号规则**：12 位结构化 —— 入学年份 4 位 + 学院码 2 位 + 专业码 2 位 + 班内序号 4 位，
+  例：`202301010001` = 2023 级 / 计算机学院 / 软件工程 / 1 号。**用户名就是学号**，
+  登录时输入学号即可（后端对纯数字输入按 `student_info.student_no` 反查）。
+- **姓名**：脚本内固定数组（500 男 + 500 女，按奇偶交错取用），全部是全名，
+  不用 `张同学` 这类占位名，也不靠 `generate_series + 取模` 拼出「张伟/王芳」那种十来个名字循环。
+- **确定性**：全程无 `random()`，所有分布（哪些学生报了哪些活动、谁缺勤、谁被驳回）都由
+  「取模 + 步长」决定，任何人执行得到完全相同的库。
+- **可重复执行**：整体包在一个事务里；账号 / 学生 / 组织 / 活动按自然键判重，
+  报名 / 签到 / 时长按唯一约束判重，`duration_audit` 按 `(duration_id, action)` 判重，
+  末尾的汇总回填（`signed_count` / 累计时长 / 公益等级 / 画像）是幂等重算。
+- **画像与等级**：`student_info.total_duration` 由 `APPROVED` 时长汇总而来，等级按 6 档阈值判定；
+  `student_profile` 整表重算（先 `DELETE` 再 `INSERT`），8 类标签由「已完成场次 + 参与最多的 2 个分类」生成。
+- **测试学生 `student`（学生档案 id=1）**：强制参加全部 7 场已结束活动 + 2 场已发布活动，
+  一登录就能看到完整的「我的报名 / 我的时长 / 公益画像」。
+
+**实测（2026-09-27 云库实跑，PostgreSQL 18.6）**：学院 10 / 学校管理员 11（含 `admin`）/
+组织管理员 11（含 `org_admin`）/ 学生 1001 / 组织 11 / 活动 10 / 报名 **2349** / 签到 **1814** /
+服务时长 **1716**（已通过 1565 / 待审核 98 / 已驳回 53）/ 时长审核流水 **3334** / 公益画像 1001 /
+活动图片 40 张（全部在库，7,256,398 字节）/ 累计时长 **9163.0 小时**。
+活动参加场次分布：0 场 250 人、1 场 200、2 场 240、3 场 120、4 场 100、5 场 50、6 场 20、7 场 21；
+公益等级 **六档齐全**：普通 302 / 一星 104 / 二星 143 / 三星 317 / 四星 131 / 五星 4；
+测试学生 `student` **41.0 小时、五星志愿者、7 场活动、4 个标签**。
+`09_consistency_check.sql` 复跑：**检查项总数 20、违规合计 0**。
+
+> **7 场已结束活动的时长**：5 + 6 + 5 + 8 + 5 + 6 + 6 = **41 小时**。这个数字是刻意定的 ——
+> 演示尺度的五星线是「≥40 小时」，只有 7 场全参加的学生才够得着（当前数据集里有 4 人），
+> 这样等级分布才能覆盖全部 6 档，看板与画像页不会缺档。
 
 `10_base_and_test_accounts.sql` 是**清库后的基础数据脚本**（可重复执行：每条 `INSERT` 都带 `ON CONFLICT DO NOTHING`）：
 16 张表被 `TRUNCATE` 之后，用它一次灌回「系统跑起来必需」的基础数据 —— 3 个角色 / 2 个测试管理员
@@ -107,13 +125,14 @@
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 02_schema.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 03_init_data.sql
-psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
+# 补列必须在灌演示数据之前（04 会写 05 / 06 补的列）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 05_backend_gap_fix.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 06_backend_gap_fix2.sql
-psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 07_demo_scale.sql
+# 演示数据：10 学院 / 1000 学生 / 10 场活动（可选，纯联调可不跑）
+psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 04_demo_data.sql
 # 仅老库需要（新库跳过）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 08_password_bcrypt.sql
-# 学院字典（新环境必需）+ 活动图片字段 + 少量图文演示数据
+# 学院字典（新环境必需）+ 活动图片字段 + 活动图片元数据
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 10_base_and_test_accounts.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 11_activity_images.sql
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 12_activity_images_demo.sql
@@ -124,8 +143,8 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consis
 ```bash
 # 方式二：一次跑完
 psql -U postgres -h <主机> -p <端口> -f 01_create_database.sql
-cat 02_schema.sql 03_init_data.sql 04_demo_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql 07_demo_scale.sql \
-  10_base_and_test_accounts.sql 11_activity_images.sql 12_activity_images_demo.sql \
+cat 02_schema.sql 03_init_data.sql 05_backend_gap_fix.sql 06_backend_gap_fix2.sql 04_demo_data.sql \
+  10_base_and_test_accounts.sql 11_activity_images.sql 12_activity_images_demo.sql 13_attachment_binary.sql \
   | psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait
 # 再单独跑一次只读自检（它不改变数据，也可以随时单独执行）
 psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consistency_check.sql
@@ -143,11 +162,12 @@ psql -U postgres -h <主机> -p <端口> -d volunteer_cert_portrait -f 09_consis
 
 | 账号 | 角色 | 说明 |
 |---|---|---|
-| `admin` | 学校管理员 | 时长终审、组织审核、用户管理、看板 |
-| `org_admin` | 组织管理员 | 已绑定组织「计算机学院青年志愿者协会」 |
-| `student` | 学生 | 学生档案：计算机学院 / 软件技术 / 软件2301 |
-| `org_admin2` ~ `org_admin8` | 组织管理员 | 演示数据新增，分别绑定组织 2~8 |
-| `stu0001` ~ `stu0030` | 学生 | 演示数据新增 |
+| `admin` | 学校管理员 | **测试学校管理员**（高志远）：时长终审、组织审核、用户管理、看板 |
+| `org_admin` | 组织管理员 | **测试组织管理员**（赵启明）：已绑定组织「计算机学院青年志愿者协会」 |
+| `student` | 学生 | **测试学生**（林书瑶）：计算机学院 / 软件工程 / 软件2201，学号 `202201010001` |
+| `school_admin_01` ~ `school_admin_10` | 学校管理员 | `04` 新增的 10 名学校管理员（陈国华、李慧敏、王志远、周文娟、吴建华、郑晓峰、孙丽萍、黄志强、徐雅琴、马文博） |
+| `org_admin_01` ~ `org_admin_10` | 组织管理员 | `04` 新增的 10 名组织管理员，分别绑定 10 个学院的组织（另有「大学生急救志愿服务队」挂在 `org_admin_10` 名下） |
+| 1000 个学号（如 `202301010001`） | 学生 | `04` 新增的 1000 名学生，**用户名 = 学号**，口令同样 `123456` |
 
 ## 三、全局设计约定
 

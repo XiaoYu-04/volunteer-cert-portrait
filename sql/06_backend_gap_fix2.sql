@@ -55,13 +55,21 @@ ALTER TABLE activity_signup ADD COLUMN IF NOT EXISTS reason VARCHAR(500);
 COMMENT ON COLUMN activity_signup.reason IS '报名理由；学生报名时提交（前端字段 reason），组织管理员审核报名时参考';
 
 -- -------------------------------------------------------------
--- 三、activity_category 补 code + 唯一约束（B16）
+-- 三、activity_category 补 code + remark + 唯一约束（B16）
 -- -------------------------------------------------------------
 -- 分类管理页有一列「分类编码」，新增/编辑表单里也是可填项（占位符「如 COMMUNITY」，
 -- 留空时前端 mock 会生成 CUSTOM_n）。原表没有该列，接口无处存取。
 ALTER TABLE activity_category ADD COLUMN IF NOT EXISTS code VARCHAR(50);
 
 COMMENT ON COLUMN activity_category.code IS '分类编码：英文大写，用于接口与统计口径（前端字段 code）；唯一，新建分类留空时由后端生成 CUSTOM_n';
+
+-- remark：分类备注，分类管理页可填。实体 ActivityCategory 映射了该列，
+-- 缺列时新建/修改分类接口会直接 500。
+-- 【2026-09-27 从已删除的 07_demo_scale.sql 迁移过来】：原补列语句写在 07 里，
+-- 07 删除后新环境重建库会缺这一列，故并入本脚本（补列脚本才是它该待的地方）。
+ALTER TABLE activity_category ADD COLUMN IF NOT EXISTS remark VARCHAR(255);
+
+COMMENT ON COLUMN activity_category.remark IS '分类备注；分类管理页可填，前端字段 remark';
 
 -- 回填已有的 6 条分类（03_init_data.sql 里的 校园服务/社区服务/环保公益/大型赛事/助老服务/文化传播）。
 --   ⚠️ 必须**按分类名**映射，不能按 id 或下标映射：
