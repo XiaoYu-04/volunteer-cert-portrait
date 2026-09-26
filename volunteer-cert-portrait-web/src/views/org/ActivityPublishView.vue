@@ -165,14 +165,16 @@ function onUploadingChange(active) {
 
 <template>
   <h1 class="console-title">发布活动</h1>
-  <p class="console-sub">填写活动信息，提交即存为草稿，发布入口在活动管理页。</p>
+  <p class="console-sub">填写活动信息后提交。报名截止时间需早于活动开始时间，否则无法提交。</p>
 
   <section class="panel">
     <div class="panel-head">
       <h2 class="panel-title">活动信息</h2>
       <span class="panel-extra">
         发布组织：{{ orgName || '本组织' }}
-        <span class="form-legend" aria-hidden="true">标 * 的为必填项</span>
+        <!-- 星号包 <b> 才会命中 .form-legend b 的朱砂色（scoped 样式里那条规则），
+             与 InkField 的必填星号（ink.css .ink-field-label .req）保持同色 -->
+        <span class="form-legend" aria-hidden="true">标 <b>*</b> 的为必填项</span>
       </span>
     </div>
 
