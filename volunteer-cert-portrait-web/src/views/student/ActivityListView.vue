@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { listActivities, listCategories } from '@/api/volunteer'
 import { useTable } from '@/composables/useTable'
 import { useDictStore } from '@/stores/dict'
@@ -33,7 +33,10 @@ onMounted(async () => {
   categories.value = await listCategories()
 })
 
-const statusOptions = dict.options('activity_status')
+// 走 computed 而非直接取值：dict.load() 会用接口数据整体替换字典数组（换的是引用，
+// 不是就地改元素），直接取值会在 setup 时固化旧数组，后端字典回来后下拉不更新。
+// exclude DRAFT：本页默认就只查已发布活动，草稿不是学生的有效筛选条件。
+const statusOptions = computed(() => dict.options('activity_status', { exclude: ['DRAFT'] }))
 </script>
 
 <template>

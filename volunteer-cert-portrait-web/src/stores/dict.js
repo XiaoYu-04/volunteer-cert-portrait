@@ -79,8 +79,13 @@ export const useDictStore = defineStore('dict', {
   }),
 
   getters: {
-    /** 取某类型的全部条目 */
-    options: (state) => (type) => state.map[type] || [],
+    /**
+     * 取某类型的条目。
+     * exclude 用来剔除不该出现在**筛选下拉**里的码 —— 例如活动状态的 DRAFT（草稿）：
+     * 它在字典里必须保留（StatusTag 要用它渲染标签与色调），只是不作为筛选条件列出来。
+     */
+    options: (state) => (type, { exclude = [] } = {}) =>
+      (state.map[type] || []).filter((item) => !exclude.includes(item.value)),
   },
 
   actions: {

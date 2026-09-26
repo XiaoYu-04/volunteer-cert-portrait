@@ -30,7 +30,8 @@ const { rows, total, loading, query, search, load } = useTable(listActivities, {
 
 const categories = ref([])
 // 走 computed 而非直接取值：dict.load() 会用接口数据整体替换字典数组
-const statusOptions = computed(() => dict.options('activity_status'))
+// exclude DRAFT：草稿不作为筛选条件（字典里仍保留该码，StatusTag 还要靠它渲染标签）
+const statusOptions = computed(() => dict.options('activity_status', { exclude: ['DRAFT'] }))
 
 onMounted(async () => {
   dict.load()
