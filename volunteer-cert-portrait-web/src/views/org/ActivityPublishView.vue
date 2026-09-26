@@ -312,10 +312,26 @@ function onUploadingChange(active) {
   margin-top: var(--sp-2);
 }
 
-/* 十个字段全为必填，星号需要一句说明；与 .panel-note 同一档小字。
-   align-self 让 12px 的小字与左侧 16px 的「发布组织」共用一条基线 */
+/* 右块是上下两行：第一行「发布组织：…」，第二行小字「标 * 的为必填项」，两行都靠右
+   （图例正好落在组织名的尾巴下面，左边缘参差、右边缘齐）。
+
+   两个坑记一下：
+   1. **别用 align-items:baseline 收这一竖排** —— 列方向的交叉轴是横向，baseline 在那条轴上
+      没有意义（浏览器退化成 flex-start → 两行变成**左**对齐、右边缘参差）。靠右要用 flex-end。
+   2. 曾经这里是横排一行，且只给 .form-legend 写过 align-self:baseline 想对齐两段文字——
+      那是无效的：父级 align-items 是默认的 normal(=stretch) 时，整行里只有图例一个子项
+      参与基线对齐，对面的「裸文本」是匿名 flex item、拿不到基准，图例就退化成顶对齐，
+      实测比组织名基线高 5px（小字浮在名字左上角）。详见 CLAUDE.md 前端踩坑第 11 条。 */
+.panel-extra {
+  flex-direction: column;
+  align-items: flex-end;
+  /* 两行的行盒自带半行距（约 2.9px + 2.2px），再加 4px 刚好读成「主行 + 副行」一组，
+     再大就跟左边标题一样高了、不像一组 */
+  gap: var(--sp-1);
+}
+
+/* 十个字段全为必填，星号需要一句说明；与 .panel-note 同一档小字 */
 .form-legend {
-  align-self: baseline;
   font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--c-ink-3);
