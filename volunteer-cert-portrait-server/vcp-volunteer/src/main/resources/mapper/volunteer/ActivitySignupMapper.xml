@@ -72,18 +72,14 @@
     <select id="selectAuditRow" resultType="com.vcp.volunteer.mapper.row.SignupAuditRow">
         SELECT s.id            AS signup_id,
                s.status        AS status,
-               s.student_id    AS student_id,
                si.user_id      AS student_user_id,
-               u.real_name     AS student_name,
                a.id            AS activity_id,
                a.title         AS activity_title,
                a.org_id        AS activity_org_id,
-               o.org_name      AS activity_org_name,
-               a.duration      AS activity_duration
+               o.org_name      AS activity_org_name
         FROM activity_signup s
         JOIN volunteer_activity a ON a.id = s.activity_id
         JOIN student_info si ON si.id = s.student_id
-        LEFT JOIN sys_user u ON u.id = si.user_id
         LEFT JOIN org_info o ON o.id = a.org_id
         WHERE s.deleted = 0
           AND a.deleted = 0

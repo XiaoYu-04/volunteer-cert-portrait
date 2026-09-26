@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import static com.vcp.common.util.StringUtils.hasText;
+
 /**
  * 操作日志落库监听器：消费 {@link OperationLogEvent}，写进 {@code operation_log} 表。
  *
@@ -92,9 +94,5 @@ public class OperationLogListener {
             log.warn("[操作日志] 反查用户名失败。userId={}", event.getUserId(), e);
             return null;
         }
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }

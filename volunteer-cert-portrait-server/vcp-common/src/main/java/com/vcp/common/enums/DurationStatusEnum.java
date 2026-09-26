@@ -34,18 +34,4 @@ public enum DurationStatusEnum {
         this.label = label;
     }
 
-    /**
-     * 按英文码反查枚举。
-     *
-     * @param code 英文码，如 {@code PENDING_AUDIT}
-     * @return 匹配的枚举；无匹配或入参为 null 时返回 null
-     */
-    public static DurationStatusEnum of(String code) {
-        for (DurationStatusEnum item : values()) {
-            if (item.code.equals(code)) {
-                return item;
-            }
-        }
-        return null;
-    }
 }

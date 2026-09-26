@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.vcp.common.util.NumberUtils.toLong;
+
 /**
  * 按学院统计挂靠组织数（vcp-system 侧 {@link OrgCollegeCountPort} 的实现）。
  *
@@ -55,21 +57,5 @@ public class OrgCollegeCountPortImpl implements OrgCollegeCountPort {
             }
         }
         return result;
-    }
-
-    /**
-     * 聚合结果转 long。
-     *
-     * <p>COUNT(*) 在 PostgreSQL 里是 int8，但 selectMaps 取出来的值类型随驱动与列类型变化
-     * （可能是 Integer / Long / BigDecimal），统一按 Number 转，兜底再走一次字符串解析。
-     *
-     * @param value 聚合结果值
-     * @return 数值，null 时返回 0
-     */
-    private static long toLong(Object value) {
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return value == null ? 0L : Long.parseLong(String.valueOf(value));
     }
 }

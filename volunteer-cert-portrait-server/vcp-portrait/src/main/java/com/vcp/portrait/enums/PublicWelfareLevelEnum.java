@@ -132,13 +132,4 @@ public enum PublicWelfareLevelEnum {
     public String getCode() {
         return code;
     }
-
-    /**
-     * 该档位的时长下限。
-     *
-     * @return 下限小时数（含），普通志愿者为 0
-     */
-    public BigDecimal getMinHours() {
-        return minHours;
-    }
 }

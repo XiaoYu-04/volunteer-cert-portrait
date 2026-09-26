@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import static com.vcp.framework.util.UploadPathUtils.normalizeUploadPrefix;
+
 /**
  * Sa-Token 登录拦截配置：全局校验登录态。
  *
@@ -109,16 +111,5 @@ public class SaTokenConfig implements WebMvcConfigurer {
         System.arraycopy(EXCLUDE_PATHS, 0, paths, docCount, EXCLUDE_PATHS.length);
         paths[paths.length - 1] = uploadUrlPattern;
         return paths;
-    }
-
-    private static String normalizeUploadPrefix(String prefix) {
-        String value = prefix == null || prefix.isBlank() ? "/uploads" : prefix.trim();
-        if (!value.startsWith("/")) {
-            value = "/" + value;
-        }
-        while (value.endsWith("/")) {
-            value = value.substring(0, value.length() - 1);
-        }
-        return value;
     }
 }

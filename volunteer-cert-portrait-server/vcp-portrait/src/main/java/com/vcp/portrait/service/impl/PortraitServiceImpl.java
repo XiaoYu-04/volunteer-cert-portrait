@@ -47,6 +47,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 公益画像服务实现。
  *
@@ -738,19 +740,5 @@ public class PortraitServiceImpl implements PortraitService {
         BigDecimal a = left == null ? BigDecimal.ZERO : left;
         BigDecimal b = right == null ? BigDecimal.ZERO : right;
         return a.compareTo(b) == 0;
-    }
-
-    /**
-     * 把空串归一成 null：前端「重置」会把筛选框置成空串，而空串必须当作「不筛选」，
-     * 否则会变成「筛选学院为空的学生」这类查不到任何数据的条件（待办 B19）。
-     *
-     * @param value 原始值
-     * @return 去空白后的值；为空时返回 null
-     */
-    private static String trimToNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.trim();
     }
 }

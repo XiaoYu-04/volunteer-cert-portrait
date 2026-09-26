@@ -7,8 +7,10 @@ import org.apache.ibatis.annotations.Mapper;
 /**
  * 附件 Mapper。
  *
- * <p>本轮只落库与查询，不实现文件上传下载 —— 前端还没有上传组件
- * （见待办 C9），没有组件就无从验证，先不做。
+ * <p>附件行只存元数据；上传（文件落盘与校验）及附件行替换/查询都在
+ * {@code com.vcp.system.service.impl.AttachmentServiceImpl}，本接口保持空壳，
+ * 只有 BaseMapper 的通用 CRUD。组织资质、用户头像等剩余上传场景见待办 C9
+ * （活动图片上传已完成）。
  */
 @Mapper
 public interface AttachmentMapper extends BaseMapper<Attachment> {

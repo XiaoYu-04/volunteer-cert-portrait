@@ -13,10 +13,10 @@ package com.vcp.system.service;
  * 这个信息只有 vcp-org 拿得到。解法是依赖倒置：vcp-system 定义端口，
  * vcp-org 提供实现，运行时由 Spring 注入。
  *
- * <p><b>当前没有实现类</b>（vcp-org 尚未开工，见待办 B7），
- * 因此登录时 orgId 为 null，组织管理员登录后前端取不到 orgId。
- * 这不影响登录本身，等 B7 落地后加一个实现本接口的 Bean 即可自动接上 ——
- * 调用方用 ObjectProvider 取，没有实现时安静跳过，不需要改任何代码。
+ * <p><b>实现已在 vcp-org 落地</b>（{@code OrgLookupPortImpl}，按 {@code org_info.contact_user_id}
+ * 反查；B7 已完成），运行时由 Spring 自动注入。调用方仍用 ObjectProvider 取，
+ * 缺少实现时安静跳过（单模块测试、裁剪部署），此时 orgId 留空 ——
+ * 只影响组织端页面的数据范围，不影响登录本身。
  */
 public interface OrgLookupPort {
 

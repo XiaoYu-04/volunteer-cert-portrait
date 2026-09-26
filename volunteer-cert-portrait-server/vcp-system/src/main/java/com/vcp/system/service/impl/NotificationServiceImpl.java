@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+import static com.vcp.common.util.StringUtils.hasText;
+
 /**
  * 通知公告服务实现。
  *
@@ -292,9 +294,5 @@ public class NotificationServiceImpl implements NotificationService {
         vo.setRead(Boolean.TRUE.equals(notification.getIsRead()));
         vo.setContent(notification.getContent());
         return vo;
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }

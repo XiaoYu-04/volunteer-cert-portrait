@@ -32,6 +32,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.vcp.certification.support.DurationFormatUtils.plainHours;
+import static com.vcp.common.util.StringUtils.hasText;
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 服务时长服务实现。
  *
@@ -287,17 +291,5 @@ public class DurationServiceImpl implements DurationService {
                     "第 " + index + " 条记录的" + field + "过长（最多 " + max + " 个字符）");
         }
         return text;
-    }
-
-    private static String plainHours(BigDecimal hours) {
-        return hours == null ? "0" : hours.stripTrailingZeros().toPlainString();
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    private static String trimToNull(String value) {
-        return hasText(value) ? value.trim() : null;
     }
 }

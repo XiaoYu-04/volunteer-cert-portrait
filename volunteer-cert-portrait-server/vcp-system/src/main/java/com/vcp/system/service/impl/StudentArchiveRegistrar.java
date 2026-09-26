@@ -1,6 +1,5 @@
 package com.vcp.system.service.impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.vcp.common.exception.BusinessException;
 import com.vcp.common.exception.ErrorCodeEnum;
 import com.vcp.system.entity.StudentInfo;
@@ -12,6 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+
+import static com.vcp.common.util.StringUtils.hasText;
 
 /**
  * 学生档案建档入口：账号创建时补一行 {@code student_info}。
@@ -95,13 +96,15 @@ public class StudentArchiveRegistrar {
         // 已有档案时直接返回，**不把新学号覆盖上去**：本接口是建档不是补录，
         // 覆盖会绕过调用方的学号查重（不匹配时直接撞库里的唯一约束，用户拿到的是系统错误），
         // 也会让「改学号」这个动作从一条可审计的补录路径变成建档的副作用。补录入口另开。
-        StudentInfo existing = findByUserId(userId);
+        StudentInfo existing = StudentArchiveQueries.findByUserId(studentInfoMapper, userId);
         if (existing != null) {
             return existing;
         }
 
         StudentInfo archive = new StudentInfo();
         archive.setUserId(userId);
+        // 学号只判空、不做格式校验：格式与唯一性由各自的上游负责（见本方法上 student_no 那段），
+        // 建档层再判一遍只会在两处留下可能漂移的规则。
         archive.setStudentNo(hasText(studentNo) ? studentNo.trim() : placeholderStudentNo(userId));
         archive.setCollege(college);
         archive.setTotalDuration(BigDecimal.ZERO);
@@ -135,25 +138,5 @@ public class StudentArchiveRegistrar {
         return PLACEHOLDER_PREFIX
                 + "0".repeat(Math.max(0, PLACEHOLDER_WIDTH - digits.length()))
                 + digits;
-    }
-
-    private StudentInfo findByUserId(Long userId) {
-        return studentInfoMapper.selectOne(Wrappers.<StudentInfo>lambdaQuery()
-                .eq(StudentInfo::getUserId, userId)
-                .last("LIMIT 1"));
-    }
-
-    /**
-     * 判断学号是否给了值。
-     *
-     * <p>这里只判空、不做格式校验：学号的格式与唯一性由各自的上游负责
-     * （见 {@link #ensureArchive(Long, String, String)} 里 student_no 那段），
-     * 建档层再判一遍只会在两处留下可能漂移的规则。
-     *
-     * @param value 学号，允许为 null
-     * @return 非 null 且非空白时为 true
-     */
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }

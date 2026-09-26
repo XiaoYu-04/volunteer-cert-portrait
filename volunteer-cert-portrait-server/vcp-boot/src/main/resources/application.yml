@@ -33,7 +33,8 @@ spring:
     # 都能改/删这个库里的数据。因此这个库**只允许放演示数据**。
     # ⚠️ 答辩结束后必须轮换口令；生产部署必须用 --spring.profiles.active=prod + 环境变量覆盖。
     # 历史背景：口令曾泄露进 git 历史并轮换过一次，本次是**刻意**改回明文，属演示取舍，不是疏忽。
-    # 覆盖方式（优先级从高到低）：环境变量 VCP_DB_PASSWORD → application-local.yml 的 vcp.db.password。
+    # 覆盖方式（优先级从高到低）：环境变量（VCP_DB_USERNAME / VCP_DB_PASSWORD）→ application-local.yml 里覆盖
+    # spring.datasource.username / password（模板见同目录 application-local.yml.example）。
     username: ${VCP_DB_USERNAME:postgres}
     password: ${VCP_DB_PASSWORD:123456}
     # 另注：2026-09-24 起 vcp-boot/pom.xml 的 <resources> 已把 application-local.yml 排除出打包，
@@ -79,8 +80,6 @@ spring:
 mybatis-plus:
   # 各业务模块的 mapper xml 统一放 src/main/resources/mapper/ 下
   mapper-locations: classpath*:/mapper/**/*.xml
-  # TODO 实体类包路径确定后补上，例如 com.vcp.**.domain.entity
-  # type-aliases-package: com.vcp.**.domain.entity
   configuration:
     map-underscore-to-camel-case: true
   global-config:

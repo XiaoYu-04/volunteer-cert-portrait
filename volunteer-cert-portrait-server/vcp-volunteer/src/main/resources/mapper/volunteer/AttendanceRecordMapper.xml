@@ -46,6 +46,32 @@
         LEFT JOIN sys_user u ON u.id = si.user_id
     </sql>
 
+    <!--
+      状态筛选：未签到且已过签退窗口的记录按 ABSENT 筛得出来（惰性判定，见 AttendancePolicy）。
+      列表与「我的签到」共用同一片段；窗口口径必须与
+      VolunteerConstants.SIGN_OUT_DEADLINE_MINUTES 保持一致（30 分钟）。
+    -->
+    <sql id="attendanceStatusFilter">
+        <if test="q.status != null and q.status != ''">
+            <choose>
+                <when test="q.status == 'ABSENT'">
+                    AND (r.status = 'ABSENT'
+                         OR (r.status = 'NOT_SIGNED'
+                             AND a.end_time IS NOT NULL
+                             AND a.end_time + INTERVAL '30 minutes' &lt; #{now}))
+                </when>
+                <when test="q.status == 'NOT_SIGNED'">
+                    AND r.status = 'NOT_SIGNED'
+                    AND (a.end_time IS NULL
+                         OR a.end_time + INTERVAL '30 minutes' &gt;= #{now})
+                </when>
+                <otherwise>
+                    AND r.status = #{q.status}
+                </otherwise>
+            </choose>
+        </if>
+    </sql>
+
     <select id="selectAttendancePage" resultType="com.vcp.volunteer.mapper.row.AttendanceRow">
         SELECT <include refid="attendanceColumns"/>
         <include refid="attendanceFrom"/>
@@ -66,24 +92,7 @@
         <if test="q.studentId != null">
             AND s.student_id = #{q.studentId}
         </if>
-        <if test="q.status != null and q.status != ''">
-            <choose>
-                <when test="q.status == 'ABSENT'">
-                    AND (r.status = 'ABSENT'
-                         OR (r.status = 'NOT_SIGNED'
-                             AND a.end_time IS NOT NULL
-                             AND a.end_time + INTERVAL '30 minutes' &lt; #{now}))
-                </when>
-                <when test="q.status == 'NOT_SIGNED'">
-                    AND r.status = 'NOT_SIGNED'
-                    AND (a.end_time IS NULL
-                         OR a.end_time + INTERVAL '30 minutes' &gt;= #{now})
-                </when>
-                <otherwise>
-                    AND r.status = #{q.status}
-                </otherwise>
-            </choose>
-        </if>
+        <include refid="attendanceStatusFilter"/>
         ORDER BY r.id DESC
     </select>
 
@@ -98,7 +107,7 @@
       student_id 由登录态给出（StudentIdentityUtils），不接受前端传入。
       keyword 这里只匹配活动名称：其余两列（姓名、学号）对本人的记录是常量，匹配没有意义。
 
-      状态筛选的 CASE 分支与列表逐字一致（未签到但已过签退窗口的按 ABSENT 筛得出来），
+      状态筛选与列表共用 attendanceStatusFilter 片段（未签到但已过签退窗口的按 ABSENT 筛得出来），
       窗口口径必须与 VolunteerConstants.SIGN_OUT_DEADLINE_MINUTES 同步。
     -->
     <select id="selectMyAttendancePage" resultType="com.vcp.volunteer.mapper.row.AttendanceRow">
@@ -114,24 +123,7 @@
         <if test="q.activityId != null">
             AND s.activity_id = #{q.activityId}
         </if>
-        <if test="q.status != null and q.status != ''">
-            <choose>
-                <when test="q.status == 'ABSENT'">
-                    AND (r.status = 'ABSENT'
-                         OR (r.status = 'NOT_SIGNED'
-                             AND a.end_time IS NOT NULL
-                             AND a.end_time + INTERVAL '30 minutes' &lt; #{now}))
-                </when>
-                <when test="q.status == 'NOT_SIGNED'">
-                    AND r.status = 'NOT_SIGNED'
-                    AND (a.end_time IS NULL
-                         OR a.end_time + INTERVAL '30 minutes' &gt;= #{now})
-                </when>
-                <otherwise>
-                    AND r.status = #{q.status}
-                </otherwise>
-            </choose>
-        </if>
+        <include refid="attendanceStatusFilter"/>
         ORDER BY r.id DESC
     </select>
 

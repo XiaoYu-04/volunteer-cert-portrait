@@ -186,22 +186,4 @@ public enum PortraitTagEnum {
     public String getDescription() {
         return description;
     }
-
-    /**
-     * 对应活动分类的编码。
-     *
-     * @return 分类编码；行为标签返回 null
-     */
-    public String getCategoryCode() {
-        return categoryCode;
-    }
-
-    /**
-     * 对应活动分类的名称。
-     *
-     * @return 分类名称；行为标签返回 null
-     */
-    public String getCategoryName() {
-        return categoryName;
-    }
 }

@@ -17,13 +17,16 @@
 #
 # 另：口令一律加引号 —— 以 0 开头的数字串会被 YAML 当作八进制整数解析（012345 → 5349）。
 
-# 只想覆盖口令时，写这一行就够了（用户名默认 postgres）：
-# vcp:
-#   db:
-#     password: "新口令"
+# 只想覆盖口令时，写这一段就够了（用户名默认 postgres）：
+# spring:
+#   datasource:
+#     password: "<你的口令>"
 #
-# 要连别的库/换账号时再补 username：
-# vcp:
-#   db:
+# 换账号 / 连别的库时再补 username（连别的库还要改 url，格式照 application.yml 的写法）：
+# spring:
+#   datasource:
 #     username: postgres
-#     password: "新口令"
+#     password: "<你的口令>"
+#
+# 注意：旧模板曾写 vcp.db.username / vcp.db.password，但全仓没有任何代码读取 vcp.db.*，
+# 那样配不会生效。覆盖凭证请一律用上面的 spring.datasource.*。

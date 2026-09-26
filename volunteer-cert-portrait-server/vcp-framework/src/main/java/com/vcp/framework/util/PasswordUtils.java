@@ -91,7 +91,7 @@ public final class PasswordUtils {
      * @param value 待判断的值
      * @return 是 BCrypt 密文返回 true
      */
-    public static boolean isEncoded(String value) {
+    private static boolean isEncoded(String value) {
         return value != null && value.length() == BCRYPT_LENGTH && value.startsWith(BCRYPT_PREFIX);
     }
 

@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 活动分类服务实现。
  */
@@ -236,9 +238,5 @@ public class ActivityCategoryServiceImpl implements ActivityCategoryService {
                 : VolunteerConstants.CATEGORY_STATUS_DISABLED_CODE);
         vo.setRemark(row.getRemark());
         return vo;
-    }
-
-    private static String trimToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 }

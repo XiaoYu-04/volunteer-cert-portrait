@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.vcp.common.util.StringUtils.hasText;
+
 /**
  * 操作日志服务实现。
  *
@@ -102,9 +104,5 @@ public class LogServiceImpl implements LogService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }
