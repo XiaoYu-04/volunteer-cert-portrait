@@ -11,7 +11,7 @@
 --
 -- 【本脚本不含演示数据】
 --   不写 student_info，也不写活动 / 报名 / 签到 / 时长 / 通知 / 画像等业务表；
---   需要演示数据请另跑 04_demo_data.sql 与 07_demo_scale.sql（两者都是可选的）。
+--   需要演示数据请另跑 04_demo_data.sql（10 学院 / 1000 学生 / 10 场活动，可选）。
 --   学生账号也刻意不在这里创建：学生已改走自助注册流程
 --   （POST /api/v1/auth/register），再留一个固定口令的学生账号，
 --   等于在系统里挂一个没人维护的弱口令入口。
@@ -72,8 +72,8 @@ ON CONFLICT DO NOTHING;
 --     status = 1 才允许登录；deleted 不写，走默认 0。
 -- =============================================================
 INSERT INTO sys_user (id, username, password, real_name, phone, email, status) VALUES
-(1, 'admin',     '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '学校管理员', '13800000001', 'admin@example.com', 1),
-(2, 'org_admin', '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '组织管理员', '13800000002', 'org@example.com',   1)
+(1, 'admin',     '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '高志远', '13800000001', 'admin@example.com', 1),
+(2, 'org_admin', '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa', '赵启明', '13800000002', 'org@example.com',   1)
 ON CONFLICT DO NOTHING;
 
 -- =============================================================
@@ -94,7 +94,7 @@ ON CONFLICT DO NOTHING;
 --     status 必须是 APPROVED —— 待审核的组织同样进不了业务页面。
 -- =============================================================
 INSERT INTO org_info (id, contact_user_id, org_name, org_type, contact_name, phone, email, description, status) VALUES
-(1, 2, '计算机学院青年志愿者协会', '学院组织', '组织管理员', '13800000002', 'org@example.com',
+(1, 2, '计算机学院青年志愿者协会', '学院组织', '赵启明', '13800000002', 'org@example.com',
  '计算机学院下属志愿服务组织，长期开展校园服务与社区帮扶活动。', 'APPROVED')
 ON CONFLICT DO NOTHING;
 
@@ -112,7 +112,7 @@ INSERT INTO activity_category (id, category_name, sort, status) VALUES
 ON CONFLICT DO NOTHING;
 
 -- =============================================================
--- 六、数据字典（32 条）
+-- 六、数据字典（37 条）
 --     状态一律英文码入库、中文只由字典翻译，缺哪一类，
 --     页面上就原样显示哪一类的英文码。
 --     tone 不写：由 05 补的列默认值 'mute' 兜底，因此本脚本在没跑过 05 的库上也能执行。
@@ -182,19 +182,23 @@ ON CONFLICT DO NOTHING;
 --   DELETE /api/v1/system/colleges/{id}，权限码 system:college:manage）。
 --   字典为空则注册页下拉为空、学生注册不了，所以这一类与角色一样属于
 --   「系统跑起来必需」，不是可有可无的展示配置。
---   下面 5 个学院取自 04_demo_data.sql 与 07_demo_scale.sql 一致使用的取值；
---   07 里写明「college 取值必须落在 student_info 实际用到的学院里，否则按学院筛选组织
---   与按学院筛选学生两处会对不上」，因此这份清单**只是初始种子、顺序按它固定** ——
---   2026-09-24 起学院的增删启停是运行时动作，走管理端「学院管理」页，不必回头改本脚本；
---   本脚本只在清库重灌时把这 5 条补回来（库里多出来的学院不会被删，重跑也不覆盖已有的行，
---   见上面的 ON CONFLICT 说明）。
---   要与演示数据（04 / 07）保持一致，新增学院请沿用它们用到的学院名。
+--   下面 10 个学院与 04_demo_data.sql 的清单**必须逐字一致、顺序一致**：
+--   04 生成的学生与组织都挂在这 10 个学院上，09 自检第 ⑮ 项要求
+--   student_info.college 必须落在 org_info.college 的取值集合里。
+--   这份清单**只是初始种子、顺序按它固定** —— 学院的增删启停是运行时动作，
+--   走管理端「学院管理」页，不必回头改本脚本；本脚本只在清库重灌时把这 10 条补回来
+--   （库里多出来的学院不会被删，重跑也不覆盖已有的行，见上面的 ON CONFLICT 说明）。
 INSERT INTO sys_dict (dict_type, dict_key, dict_value, sort, status) VALUES
-('college', '计算机学院',   '计算机学院',   1, 1),
-('college', '电子信息学院', '电子信息学院', 2, 1),
-('college', '经济管理学院', '经济管理学院', 3, 1),
-('college', '外国语学院',   '外国语学院',   4, 1),
-('college', '机械工程学院', '机械工程学院', 5, 1)
+('college', '计算机学院',   '计算机学院',   1,  1),
+('college', '电子信息学院', '电子信息学院', 2,  1),
+('college', '经济管理学院', '经济管理学院', 3,  1),
+('college', '外国语学院',   '外国语学院',   4,  1),
+('college', '机械工程学院', '机械工程学院', 5,  1),
+('college', '化学化工学院', '化学化工学院', 6,  1),
+('college', '土木工程学院', '土木工程学院', 7,  1),
+('college', '生命科学学院', '生命科学学院', 8,  1),
+('college', '文学院',       '文学院',       9,  1),
+('college', '医学院',       '医学院',       10, 1)
 ON CONFLICT DO NOTHING;
 
 -- =============================================================
@@ -218,8 +222,8 @@ COMMIT;
 -- 八、自检（只读，供人工核对）
 -- =============================================================
 
--- 各表实际行数。本脚本单独跑完的期望值：3 / 2 / 2 / 1 / 6 / 32
--- （字典 32 = 7 类状态字典 27 条 + 学院 5 条；若这之前还跑过 05，
+-- 各表实际行数。本脚本单独跑完的期望值：3 / 2 / 2 / 1 / 6 / 37
+-- （字典 37 = 7 类状态字典 27 条 + 学院 10 条；若这之前还跑过 05，
 --   会多出附件业务类型等增量，行数偏大属正常，按差集核对即可）
 SELECT 1 AS ord, 'sys_role'          AS table_name, COUNT(*) AS row_count FROM sys_role
 UNION ALL SELECT 2, 'sys_user',          COUNT(*) FROM sys_user
@@ -229,7 +233,7 @@ UNION ALL SELECT 5, 'activity_category', COUNT(*) FROM activity_category
 UNION ALL SELECT 6, 'sys_dict',          COUNT(*) FROM sys_dict
 ORDER BY ord;
 
--- 学院字典逐条：应为 5 行、sort 1~5，顺序即前端下拉顺序；
+-- 学院字典逐条：应为 10 行、sort 1~10，顺序即前端下拉顺序；
 -- 取值必须与 student_info.college / org_info.college 里实际出现的学院一致
 SELECT sort, dict_key, dict_value, status
   FROM sys_dict

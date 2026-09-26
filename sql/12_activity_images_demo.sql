@@ -1,380 +1,175 @@
 -- =============================================================
 -- 高校志愿服务时长认证与公益画像数据分析系统
--- 脚本 12：活动图片与少量演示数据（增量、可重复执行）
+-- 脚本 12：活动图片元数据（10 场活动 × 1 封面 + 3 内部图，共 40 条）
 -- 数据库类型：PostgreSQL 16+
 -- =============================================================
 --
--- 数据规模刻意保持很小：
---   新增 5 个账号（3 学生 + 1 组织管理员 + 1 学校管理员）
---   新增 1 个已审核组织
---   新增 3 个已发布活动，每个活动 1 张封面 + 1 条图文说明
+-- 【图片存在哪】
+--   2026-09-27 起**图片本体存数据库**（attachment.file_data BYTEA），
+--   本地不再保留 jpg，部署时也不需要再同步 uploads/ 目录。
+--   分工：
+--     · 本脚本只写**元数据**：文件名 / 字节数 / MIME / 说明 / 排序 + 接口地址；
+--     · 二进制与 sha256 由 13_attachment_binary.sql 按 file_name 回填；
+--     · 读取走 GET /api/v1/attachments/{id}/content（免登录、带 ETag 与长缓存）。
+--   file_url 之所以插入后再回写，是因为地址里含自增主键 id。
 --
--- 口令均为 123456，库中存 BCrypt 密文。
--- 图片文件位于 volunteer-cert-portrait-server/uploads/demo/activities/，
--- 数据库只保存 /uploads/... 地址。
+-- 【前置条件】
+--   01 → 02 → 03 → 05 → 06 → 04 → 10 → 11 必须已执行：
+--     · 11 补的 attachment.content_type / caption / sort_order 三列；
+--     · 04 建的 10 场活动（本脚本按「活动标题 + 组织名」匹配，不写死 id）。
+--
+-- 【可重复执行】
+--   先按业务键删除这 10 场活动的既有图片记录，再整批插入；重跑结果一致。
+--   attachment 表按物理删除设计（无 deleted 列），所以这里就是真删；
+--   重跑后 13 会把二进制重新灌回（13 只在 file_data IS NULL 时更新）。
 -- =============================================================
 
 SET client_encoding = 'UTF8';
 
-DO $$
-BEGIN
-    IF (SELECT COUNT(*)
-          FROM sys_role
-         WHERE deleted = 0
-           AND role_code IN ('STUDENT', 'ORG_ADMIN', 'SCHOOL_ADMIN')) < 3 THEN
-        RAISE EXCEPTION '[12] 缺少 STUDENT / ORG_ADMIN / SCHOOL_ADMIN 角色，请先执行 03_init_data.sql';
-    END IF;
-END $$;
+BEGIN;
 
 -- =============================================================
--- 一、5 个演示账号
+-- 一、清掉这 10 场活动已有的图片元数据（保证可重复执行）
 -- =============================================================
-WITH seed(username, real_name, phone, email) AS (
-    VALUES
-        ('demo_stu_01',    '林知夏', '13800010001', 'demo.stu01@example.com'),
-        ('demo_stu_02',    '周予安', '13800010002', 'demo.stu02@example.com'),
-        ('demo_stu_03',    '陈星野', '13800010003', 'demo.stu03@example.com'),
-        ('demo_org_01',    '赵明远', '13800010004', 'demo.org01@example.com'),
-        ('demo_school_01', '顾南枝', '13800010005', 'demo.school01@example.com')
-)
-INSERT INTO sys_user (username, password, real_name, phone, email, status)
-SELECT s.username,
-       '$2a$10$jPEdxZ8vkTShM79ugE6IZOPtQaMjGq9QqBFhGc9IpzdhIUVywxEwa',
-       s.real_name,
-       s.phone,
-       s.email,
-       1
-  FROM seed s
- WHERE NOT EXISTS (
-       SELECT 1 FROM sys_user u WHERE u.username = s.username
- );
-
-WITH seed(username, role_code) AS (
-    VALUES
-        ('demo_stu_01',    'STUDENT'),
-        ('demo_stu_02',    'STUDENT'),
-        ('demo_stu_03',    'STUDENT'),
-        ('demo_org_01',    'ORG_ADMIN'),
-        ('demo_school_01', 'SCHOOL_ADMIN')
-)
-INSERT INTO sys_user_role (user_id, role_id)
-SELECT u.id, r.id
-  FROM seed s
-  JOIN sys_user u ON u.username = s.username AND u.deleted = 0
-  JOIN sys_role r ON r.role_code = s.role_code AND r.deleted = 0
- WHERE NOT EXISTS (
-       SELECT 1
-         FROM sys_user_role ur
-        WHERE ur.user_id = u.id
-          AND ur.role_id = r.id
- );
-
--- =============================================================
--- 二、3 个学生档案
--- =============================================================
-WITH seed(username, student_no, college, major, class_name) AS (
-    VALUES
-        ('demo_stu_01', '20260001', '计算机学院',   '软件工程',       '软件2601'),
-        ('demo_stu_02', '20260002', '计算机学院',   '网络工程',       '网工2601'),
-        ('demo_stu_03', '20260003', '计算机学院',   '数据科学与大数据技术', '数据2601')
-)
-INSERT INTO student_info (user_id, student_no, college, major, class_name, total_duration, public_welfare_level)
-SELECT u.id, s.student_no, s.college, s.major, s.class_name, 0, '普通志愿者'
-  FROM seed s
-  JOIN sys_user u ON u.username = s.username AND u.deleted = 0
- WHERE NOT EXISTS (
-       SELECT 1 FROM student_info si WHERE si.user_id = u.id
- );
-
-UPDATE student_info si
-   SET college = '计算机学院'
-  FROM sys_user u
- WHERE si.user_id = u.id
-   AND u.username LIKE 'demo_stu_%'
-   AND u.deleted = 0
-   AND si.deleted = 0;
-
--- =============================================================
--- 三、1 个已审核组织，供演示组织管理员使用
--- =============================================================
-WITH admin AS (
-    SELECT id, real_name, phone, email
-      FROM sys_user
-     WHERE username = 'demo_org_01'
-       AND deleted = 0
-     LIMIT 1
-)
-INSERT INTO org_info (contact_user_id, org_name, org_type, contact_name, phone, email, description, status, college)
-SELECT admin.id,
-       '晨曦青年志愿服务队',
-       '社区组织',
-       admin.real_name,
-       admin.phone,
-       admin.email,
-       '面向社区与校园开展助老、环保和青少年陪伴服务。',
-       'APPROVED',
-       '计算机学院'
-  FROM admin
- WHERE NOT EXISTS (
-       SELECT 1
-         FROM org_info o
-        WHERE o.contact_user_id = admin.id
-          AND o.deleted = 0
- );
-
--- 基础库若已有组织但未回填学院，补成与学生数据一致的演示值。
-UPDATE org_info o
-   SET college = '计算机学院'
-  FROM sys_user u
- WHERE o.contact_user_id = u.id
-   AND u.username IN ('org_admin', 'demo_org_01')
-   AND (o.college IS NULL OR btrim(o.college) = '');
-
--- 基础学生档案若未生成等级，补齐后再生成画像，保证一致性自检可通过。
-UPDATE student_info
-   SET public_welfare_level = '普通志愿者'
- WHERE deleted = 0
-   AND total_duration < 3
-   AND (public_welfare_level IS NULL OR btrim(public_welfare_level) = '');
-
--- =============================================================
--- 四、3 个已发布活动
--- =============================================================
-WITH demo_org AS (
-    SELECT o.id
-      FROM org_info o
-      JOIN sys_user u ON u.id = o.contact_user_id
-     WHERE u.username = 'demo_org_01'
-       AND u.deleted = 0
-       AND o.deleted = 0
-     ORDER BY o.id
-     LIMIT 1
-),
-seed(title, category_name, offset_days, duration, location, max_count, description) AS (
-    VALUES
-        ('社区敬老陪伴日',   '助老服务', 3,  3.0, '幸福里社区敬老院', 20,
-         '陪伴社区老人聊天、散步，并协助整理活动室。'),
-        ('校园河道清洁行动', '环保公益', 7,  3.0, '校园东侧河道',     35,
-         '清理河道沿线垃圾，记录并宣传垃圾分类知识。'),
-        ('社区儿童阅读课堂', '社区服务', 10, 2.0, '阳光社区图书室',   18,
-         '陪伴社区儿童阅读绘本，开展小组分享活动。')
-)
-INSERT INTO volunteer_activity
-    (title, category_id, org_id, start_time, end_time, location, max_count,
-     signed_count, duration, status, cover, description, deadline, contact)
-SELECT s.title,
-       c.id,
-       o.id,
-       CURRENT_TIMESTAMP + (s.offset_days || ' days')::interval,
-       CURRENT_TIMESTAMP + (s.offset_days || ' days')::interval
-           + (s.duration * INTERVAL '1 hour'),
-       s.location,
-       s.max_count,
-       0,
-       s.duration,
-       'PUBLISHED',
-       NULL,
-       s.description,
-       CURRENT_TIMESTAMP + (s.offset_days || ' days')::interval - INTERVAL '1 day',
-       '赵明远 13800010004'
-  FROM seed s
-  JOIN demo_org o ON TRUE
-  JOIN activity_category c
-    ON c.category_name = s.category_name
-   AND c.deleted = 0
- WHERE NOT EXISTS (
-       SELECT 1
-         FROM volunteer_activity a
-        WHERE a.title = s.title
-          AND a.org_id = o.id
-          AND a.deleted = 0
- );
-
--- =============================================================
--- 五、活动图片元数据与封面
--- =============================================================
-WITH demo_org AS (
-    SELECT o.id
-      FROM org_info o
-      JOIN sys_user u ON u.id = o.contact_user_id
-     WHERE u.username = 'demo_org_01'
-       AND u.deleted = 0
-       AND o.deleted = 0
-     ORDER BY o.id
-     LIMIT 1
-),
-demo(title, file_url, file_name, file_size, caption) AS (
-    VALUES
-        ('社区敬老陪伴日',
-         '/uploads/demo/activities/community-elder-care.png',
-         'community-elder-care.png', 2295606,
-         '志愿者陪伴社区老人，耐心倾听并协助整理活动室。'),
-        ('校园河道清洁行动',
-         '/uploads/demo/activities/river-cleanup.png',
-         'river-cleanup.png', 2908143,
-         '志愿者沿校园河道清理垃圾，用实际行动宣传环保理念。'),
-        ('社区儿童阅读课堂',
-         '/uploads/demo/activities/children-reading.png',
-         'children-reading.png', 2155792,
-         '志愿者在社区图书室陪伴儿童阅读，开展轻松的分享活动。')
-),
-target AS (
-    SELECT a.id AS activity_id, d.file_url, d.file_name, d.file_size, d.caption
-      FROM demo d
-      JOIN volunteer_activity a
-        ON a.title = d.title
-       AND a.deleted = 0
-      JOIN demo_org o ON o.id = a.org_id
-)
 DELETE FROM attachment a
- USING target t
+ USING (VALUES
+        ('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会')
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会')
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会')
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会')
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队')
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队')
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队')
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队')
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社')
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社')
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社')
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社')
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队')
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队')
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队')
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队')
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会')
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会')
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会')
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会')
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队')
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队')
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队')
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队')
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队')
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队')
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队')
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队')
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队')
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队')
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队')
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队')
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队')
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队')
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队')
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队')
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队')
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队')
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队')
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队')
+) AS d(title, org_name)
+  JOIN volunteer_activity va ON va.title = d.title AND va.deleted = 0
+  JOIN org_info o ON o.org_name = d.org_name AND o.deleted = 0 AND o.id = va.org_id
  WHERE a.biz_type = 'ACTIVITY'
-   AND a.biz_id = t.activity_id;
+   AND a.biz_id = va.id;
 
-WITH demo_org AS (
-    SELECT o.id
-      FROM org_info o
-      JOIN sys_user u ON u.id = o.contact_user_id
-     WHERE u.username = 'demo_org_01'
-       AND u.deleted = 0
-       AND o.deleted = 0
-     ORDER BY o.id
-     LIMIT 1
-),
-demo(title, file_url, file_name, file_size, caption) AS (
-    VALUES
-        ('社区敬老陪伴日',
-         '/uploads/demo/activities/community-elder-care.png',
-         'community-elder-care.png', 2295606,
-         '志愿者陪伴社区老人，耐心倾听并协助整理活动室。'),
-        ('校园河道清洁行动',
-         '/uploads/demo/activities/river-cleanup.png',
-         'river-cleanup.png', 2908143,
-         '志愿者沿校园河道清理垃圾，用实际行动宣传环保理念。'),
-        ('社区儿童阅读课堂',
-         '/uploads/demo/activities/children-reading.png',
-         'children-reading.png', 2155792,
-         '志愿者在社区图书室陪伴儿童阅读，开展轻松的分享活动。')
-),
-target AS (
-    SELECT a.id AS activity_id, d.file_url, d.file_name, d.file_size, d.caption
-      FROM demo d
-      JOIN volunteer_activity a
-        ON a.title = d.title
-       AND a.deleted = 0
-      JOIN demo_org o ON o.id = a.org_id
-)
-INSERT INTO attachment
-    (biz_type, biz_id, file_name, file_url, file_size, content_type, caption, sort_order)
-SELECT 'ACTIVITY',
-       t.activity_id,
-       t.file_name,
-       t.file_url,
-       t.file_size,
-       'image/png',
-       t.caption,
-       0
-  FROM target t;
+-- =============================================================
+-- 二、插入 40 条图片元数据
+--     sort_order：0 = 封面，1~3 = 内部图，与前端图集展示顺序一致
+--     file_url 先留空，第三节按自增 id 回写为内容接口地址
+-- =============================================================
+INSERT INTO attachment (biz_type, biz_id, file_name, file_url, file_size,
+                        content_type, caption, sort_order)
+SELECT 'ACTIVITY', va.id, d.file_name, NULL, d.file_size,
+       'image/jpeg', d.caption, d.sort_order
+  FROM (VALUES
+        ('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会', 'library-book-sorting-cover.jpg', 183149, '志愿者推着书车穿行在图书馆书架之间，整理归位的图书。', 0)
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会', 'library-book-sorting-01.jpg', 165258, '按书脊上的索书号，把归还的图书逐本归位。', 1)
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会', 'library-book-sorting-02.jpg', 137027, '在服务台为同学办理借还手续、解答检索问题。', 2)
+        ,('校园图书馆图书整理与导读服务', '计算机学院青年志愿者协会', 'library-book-sorting-03.jpg', 154790, '与图书馆老师一起核对书目清单、整理待上架书堆。', 3)
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队', 'elder-apartment-companionship-cover.jpg', 163237, '志愿者陪老人聊天，老人笑着握住志愿者的手。', 0)
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队', 'elder-apartment-companionship-01.jpg', 178294, '陪老人下象棋，几位老人在旁边围观支招。', 1)
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队', 'elder-apartment-companionship-02.jpg', 152022, '为老人梳头、整理衣领，动作轻柔。', 2)
+        ,('社区老年公寓陪伴与文娱服务', '电子信息学院志愿服务队', 'elder-apartment-companionship-03.jpg', 178911, '在活动室陪老人做手工折纸，桌上摆着彩纸和成品。', 3)
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社', 'river-cleanup-survey-cover.jpg', 259036, '志愿者沿校园河道一字排开，清理岸边的塑料瓶与纸屑。', 0)
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社', 'river-cleanup-survey-01.jpg', 207065, '戴手套用长柄夹子夹起河边塑料瓶，装入垃圾袋。', 1)
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社', 'river-cleanup-survey-02.jpg', 227508, '蹲在河岸边取水样，并在记录表上登记观察数据。', 2)
+        ,('校园河道垃圾清理与水质记录', '经济管理学院公益实践社', 'river-cleanup-survey-03.jpg', 235940, '分类装袋的垃圾堆放在步道旁，身后是清理干净的河道。', 3)
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队', 'marathon-support-cover.jpg', 154007, '补给站志愿者伸手把水杯递给跑过的马拉松选手。', 0)
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队', 'marathon-support-01.jpg', 186367, '在长桌前倒水、把纸杯一排排摆好，准备能量补给。', 1)
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队', 'marathon-support-02.jpg', 153276, '双手举起引导牌，为选手指示赛道方向。', 2)
+        ,('城市马拉松赛事补给与引导', '外国语学院志愿服务队', 'marathon-support-03.jpg', 190149, '在终点区为刚完赛的选手披上保温毯。', 3)
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会', 'children-afterclass-tutoring-cover.jpg', 133234, '社区图书室里，志愿者俯身辅导小学生写作业。', 0)
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会', 'children-afterclass-tutoring-01.jpg', 147423, '一对一辅导特写：指着练习册上的题目为小男孩讲解。', 1)
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会', 'children-afterclass-tutoring-02.jpg', 173503, '和孩子们一起折纸做手工，桌上散落彩色卡纸。', 2)
+        ,('社区儿童课后陪伴与作业辅导', '机械工程学院青年志愿者协会', 'children-afterclass-tutoring-03.jpg', 168323, '孩子们举起自己做的手工作品给志愿者看。', 3)
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队', 'heritage-culture-campus-cover.jpg', 212074, '校园广场上的非遗文化展台，志愿者向驻足的同学们讲解。', 0)
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队', 'heritage-culture-campus-01.jpg', 194945, '剪纸作品铺满展台，志愿者的手正用剪刀剪出花样。', 1)
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队', 'heritage-culture-campus-02.jpg', 168335, '举着皮影人偶向围观同学演示皮影戏。', 2)
+        ,('非遗文化进校园宣传与展台讲解', '化学化工学院环保志愿服务队', 'heritage-culture-campus-03.jpg', 201641, '书法体验区：握着同学的手一起写毛笔字。', 3)
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队', 'nursing-home-winter-warmth-cover.jpg', 161148, '冬日敬老院院子里，志愿者蹲下为老人围上红围巾。', 0)
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队', 'nursing-home-winter-warmth-01.jpg', 202188, '陪老人坐在长椅上晒太阳、聊天，老人腿上盖着毛毯。', 1)
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队', 'nursing-home-winter-warmth-02.jpg', 135054, '用人体模型演示七步洗手法，老人围坐听讲。', 2)
+        ,('敬老院冬季送温暖与健康宣讲', '土木工程学院志愿服务队', 'nursing-home-winter-warmth-03.jpg', 179675, '在老人房间里帮忙整理床铺、叠被子。', 3)
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队', 'campus-freshman-guide-cover.jpg', 211956, '校门口迎新服务点，志愿者举牌迎接拖着行李箱的新生。', 0)
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队', 'campus-freshman-guide-01.jpg', 181437, '帮新生把行李箱抬上宿舍楼楼梯。', 1)
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队', 'campus-freshman-guide-02.jpg', 166152, '报到台前核对新生资料并递上迎新材料袋。', 2)
+        ,('校园迎新引导与行李搬运', '生命科学学院科普志愿服务队', 'campus-freshman-guide-03.jpg', 239536, '带新生走在校园林荫道上，边走边指路。', 3)
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队', 'community-recycling-market-cover.jpg', 222984, '社区广场上的旧物交换市集，摊位前居民络绎不绝。', 0)
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队', 'community-recycling-market-01.jpg', 213694, '把旧衣物和书籍分类整理，装进纸箱。', 1)
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队', 'community-recycling-market-02.jpg', 202748, '居民在摊位前挑选、交换旧书和玩具。', 2)
+        ,('社区旧物循环与环保市集', '文学院文化传播志愿服务队', 'community-recycling-market-03.jpg', 214746, '带小朋友玩垃圾分类小游戏，地上摆着四色垃圾桶道具。', 3)
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队', 'basketball-league-support-cover.jpg', 149331, '篮球比赛进行中，场边志愿者站成一排随时待命。', 0)
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队', 'basketball-league-support-01.jpg', 158563, '记录台前低头记录，手边是翻页记分牌和计时器。', 1)
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队', 'basketball-league-support-02.jpg', 139505, '把矿泉水和毛巾递给刚下场的球员。', 2)
+        ,('高校篮球联赛赛事保障', '医学院健康志愿服务队', 'basketball-league-support-03.jpg', 152167, '场边急救点：打开急救箱为球员处理膝盖擦伤。', 3)
+       ) AS d(title, org_name, file_name, file_size, caption, sort_order)
+  JOIN volunteer_activity va ON va.title = d.title AND va.deleted = 0
+  JOIN org_info o ON o.org_name = d.org_name AND o.deleted = 0 AND o.id = va.org_id;
 
-WITH demo_org AS (
-    SELECT id
-      FROM org_info
-     WHERE org_name = '晨曦青年志愿服务队'
-       AND deleted = 0
-     ORDER BY id
-     LIMIT 1
-),
-demo(title, cover) AS (
-    VALUES
-        ('社区敬老陪伴日',   '/uploads/demo/activities/community-elder-care.png'),
-        ('校园河道清洁行动', '/uploads/demo/activities/river-cleanup.png'),
-        ('社区儿童阅读课堂', '/uploads/demo/activities/children-reading.png')
-)
-UPDATE volunteer_activity a
-   SET cover = d.cover,
+-- =============================================================
+-- 三、回写 file_url（地址依赖自增 id，只能插入后再更新）
+-- =============================================================
+UPDATE attachment
+   SET file_url = '/api/v1/attachments/' || id || '/content'
+ WHERE biz_type = 'ACTIVITY'
+   AND file_url IS NULL;
+
+-- =============================================================
+-- 四、回写活动封面：取每场活动 sort_order = 0 的那张
+-- =============================================================
+UPDATE volunteer_activity va
+   SET cover = a.file_url,
        update_time = CURRENT_TIMESTAMP
-  FROM demo d, demo_org o
- WHERE a.title = d.title
-   AND o.id = a.org_id
-   AND a.deleted = 0;
-
--- =============================================================
--- 六、补齐少量画像，覆盖 8 类演示标签
--- =============================================================
-WITH seed(student_no, tags) AS (
-    VALUES
-        ('S000011',  '热心志愿者,长期坚持型'),
-        ('20260001', '校园服务型,社区服务型'),
-        ('20260002', '环保行动型,大型活动型'),
-        ('20260003', '助老服务型,文化传播型')
-)
-INSERT INTO student_profile
-    (student_id, total_activities, total_duration, category_preference, tags, portrait_desc)
-SELECT si.id,
-       0,
-       COALESCE(si.total_duration, 0),
-       NULL,
-       s.tags,
-       '演示账号公益画像。'
-  FROM seed s
-  JOIN student_info si
-    ON si.student_no = s.student_no
-   AND si.deleted = 0
- WHERE NOT EXISTS (
-       SELECT 1
-         FROM student_profile sp
-        WHERE sp.student_id = si.id
- );
-
--- =============================================================
--- 七、自检
--- =============================================================
-SELECT COUNT(*) AS demo_users
-  FROM sys_user
- WHERE username LIKE 'demo_%'
-   AND deleted = 0;
-
-SELECT COUNT(*) AS demo_students
-  FROM student_info si
-  JOIN sys_user u ON u.id = si.user_id
- WHERE u.username LIKE 'demo_stu_%'
-   AND u.deleted = 0
-   AND si.deleted = 0;
-
-SELECT COUNT(*) AS demo_activities
-  FROM volunteer_activity a
-  JOIN org_info o ON o.id = a.org_id
-  JOIN sys_user u ON u.id = o.contact_user_id
- WHERE u.username = 'demo_org_01'
-   AND a.title IN ('社区敬老陪伴日', '校园河道清洁行动', '社区儿童阅读课堂')
-   AND a.deleted = 0
-   AND o.deleted = 0
-   AND u.deleted = 0;
-
-SELECT COUNT(*) AS demo_activity_images
   FROM attachment a
-  JOIN volunteer_activity v
-    ON v.id = a.biz_id
-   AND v.deleted = 0
-  JOIN org_info o
-    ON o.id = v.org_id
-   AND o.deleted = 0
-  JOIN sys_user u
-    ON u.id = o.contact_user_id
-   AND u.deleted = 0
  WHERE a.biz_type = 'ACTIVITY'
-   AND u.username = 'demo_org_01'
-   AND v.title IN ('社区敬老陪伴日', '校园河道清洁行动', '社区儿童阅读课堂');
+   AND a.biz_id = va.id
+   AND a.sort_order = 0
+   AND va.deleted = 0;
 
-SELECT COUNT(*) AS missing_role_bindings
-  FROM sys_user u
- WHERE u.username LIKE 'demo_%'
-   AND u.deleted = 0
-   AND NOT EXISTS (
-       SELECT 1 FROM sys_user_role ur WHERE ur.user_id = u.id
-   );
+COMMIT;
 
-SELECT COUNT(*) AS demo_profiles
-  FROM student_profile sp
-  JOIN student_info si ON si.id = sp.student_id
- WHERE si.student_no IN ('S000011', '20260001', '20260002', '20260003');
+-- =============================================================
+-- 五、自检（只读）
+-- =============================================================
+SELECT 1 AS ord, '图片元数据条数（期望 40）' AS item, COUNT(*) AS actual
+  FROM attachment WHERE biz_type = 'ACTIVITY'
+UNION ALL SELECT 2, '已回写接口地址的条数（期望 40）', COUNT(*)
+  FROM attachment WHERE biz_type = 'ACTIVITY' AND file_url LIKE '/api/v1/attachments/%/content'
+UNION ALL SELECT 3, '有封面的活动数（期望 10）', COUNT(*)
+  FROM volunteer_activity WHERE deleted = 0 AND cover LIKE '/api/v1/attachments/%/content'
+UNION ALL SELECT 4, '每场活动图片数不足 4 的活动数（期望 0）', COUNT(*)
+  FROM (SELECT va.id
+          FROM volunteer_activity va
+          LEFT JOIN attachment a ON a.biz_id = va.id AND a.biz_type = 'ACTIVITY'
+         WHERE va.deleted = 0
+         GROUP BY va.id
+        HAVING COUNT(a.id) <> 4) t
+ORDER BY ord;
+-- 二进制回填情况由 13_attachment_binary.sql 的自检负责（本脚本执行时 file_data 列还没建）
