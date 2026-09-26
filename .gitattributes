@@ -1,0 +1,19 @@
+# 换行符规则（2026-09-27 新增）
+#
+# 为什么需要它：本机 core.autocrlf=true（Windows 默认），凡是「文本文件」检出到工作区
+# 都会变成 CRLF。而仓库里有相当一部分文件是**要拷到 Linux 上执行**的：
+#   deploy/small-server/*.sh     bash 脚本 —— CRLF 会让 shebang 变成 "#!/usr/bin/env bash\r"，
+#                                报错 bad interpreter: /usr/bin/env: ‘bash\r’: No such file
+#   deploy/*.service             systemd 单元 —— CRLF 会让 ExecStart 里多出 \r
+#   deploy/*.conf、*.py          nginx 配置 / 预压缩脚本 —— 同样按 Linux 侧使用
+#   sql/*.sql                    psql -f 执行；CRLF 虽多数情况能忍，但 13 号脚本里有
+#                                跨行 base64 字面量，统一 LF 更稳，diff 也干净
+# 所以：这些类型**固定 eol=lf**，与开发机是不是 Windows 无关。
+# 其余文件（.md/.yml/.vue/.js 等）交给 text=auto 按平台处理，不强制。
+* text=auto
+
+*.sh       text eol=lf
+*.service  text eol=lf
+*.conf     text eol=lf
+*.py       text eol=lf
+*.sql      text eol=lf
