@@ -191,23 +191,5 @@ async function remove(row) {
 
 <style scoped>
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
 
-.panel-gap {
-  margin-top: var(--sp-7);
-}
-
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
 </style>

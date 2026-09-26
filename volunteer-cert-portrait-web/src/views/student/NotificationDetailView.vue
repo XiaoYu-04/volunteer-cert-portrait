@@ -102,7 +102,7 @@ const actions = computed(() => {
       <template v-else>
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">通知信息</span>
+            <h2 class="panel-title">通知信息</h2>
             <span class="panel-extra">
               <StatusTag type="notification_type" :value="notice.type" />
               <span class="ink-status" :class="notice.read ? 'tone-mute' : 'tone-warn'">
@@ -136,14 +136,14 @@ const actions = computed(() => {
              留空时整块不渲染，避免出现一个空标题的空面板。 -->
         <div v-if="notice.content" class="panel">
           <div class="panel-head">
-            <span class="panel-title">通知正文</span>
+            <h2 class="panel-title">通知正文</h2>
           </div>
           <p class="panel-text notice-content">{{ notice.content }}</p>
         </div>
 
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">相关操作</span>
+            <h2 class="panel-title">相关操作</h2>
           </div>
           <p class="panel-text">{{ actions.hint }}</p>
           <div class="panel-actions">
@@ -155,7 +155,7 @@ const actions = computed(() => {
 
         <div v-if="relatedNotices.length" class="panel">
           <div class="panel-head">
-            <span class="panel-title">同类型通知</span>
+            <h2 class="panel-title">同类型通知</h2>
             <span class="panel-extra">
               <InkButton to="/student/notifications" size="sm" variant="ghost">全部通知</InkButton>
             </span>

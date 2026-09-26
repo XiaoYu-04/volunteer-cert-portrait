@@ -128,7 +128,7 @@ async function toggleStatus(row) {
   </p>
 
   <section class="panel">
-    <InkTabs :model-value="query.status" :tabs="statusTabs" @update:model-value="onTab" />
+    <InkTabs :model-value="query.status" :tabs="statusTabs" @update:model-value="onTab" panel-id="orgs" />
 
     <form class="ink-filter" @submit.prevent="search">
       <InkField label="关键字">
@@ -153,42 +153,49 @@ async function toggleStatus(row) {
       <span class="panel-extra panel-note">共 {{ formatNumber(total) }} 个组织</span>
     </div>
 
-    <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的组织">
-      <template #name="{ row }">
-        <span class="cell-strong">{{ row.name }}</span>
-      </template>
-
-      <template #code="{ row }">
-        <span class="col-num">{{ row.code }}</span>
-      </template>
-
-      <template #activities="{ row }">
-        <span class="col-num">{{ row.activities }}</span>
-      </template>
-
-      <template #signRate="{ row }">
-        <span class="col-num">{{ formatPercent(row.signRate) }}</span>
-      </template>
-
-      <template #status="{ row }">
-        <StatusTag type="org_status" :value="row.status" />
-      </template>
-
-      <template #actions="{ row }">
-        <InkButton size="sm" variant="ghost" @click="openDetail(row)">详情</InkButton>
-
-        <template v-if="row.status === 'PENDING'">
-          <InkButton size="sm" variant="ghost" @click="openAudit(row, 'APPROVE')">通过</InkButton>
-          <InkButton size="sm" variant="ghost" @click="openAudit(row, 'REJECT')">驳回</InkButton>
+    <div
+      role="tabpanel"
+      :id="`orgs-panel-${query.status}`"
+      :aria-labelledby="`orgs-tab-${query.status}`"
+    >
+      <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的组织">
+        <template #name="{ row }">
+          <span class="cell-strong">{{ row.name }}</span>
         </template>
-        <InkButton v-else-if="row.status === 'APPROVED'" size="sm" variant="ghost" @click="toggleStatus(row)">
-          停用
-        </InkButton>
-        <InkButton v-else size="sm" variant="ghost" @click="toggleStatus(row)">启用</InkButton>
-      </template>
-    </InkTable>
 
-    <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+        <template #code="{ row }">
+          <span class="col-num">{{ row.code }}</span>
+        </template>
+
+        <template #activities="{ row }">
+          <span class="col-num">{{ row.activities }}</span>
+        </template>
+
+        <template #signRate="{ row }">
+          <span class="col-num">{{ formatPercent(row.signRate) }}</span>
+        </template>
+
+        <template #status="{ row }">
+          <StatusTag type="org_status" :value="row.status" />
+        </template>
+
+        <template #actions="{ row }">
+          <InkButton size="sm" variant="ghost" @click="openDetail(row)">详情</InkButton>
+
+          <template v-if="row.status === 'PENDING'">
+            <InkButton size="sm" variant="ghost" @click="openAudit(row, 'APPROVE')">通过</InkButton>
+            <InkButton size="sm" variant="ghost" @click="openAudit(row, 'REJECT')">驳回</InkButton>
+          </template>
+          <InkButton v-else-if="row.status === 'APPROVED'" size="sm" variant="ghost" @click="toggleStatus(row)">
+            停用
+          </InkButton>
+          <InkButton v-else size="sm" variant="ghost" @click="toggleStatus(row)">启用</InkButton>
+        </template>
+      </InkTable>
+
+      <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+    </div>
+
   </section>
 
   <!-- 组织详情 -->
@@ -307,32 +314,6 @@ async function toggleStatus(row) {
 
 <style scoped>
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
-
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
-
-.audit-desc {
-  grid-template-columns: 1fr;
-  margin-bottom: var(--sp-5);
-}
 
 .audit-field {
   margin-bottom: 0;

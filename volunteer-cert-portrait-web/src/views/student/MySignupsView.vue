@@ -151,7 +151,7 @@ async function onSignOut(row) {
     </header>
 
     <section class="sec-list">
-      <InkTabs v-model="query.status" :tabs="tabs" />
+      <InkTabs v-model="query.status" :tabs="tabs" panel-id="signups" />
 
       <form class="ink-filter" @submit.prevent="search">
         <InkField label="关键字">
@@ -169,120 +169,106 @@ async function onSignOut(row) {
         </div>
       </form>
 
-      <InkTable
-        :columns="columns"
-        :rows="enrichedRows"
-        :loading="loading"
-        empty-text="还没有报名记录"
-        empty-hint="在活动列表中选择活动报名"
+      <div
+        role="tabpanel"
+        :id="`signups-panel-${query.status}`"
+        :aria-labelledby="`signups-tab-${query.status}`"
       >
-        <template #activityTitle="{ row }">
-          <RouterLink class="row-link" :to="`/student/activities/${row.activityId}`">
-            {{ row.activityTitle }}
-          </RouterLink>
-        </template>
-
-        <template #activityDate="{ row }">
-          <span class="col-num">{{ row.activityDate }}</span>
-        </template>
-
-        <template #activityHours="{ row }">
-          <span class="col-num">{{ row.activityHours }} 小时</span>
-        </template>
-
-        <template #appliedAt="{ row }">
-          <span class="col-num">{{ formatDateTime(row.appliedAt) }}</span>
-        </template>
-
-        <template #status="{ row }">
-          <StatusTag type="signup_status" :value="row.status" />
-        </template>
-
-        <template #attendance="{ row }">
-          <template v-if="row.attendance">
-            <StatusTag type="attendance_status" :value="row.attendance.status" />
-            <span v-if="row.attendance.status === 'SIGNED_OUT'" class="col-num att-hours">
-              {{ formatHours(row.attendance.hours) }}
-            </span>
+        <InkTable
+          :columns="columns"
+          :rows="enrichedRows"
+          :loading="loading"
+          empty-text="还没有报名记录"
+          empty-hint="在活动列表中选择活动报名"
+        >
+          <template #activityTitle="{ row }">
+            <RouterLink class="row-link" :to="`/student/activities/${row.activityId}`">
+              {{ row.activityTitle }}
+            </RouterLink>
           </template>
-          <span v-else class="remark-mute">—</span>
-        </template>
 
-        <template #remark="{ row }">
-          <span v-if="row.rejectReason" class="remark-bad">{{ row.rejectReason }}</span>
-          <span v-else-if="row.reason" class="remark-mute">{{ row.reason }}</span>
-          <span v-else class="remark-mute">—</span>
-        </template>
+          <template #activityDate="{ row }">
+            <span class="col-num">{{ row.activityDate }}</span>
+          </template>
 
-        <template #actions="{ row }">
-          <!-- 签到 / 签退按钮只在服务端给的窗口标志为真时出现：渲染一个点了必然报错的
-               按钮，比不渲染更糟（学生只会看到一句「签到尚未开放」）。
-               按钮文字在各行重复，补上活动名，读屏念到时才知道是哪一场 -->
-          <InkButton
-            v-if="row.attendance?.canSignIn"
-            size="sm"
-            variant="primary"
-            :aria-label="`签到：${row.activityTitle}`"
-            @click="onSignIn(row)"
-          >
-            签到
-          </InkButton>
-          <InkButton
-            v-if="row.attendance?.canSignOut"
-            size="sm"
-            variant="primary"
-            :aria-label="`签退：${row.activityTitle}`"
-            @click="onSignOut(row)"
-          >
-            签退
-          </InkButton>
-          <InkButton
-            :to="`/student/activities/${row.activityId}`"
-            size="sm"
-            variant="ghost"
-            :aria-label="`查看活动：${row.activityTitle}`"
-          >
-            查看活动
-          </InkButton>
-          <InkButton
-            v-if="canCancel(row)"
-            size="sm"
-            variant="ghost"
-            :aria-label="`取消报名：${row.activityTitle}`"
-            @click="onCancel(row)"
-          >
-            取消报名
-          </InkButton>
-        </template>
-      </InkTable>
+          <template #activityHours="{ row }">
+            <span class="col-num">{{ row.activityHours }} 小时</span>
+          </template>
 
-      <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+          <template #appliedAt="{ row }">
+            <span class="col-num">{{ formatDateTime(row.appliedAt) }}</span>
+          </template>
+
+          <template #status="{ row }">
+            <StatusTag type="signup_status" :value="row.status" />
+          </template>
+
+          <template #attendance="{ row }">
+            <template v-if="row.attendance">
+              <StatusTag type="attendance_status" :value="row.attendance.status" />
+              <span v-if="row.attendance.status === 'SIGNED_OUT'" class="col-num att-hours">
+                {{ formatHours(row.attendance.hours) }}
+              </span>
+            </template>
+            <span v-else class="remark-mute">—</span>
+          </template>
+
+          <template #remark="{ row }">
+            <span v-if="row.rejectReason" class="remark-bad">{{ row.rejectReason }}</span>
+            <span v-else-if="row.reason" class="remark-mute">{{ row.reason }}</span>
+            <span v-else class="remark-mute">—</span>
+          </template>
+
+          <template #actions="{ row }">
+            <!-- 签到 / 签退按钮只在服务端给的窗口标志为真时出现：渲染一个点了必然报错的
+                 按钮，比不渲染更糟（学生只会看到一句「签到尚未开放」）。
+                 按钮文字在各行重复，补上活动名，读屏念到时才知道是哪一场 -->
+            <InkButton
+              v-if="row.attendance?.canSignIn"
+              size="sm"
+              variant="primary"
+              :aria-label="`签到：${row.activityTitle}`"
+              @click="onSignIn(row)"
+            >
+              签到
+            </InkButton>
+            <InkButton
+              v-if="row.attendance?.canSignOut"
+              size="sm"
+              variant="primary"
+              :aria-label="`签退：${row.activityTitle}`"
+              @click="onSignOut(row)"
+            >
+              签退
+            </InkButton>
+            <InkButton
+              :to="`/student/activities/${row.activityId}`"
+              size="sm"
+              variant="ghost"
+              :aria-label="`查看活动：${row.activityTitle}`"
+            >
+              查看活动
+            </InkButton>
+            <InkButton
+              v-if="canCancel(row)"
+              size="sm"
+              variant="ghost"
+              :aria-label="`取消报名：${row.activityTitle}`"
+              @click="onCancel(row)"
+            >
+              取消报名
+            </InkButton>
+          </template>
+        </InkTable>
+
+        <InkPagination v-model:page="query.page" v-model:page-size="query.pageSize" :total="total" />
+      </div>
+
     </section>
   </div>
 </template>
 
 <style scoped>
-.sec-list {
-  padding: 36px 0 72px;
-}
-
-.ink-filter-actions {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 2px;
-}
-
-.row-link {
-  font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 0.03em;
-  color: var(--c-ink);
-  transition: color var(--t-fast) ease-out;
-}
-
-.row-link:hover {
-  color: var(--c-a2);
-}
 
 .remark-bad {
   font-size: 13px;

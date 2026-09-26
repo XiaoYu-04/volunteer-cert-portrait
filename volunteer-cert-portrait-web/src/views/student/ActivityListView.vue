@@ -106,15 +106,6 @@ const statusOptions = dict.options('activity_status')
 </template>
 
 <style scoped>
-.sec-list {
-  padding: 36px 0 72px;
-}
-
-.ink-filter-actions {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 2px;
-}
 
 /* 骨架卡的正文区比真实卡片矮，补一点下内边距免得贴边 */
 .sk-body {

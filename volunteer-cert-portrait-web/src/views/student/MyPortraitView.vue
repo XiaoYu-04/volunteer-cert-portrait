@@ -71,7 +71,7 @@ const dimLabel = computed(() =>
         <div class="grid-2 grid-gap">
           <div class="panel">
             <div class="panel-head">
-              <span class="panel-title">画像标签</span>
+              <h2 class="panel-title">画像标签</h2>
               <span class="panel-extra panel-time num">{{ formatDateTime(portrait.generatedAt) }}</span>
             </div>
 
@@ -113,7 +113,7 @@ const dimLabel = computed(() =>
 
           <div class="panel">
             <div class="panel-head">
-              <span class="panel-title">画像维度</span>
+              <h2 class="panel-title">画像维度</h2>
               <span class="panel-extra">满分 100</span>
             </div>
 
@@ -143,9 +143,6 @@ const dimLabel = computed(() =>
 </template>
 
 <style scoped>
-.sec-list {
-  padding: 36px 0 72px;
-}
 
 .grid-gap {
   margin-top: var(--sp-8);

@@ -169,7 +169,7 @@ function onUploadingChange(active) {
 
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">活动信息</span>
+      <h2 class="panel-title">活动信息</h2>
       <span class="panel-extra">
         发布组织：{{ orgName || '本组织' }}
         <span class="form-legend" aria-hidden="true">标 * 的为必填项</span>

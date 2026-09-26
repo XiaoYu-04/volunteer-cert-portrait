@@ -81,7 +81,7 @@ const rank = computed(() => {
 
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">活跃度对比</span>
+      <h2 class="panel-title">活跃度对比</h2>
       <span class="panel-extra">{{ org?.name || '本组织' }}</span>
     </div>
 
@@ -114,7 +114,7 @@ const rank = computed(() => {
 
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">全校组织活跃度</span>
+      <h2 class="panel-title">全校组织活跃度</h2>
       <span class="panel-extra panel-note" v-if="rank">本组织排名第 {{ rank }} 位</span>
     </div>
     <OrgList :rows="orgs" />
@@ -122,7 +122,7 @@ const rank = computed(() => {
 
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">组织档案</span>
+      <h2 class="panel-title">组织档案</h2>
     </div>
 
     <dl v-if="org" class="ink-desc">
@@ -195,12 +195,6 @@ const rank = computed(() => {
 }
 
 /* 面板右上角的注记（排名等）：与学校端看板同一套等宽体小字 */
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
 
 .stats-org :deep(.ink-stat-card) {
   padding: 24px 20px;

@@ -231,6 +231,9 @@
 .btn-ghost:hover{background:var(--c-hover); color:var(--c-ink); border-color:var(--c-ink)}
 .btn-danger{border-color:var(--c-bad); color:var(--c-bad)}
 .btn-danger:hover{background:var(--c-bad); border-color:var(--c-bad); color:#fff}
+/* danger 的定调（2026-09-26）：**只用于确认弹窗的最后一步**（InkConfirm 的 danger 语气），
+   表格行内的「删除/停用」等按钮一律保持 ghost —— 行内按钮是「发起」，不是「执行到底」，
+   破坏性由确认弹窗承担强调；两边都红会让红色常态化，反而弱化真正危险的那一下。 */
 .btn-sm{min-height:32px; padding:0 14px; font-size:13px; letter-spacing:.06em}
 .btn:disabled, .btn[aria-disabled="true"]{opacity:.4; cursor:not-allowed; pointer-events:none}
 .btn-block{width:100%}
@@ -459,6 +462,21 @@
 .ink-desc-k{flex:none; width:6.5em; font-family:var(--font-display); letter-spacing:.06em; color:var(--c-ink-3)}
 .ink-desc-v{flex:1 1 auto; color:var(--c-ink-2); min-width:0; word-break:break-word}
 
+/* ---------- 列表 / 详情页通用工具类（跨页面收敛） ----------
+   下面这些类此前在 5~13 个页面的 scoped 样式里各抄了一份，
+   值相同或应当相同，统一收到这里只留一处；页面里若再出现同名 scoped
+   规则应删掉，不要改值。 */
+.sec-list{padding:var(--sp-7) 0 72px}
+.ink-filter-actions{display:flex; gap:var(--sp-3); padding-bottom:2px}
+.panel-gap{margin-top:var(--sp-7)}
+.panel-note{font-family:var(--font-mono); font-size:12px; letter-spacing:.06em; color:var(--c-ink-3)}
+.cell-strong{font-family:var(--font-display); color:var(--c-ink)}
+.cell-mute{font-size:13px; color:var(--c-ink-3)}
+.select-hint{margin-top:var(--sp-4); font-size:13px; color:var(--c-ink-3)}
+.audit-desc{grid-template-columns:1fr; margin-bottom:var(--sp-5)}
+.row-link{font-family:var(--font-display); font-size:15px; letter-spacing:.03em; color:var(--c-ink); transition:color var(--t-fast) ease-out}
+.row-link:hover{color:var(--c-a2)}
+
 /* ---------- 返回顶部（固定在视口右侧，滚动超过一屏才出现） ---------- */
 .ink-to-top{
   position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:30;
@@ -528,7 +546,9 @@
 .panel{border:1px solid var(--c-line); background:#fff; padding:26px 28px}
 .panel + .panel{margin-top:32px}
 .panel-head{display:flex; align-items:baseline; gap:16px; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid var(--c-line-2)}
-.panel-title{font-family:var(--font-display); font-size:17px; letter-spacing:.06em; color:var(--c-ink)}
+/* 面板标题可能是 h2（管理端已升语义），也可能是 span；
+   统一 400 字重，避免 h2 的浏览器默认加粗改变层级观感 */
+.panel-title{font-family:var(--font-display); font-size:17px; letter-spacing:.06em; color:var(--c-ink); font-weight:400}
 .panel-head .panel-extra{margin-left:auto; display:flex; gap:12px; flex-wrap:wrap}
 
 /* ---------- 登录页 ---------- */

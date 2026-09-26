@@ -234,7 +234,7 @@ async function submit() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">时长记录</span>
+      <h2 class="panel-title">时长记录</h2>
       <span class="panel-extra">
         <InkButton variant="primary" size="sm" @click="openSubmit">提交时长</InkButton>
       </span>
@@ -375,31 +375,9 @@ async function submit() {
   border-right: 0;
 }
 
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.cell-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
-
 .cell-reject {
   font-size: 13px;
   color: var(--c-bad);
-}
-
-.select-hint {
-  margin-top: var(--sp-4);
-  font-size: 13px;
-  color: var(--c-ink-3);
 }
 
 @media (max-width: 1000px) {

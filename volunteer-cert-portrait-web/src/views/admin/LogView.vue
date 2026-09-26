@@ -117,21 +117,6 @@ function resetQuery() {
 
 <style scoped>
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
-
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
 
 .module-chip {
   display: inline-block;
@@ -145,9 +130,4 @@ function resetQuery() {
   white-space: nowrap;
 }
 
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
 </style>

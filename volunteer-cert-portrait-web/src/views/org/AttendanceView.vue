@@ -128,7 +128,7 @@ async function submitFix() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">签到记录</span>
+      <h2 class="panel-title">签到记录</h2>
       <span class="panel-extra">
         <span class="panel-note">共 {{ total }} 条</span>
         <InkButton to="/org/durations" size="sm">去提交时长</InkButton>
@@ -211,29 +211,8 @@ async function submitFix() {
 </template>
 
 <style scoped>
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
 
 /* 面板右上角的计数：与学校端各列表页同一套等宽体小字 */
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
-
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.cell-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
 
 .fix-desc {
   grid-template-columns: 1fr;

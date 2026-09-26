@@ -314,36 +314,9 @@ async function batchAudit() {
 }
 
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
-
-.panel-gap {
-  margin-top: var(--sp-7);
-}
 
 /* 与报名审核、时长提交等表格页同名同款：本页此前漏了这两条，
    学生姓名没走衬线墨色、非待审核行的审核时间也没降调 */
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
-.cell-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
-
-.select-hint {
-  margin-top: var(--sp-4);
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
-
-.audit-desc {
-  grid-template-columns: 1fr;
-  margin-bottom: var(--sp-5);
-}
 
 .audit-field {
   margin-bottom: 0;

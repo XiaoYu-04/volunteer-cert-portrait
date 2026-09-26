@@ -223,17 +223,8 @@ async function remove(row) {
 
 <style scoped>
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
 
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-  align-self: center;
-}
+.panel-note { align-self: center; }
 
 .notice-title {
   color: var(--c-ink-2);
@@ -255,9 +246,4 @@ async function remove(row) {
   vertical-align: 1px;
 }
 
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
 </style>

@@ -134,7 +134,7 @@ async function submitSignup() {
       <div v-else class="grid-2">
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">活动信息</span>
+            <h2 class="panel-title">活动信息</h2>
             <span class="panel-extra">
               <StatusTag type="activity_status" :value="activity.status" />
             </span>
@@ -170,7 +170,7 @@ async function submitSignup() {
 
         <div class="panel">
           <div class="panel-head">
-            <span class="panel-title">报名情况</span>
+            <h2 class="panel-title">报名情况</h2>
           </div>
 
           <!-- 已报名/名额两个数由 InkProgress 内部的 aria-* 读出，这里只给含义 -->

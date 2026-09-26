@@ -224,20 +224,6 @@ function resetQuery() {
 
 <style scoped>
 /* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
-.panel-title {
-  font-weight: 400;
-}
-
-.panel-gap {
-  margin-top: var(--sp-7);
-}
-
-.panel-note {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  color: var(--c-ink-3);
-}
 
 .dash-fig {
   /* 玫瑰图的半径是固定像素（options.profile 里的 [26, 112]），画布越宽、饼越显小，
@@ -248,16 +234,7 @@ function resetQuery() {
   margin: 0;
 }
 
-.cell-strong {
-  font-family: var(--font-display);
-  color: var(--c-ink);
-}
-
 /* 无标签时的破折号占位，与其它表格页的 .cell-mute 同款 */
-.cell-mute {
-  font-size: 13px;
-  color: var(--c-ink-3);
-}
 
 /* 印章式标签，沿用画像标签的朱砂细边语言 */
 .tag-chip {
@@ -272,9 +249,4 @@ function resetQuery() {
   white-space: nowrap;
 }
 
-.ink-filter-actions {
-  display: flex;
-  gap: var(--sp-3);
-  padding-bottom: 2px;
-}
 </style>
