@@ -545,6 +545,13 @@
 /* 控制台内的面板 */
 .panel{border:1px solid var(--c-line); background:#fff; padding:26px 28px}
 .panel + .panel{margin-top:32px}
+/* 上面那条只管「纵向堆叠」的 panel。并排放在 .grid-2/.grid-3 里的两个 panel 也是
+   相邻兄弟，会一并吃到 32px —— 网格项的 margin 从拉伸高度里扣，于是右栏整体下沉
+   32px 且矮 32px：底边碰巧齐、顶边差 32px，两栏内容全错行。
+   （个人中心 / 我的公益画像 / 活动详情 三处的左右两栏都栽在这条上。）
+   网格列内的 panel 靠 align-self:stretch 天然等高，不需要这条外边距。 */
+.grid-2 > .panel + .panel,
+.grid-3 > .panel + .panel{margin-top:0}
 .panel-head{display:flex; align-items:baseline; gap:16px; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid var(--c-line-2)}
 /* 面板标题可能是 h2（管理端已升语义），也可能是 span；
    统一 400 字重，避免 h2 的浏览器默认加粗改变层级观感 */
