@@ -329,6 +329,29 @@ vcp-dependencies  独立 BOM
     1440/1200/1024/900 四个宽度断言「图例在组织名下方 / 两行右缘齐内容区 / 首行与标题同基线 /
     不溢出」，**29 项**。
 
+15. **`overflow-x:auto` 会把纵向的 `visible` 也算成 `auto`：内容溢出 1px 就长出一条竖向滚动条**
+    （2026-09-26 实测，tab 条「右边的滑块」）
+    现场：`.ink-tabs` 右侧凭空多出一条竖向滚动条。根因是 `.ink-tab{margin-bottom:-1px}`
+    （让 2px 朱砂下划线压住容器那条 1px 深色边框）使页签**溢出内容盒 1px**
+    —— 实测 `clientHeight 55 / scrollHeight 56`；而规范规定一个轴非 `visible` 时另一个轴的
+    `visible` 计算成 `auto`，于是纵向也可滚动 → 滚动条出现（Windows 经典滚动条占 **15px**）。
+    **修法：给容器补 `padding-bottom:1px`**，把这 1px 收进 padding box（溢出归零、观感不变，
+    整条只高 1px）。⚠️ `overflow-y:hidden` 也能让滚动条消失，但它会把压住边框的那 1px 一起裁掉、
+    下划线由 2px 变 1.5px（逐像素实测），别图省事用它。
+    ⚠️ **判定「有没有滚动条」的两个坑**：① 不能用 `scrollHeight > clientHeight`
+    （`overflow-y:hidden` 下这个不等式照样成立）；② headless 浏览器用叠加式滚动条，
+    `offsetWidth − clientWidth` **恒为 0**，必须 headed 跑，判据是 `offsetWidth − clientWidth − 左右边框`。
+
+16. **滚动容器会把子元素的键盘焦点环裁掉三个面，只剩一条像「分隔线」的红线**
+    （2026-09-26 实测，同一个 tab 条）
+    现场：当前页签右缘一条朱砂竖线，看着像分隔线。根因不是边框，而是全局
+    `:focus-visible{outline:2px solid var(--c-focus)}`（base.css:38），而 `--c-focus` 就是
+    **#B03A2E（与 `--c-a2` 同色）**；焦点环画在边框盒**外面**，上/左/下三面被 `.ink-tabs` 的
+    滚动裁剪吃掉，只剩右边一面 —— 「焦点提示」于是变成一条莫名其妙的竖线。
+    修法：把环收进元素内部 —— `.ink-tab:focus-visible{outline-offset:-2px}`
+    （`.console-nav a:focus-visible{outline-offset:-2px}` 早就是这个做法，新加可聚焦元素时照抄）。
+    回归脚本 `.tmp-shots/probe-tabs-fixed.cjs` / `probe-tabs-fixed2.cjs`（4 个 tab 页 + 375px 窄屏）。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
