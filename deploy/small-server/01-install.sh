@@ -513,7 +513,7 @@ cat <<EOF
   psql    : $(psql --version 2>/dev/null || echo '未安装')
   nginx   : $(nginx -v 2>&1)
   内存    : $(free -h | awk '/^Mem:/{print $2" 总量 / "$7" 可用"}')
-  swap    : $(free -h | awk '/^Swap:/{print $2" 总量 / "$4" 已用"}')
+  swap    : $(free -h | awk '/^Swap:/{print $2" 总量 / "$4" 空闲"}')
 
 下一步：跑数据库初始化（会交互询问数据库口令）
   sudo bash ${SCRIPT_DIR}/02-database.sh
