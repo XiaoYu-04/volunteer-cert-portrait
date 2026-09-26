@@ -1,0 +1,100 @@
+# ============================================================================
+# vcp.service —— 后端 systemd 单元（阿里云 ECS / Debian 12 / 1~2 GB 内存版）
+#
+# 安装位置：/etc/systemd/system/vcp.service
+#   sudo cp vcp.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now vcp
+#   systemctl status vcp            # 看状态
+#   journalctl -u vcp -n 100        # 看日志
+#   （03-deploy.sh 会自动完成上面这些，本文件也可以手工用）
+#
+# 本文件**不含任何口令**；凭证与运行时变量全部来自 /opt/vcp/vcp.env（600、属主 vcp）。
+#
+# ⚠️ 一个必须先讲清的优先级问题：
+#   systemd.exec(5) 写着 "Settings from these files override settings made with
+#   Environment="，即 **EnvironmentFile= 的值会覆盖本文件的 Environment=**。
+#   所以 03-deploy.sh 按机器内存写进 vcp.env 的 JAVA_OPTS 才是实际生效的那份
+#   （1 GB 机器写 -Xmx384m，2 GB 写 -Xmx512m）；本文件里的 JAVA_OPTS 只是兜底默认值。
+# ============================================================================
+
+[Unit]
+Description=高校志愿服务时长认证与公益画像数据分析系统（后端）
+Documentation=file:/opt/vcp/README-deploy.md
+# 等网络与数据库就绪再起，避免开机时应用先起来、连不上库把自己打成失败重启循环
+After=network-online.target postgresql.service
+Wants=network-online.target
+# 注意：不在 Requires= 里绑 postgresql.service —— PG 单独重启（如改参数）时不该把应用一起拖死
+
+[Service]
+Type=simple
+User=vcp
+Group=vcp
+WorkingDirectory=/opt/vcp
+EnvironmentFile=/opt/vcp/vcp.env
+
+# ---------- JVM：小内存参数（为什么会是这些值） ----------
+#   -Xms256m                     初始堆就申请 256m：避免运行期反复扩堆（换页少、延迟稳）
+#   -Xmx512m / -Xmx384m          堆上限。**1 GB 机器必须降到 384m**（vcp.env 已按内存写好）；
+#                                2 GB 机器用 512m。Spring Boot 4 起 fat jar 里是嵌套 jar 加载，
+#                                元空间与代码缓存还会额外吃掉 100~200 MB
+#   -XX:MaxMetaspaceSize=128m    元空间封顶：Spring/MyBatis 反射生成的类不会无限涨
+#   -XX:ThreadStackSize=512k     线程栈从默认 1 MB 降到 512 KB：
+#                                60 条 Tomcat 线程 + 各种池线程，直接省下几十 MB
+#   -XX:+UseG1GC                 小堆上也比默认更稳；-XX:MaxGCPauseMillis=200 给个暂停目标
+#   -XX:+ExitOnOutOfMemoryError  真 OOM 时立刻退出，交给 systemd 拉起 ——
+#                                好过进程半死不活、接口全 500，还占着 8080
+#   -Duser.timezone=GMT+8        本项目时间字段是 TIMESTAMP（无时区）+ LocalDateTime，
+#                                时区错了看板趋势图与签到窗口都会错（CLAUDE.md 踩坑第 10 条）
+#   -Dfile.encoding=UTF-8        中文日志/文件名不乱码
+Environment="JAVA_OPTS=-Xms256m -Xmx512m -XX:MaxMetaspaceSize=128m -XX:ThreadStackSize=512k -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+ExitOnOutOfMemoryError -Duser.timezone=GMT+8 -Dfile.encoding=UTF-8"
+
+# JAVA_TOOL_OPTIONS 是 **JVM 自己认**的环境变量（与 JAVA_OPTS 不是一回事，别删）：
+# 显式置空，挡住从调用方继承进来的同名变量，保证单元行为可预期。
+Environment="JAVA_TOOL_OPTIONS="
+
+# ---------- 小内存覆盖：用 Spring 的宽松绑定环境变量 ----------
+# 为什么需要覆盖：application.yml 里的 Tomcat 300 线程 / accept-count 200 /
+# max-connections 1024、Hikari 池 20 是**按开发机 32 GB 内存**调的（那份注释写明了）。
+# 照抄到 1~2 GB 的机器上会这样吃内存：
+#   300 线程 ×（栈 + 堆内对象）+ 1024 个 socket 的收发缓冲 + 20 条 PG 连接（每条数 MB）≈ 500 MB+
+# 本项目的演示规模只有 10 学院 / 1000 学生 / 10 场活动 / 2349 条报名，
+# 60 线程 / 100 排队 / 300 连接 / 8 条池连接完全够用。
+# 环境变量名 = 配置项的大写下划线写法（relaxed binding），如
+#   server.tomcat.threads.max → SERVER_TOMCAT_THREADS_MAX
+Environment="SERVER_TOMCAT_THREADS_MAX=60"
+Environment="SERVER_TOMCAT_ACCEPT_COUNT=100"
+Environment="SERVER_TOMCAT_MAX_CONNECTIONS=300"
+Environment="SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=8"
+Environment="SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=2"
+
+# ---------- 启动命令 ----------
+# ⚠️ $JAVA_OPTS 必须**独立成词、不加花括号**：systemd 只在「独立成词」时把它按空白
+# 展开成 0 个或多个参数；写成 ${JAVA_OPTS} 或 "..." 都不会按预期展开。
+#    依据：systemd.service(5) ExecStart= 一节。
+# --server.address=127.0.0.1 是**双保险**：vcp.env 里也有 SERVER_ADDRESS=127.0.0.1，
+# 命令行优先级最高 —— 即使 vcp.env 被误改，8080 也不会裸奔到公网（安全组/nginx 是另外两层）。
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/vcp/vcp-boot-1.0.0.jar --server.address=127.0.0.1
+
+Restart=on-failure
+RestartSec=5s
+# 优雅退出（SIGTERM）不算失败：Spring 收到后先停内嵌 Tomcat 再退出，退出码 143
+SuccessExitStatus=143
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vcp
+
+# ---------- 安全加固（四件套，默认全开） ----------
+# NoNewPrivileges：禁止通过 setuid/setcap 提权
+# PrivateTmp：进程看到的是私有 /tmp（打不开别人放在 /tmp 的东西）
+# ProtectSystem=full：/usr、/boot、/etc 只读，只留 /var 与 /opt 可写
+# ProtectHome=true：看不见 /home、/root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
