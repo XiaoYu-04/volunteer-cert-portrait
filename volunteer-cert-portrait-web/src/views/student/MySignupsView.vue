@@ -216,11 +216,13 @@ async function onSignOut(row) {
 
         <template #actions="{ row }">
           <!-- 签到 / 签退按钮只在服务端给的窗口标志为真时出现：渲染一个点了必然报错的
-               按钮，比不渲染更糟（学生只会看到一句「签到尚未开放」） -->
+               按钮，比不渲染更糟（学生只会看到一句「签到尚未开放」）。
+               按钮文字在各行重复，补上活动名，读屏念到时才知道是哪一场 -->
           <InkButton
             v-if="row.attendance?.canSignIn"
             size="sm"
             variant="primary"
+            :aria-label="`签到：${row.activityTitle}`"
             @click="onSignIn(row)"
           >
             签到
@@ -229,14 +231,26 @@ async function onSignOut(row) {
             v-if="row.attendance?.canSignOut"
             size="sm"
             variant="primary"
+            :aria-label="`签退：${row.activityTitle}`"
             @click="onSignOut(row)"
           >
             签退
           </InkButton>
-          <InkButton :to="`/student/activities/${row.activityId}`" size="sm" variant="ghost">
+          <InkButton
+            :to="`/student/activities/${row.activityId}`"
+            size="sm"
+            variant="ghost"
+            :aria-label="`查看活动：${row.activityTitle}`"
+          >
             查看活动
           </InkButton>
-          <InkButton v-if="canCancel(row)" size="sm" variant="ghost" @click="onCancel(row)">
+          <InkButton
+            v-if="canCancel(row)"
+            size="sm"
+            variant="ghost"
+            :aria-label="`取消报名：${row.activityTitle}`"
+            @click="onCancel(row)"
+          >
             取消报名
           </InkButton>
         </template>
@@ -263,6 +277,7 @@ async function onSignOut(row) {
   font-size: 15px;
   letter-spacing: 0.03em;
   color: var(--c-ink);
+  transition: color var(--t-fast) ease-out;
 }
 
 .row-link:hover {

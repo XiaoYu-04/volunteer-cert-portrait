@@ -170,7 +170,10 @@ function onUploadingChange(active) {
   <section class="panel">
     <div class="panel-head">
       <span class="panel-title">活动信息</span>
-      <span class="panel-extra">发布组织：{{ orgName || '本组织' }}</span>
+      <span class="panel-extra">
+        发布组织：{{ orgName || '本组织' }}
+        <span class="form-legend" aria-hidden="true">标 * 的为必填项</span>
+      </span>
     </div>
 
     <form class="ink-form-grid" @submit.prevent="onSubmit">
@@ -296,8 +299,33 @@ function onUploadingChange(active) {
   max-width: 920px;
 }
 
+/* 字段节奏：标签与控件之间留出 12px，比全局的 8px 略松，标签成组更清楚 */
+.ink-form-grid :deep(.ink-field-label) {
+  margin-bottom: var(--sp-3);
+}
+
+/* 提示与错误紧贴控件，8px 一档，不与下一个字段的 22px 抢间距 */
+.ink-form-grid :deep(.ink-field-hint),
+.ink-form-grid :deep(.ink-field-error) {
+  margin-top: var(--sp-2);
+}
+
+/* 十个字段全为必填，星号需要一句说明；与 .panel-note 同一档小字。
+   align-self 让 12px 的小字与左侧 16px 的「发布组织」共用一条基线 */
+.form-legend {
+  align-self: baseline;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
+}
+
+.form-legend b {
+  font-weight: 400;
+  color: var(--c-a2);
+}
+
 .ink-form-actions {
-  padding-top: 8px;
+  padding-top: var(--sp-2);
 }
 
 .image-field {

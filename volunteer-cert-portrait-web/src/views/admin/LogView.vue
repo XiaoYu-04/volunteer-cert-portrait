@@ -80,7 +80,7 @@ function resetQuery() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">日志记录</span>
+      <h2 class="panel-title">日志记录</h2>
       <span class="panel-extra panel-note">共 {{ formatNumber(total) }} 条</span>
     </div>
 
@@ -116,6 +116,11 @@ function resetQuery() {
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-note {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -136,13 +141,13 @@ function resetQuery() {
   letter-spacing: 0.06em;
   color: var(--c-ink-2);
   border: 1px solid var(--c-line);
-  background: #fff;
+  background: var(--c-panel);
   white-space: nowrap;
 }
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 </style>

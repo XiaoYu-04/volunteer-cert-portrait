@@ -80,7 +80,7 @@ const {
   <!-- 趋势 -->
   <section class="panel panel-gap">
     <div class="panel-head">
-      <span class="panel-title">活动与服务时长趋势</span>
+      <h2 class="panel-title">活动与服务时长趋势</h2>
       <span class="panel-extra panel-note">
         近 12 个月 {{ formatNumber(trendTotalText) }} 场 · {{ formatNumber(trendHoursText) }} 小时
       </span>
@@ -116,7 +116,7 @@ const {
   <!-- 结构与分布 -->
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">活动结构与学院分布</span>
+      <h2 class="panel-title">活动结构与学院分布</h2>
       <span class="panel-extra panel-note">{{ structureNote }}</span>
     </div>
 
@@ -150,7 +150,7 @@ const {
   <!-- 审核与签到 -->
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">时长审核与签到质量</span>
+      <h2 class="panel-title">时长审核与签到质量</h2>
       <span class="panel-extra panel-note">通过率 {{ formatPercent(data?.audit?.passRate) }}</span>
     </div>
 
@@ -203,7 +203,7 @@ const {
   <!-- 签到热力 -->
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">签到热力日历</span>
+      <h2 class="panel-title">签到热力日历</h2>
       <span class="panel-extra panel-note">{{ heatMonth }}</span>
     </div>
 
@@ -223,7 +223,7 @@ const {
   <!-- 排行与组织 -->
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">学院排行与组织活跃度</span>
+      <h2 class="panel-title">学院排行与组织活跃度</h2>
     </div>
 
     <div class="grid-2">
@@ -242,7 +242,7 @@ const {
   <!-- 认证流程 -->
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">服务时长认证流程</span>
+      <h2 class="panel-title">服务时长认证流程</h2>
     </div>
 
     <ol class="ink-flow">
@@ -272,8 +272,13 @@ const {
   border-right: 0;
 }
 
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-gap {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
 }
 
 .panel-note {
@@ -299,15 +304,14 @@ const {
 .quality-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 28px;
+  margin-top: var(--sp-6);
   border-top: 1px solid var(--c-ink);
 }
 
 .quality-metric {
-  padding: 18px 0 4px;
+  padding: 18px 0 var(--sp-1) var(--sp-5);
   border-bottom: 1px solid var(--c-line-2);
   border-right: 1px solid var(--c-line-2);
-  padding-left: 20px;
 }
 
 .quality-metric:first-child {

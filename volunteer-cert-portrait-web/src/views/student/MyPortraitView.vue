@@ -72,7 +72,7 @@ const dimLabel = computed(() =>
           <div class="panel">
             <div class="panel-head">
               <span class="panel-title">画像标签</span>
-              <span class="panel-extra num">{{ formatDateTime(portrait.generatedAt) }}</span>
+              <span class="panel-extra panel-time num">{{ formatDateTime(portrait.generatedAt) }}</span>
             </div>
 
             <div class="ink-tag portrait-tag">
@@ -148,7 +148,14 @@ const dimLabel = computed(() =>
 }
 
 .grid-gap {
-  margin-top: 44px;
+  margin-top: var(--sp-8);
+}
+
+/* 生成时间是元信息，别和面板标题抢注意力 */
+.panel-time {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
 }
 
 .portrait-tag {
@@ -194,6 +201,6 @@ const dimLabel = computed(() =>
 }
 
 .fig-gap {
-  margin: 44px 0 0;
+  margin: var(--sp-8) 0 0;
 }
 </style>

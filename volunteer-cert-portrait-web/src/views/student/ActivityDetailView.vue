@@ -101,7 +101,7 @@ async function submitSignup() {
     <nav class="ink-crumbs" aria-label="面包屑">
       <RouterLink to="/student/activities">志愿活动</RouterLink>
       <span class="sep" aria-hidden="true">/</span>
-      <span>{{ activity?.title || '活动详情' }}</span>
+      <span aria-current="page">{{ activity?.title || '活动详情' }}</span>
     </nav>
 
     <header class="page-head">
@@ -173,7 +173,13 @@ async function submitSignup() {
             <span class="panel-title">报名情况</span>
           </div>
 
-          <InkProgress :value="activity.enrolled" :max="activity.capacity" show-text />
+          <!-- 已报名/名额两个数由 InkProgress 内部的 aria-* 读出，这里只给含义 -->
+          <InkProgress
+            :value="activity.enrolled"
+            :max="activity.capacity"
+            show-text
+            label="报名进度"
+          />
           <p class="signup-remain">
             剩余名额 <b class="num">{{ formatNumber(remain) }}</b> 个 · 计划招募
             <span class="num">{{ formatNumber(activity.capacity) }}</span> 人
@@ -271,6 +277,11 @@ async function submitSignup() {
   margin-top: 14px;
   font-size: 13px;
   color: var(--c-ink-3);
+}
+
+/* 剩余名额是这一块最该被先读到的数字，别和说明文字同色 */
+.signup-remain b {
+  color: var(--c-ink);
 }
 
 .sub-head {

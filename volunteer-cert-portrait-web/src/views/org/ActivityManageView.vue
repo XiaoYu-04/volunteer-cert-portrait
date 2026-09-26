@@ -136,10 +136,22 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
       </span>
     </div>
 
-    <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="本组织暂无活动">
+    <InkTable
+      :columns="columns"
+      :rows="rows"
+      :loading="loading"
+      empty-text="本组织暂无活动"
+      empty-hint="新建活动先存为草稿，发布后才对学生开放报名"
+    >
       <template #title="{ row }">
         <span class="cell-activity">
-          <img v-if="row.cover" class="cell-cover" :src="row.cover" :alt="`${row.title}封面`" />
+          <img
+            v-if="row.cover"
+            class="cell-cover"
+            :src="row.cover"
+            :alt="`「${row.title}」活动封面`"
+            loading="lazy"
+          />
           <span class="cell-strong">{{ row.title }}</span>
         </span>
       </template>
@@ -171,7 +183,7 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
           </InkButton>
         </template>
         <InkButton size="sm" variant="ghost" :to="`/org/signups?activityId=${row.id}`"
-          >报名</InkButton
+          >报名审核</InkButton
         >
       </template>
     </InkTable>
@@ -183,7 +195,7 @@ const hasFilter = computed(() => !!(query.keyword || query.type || query.status)
 <style scoped>
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 

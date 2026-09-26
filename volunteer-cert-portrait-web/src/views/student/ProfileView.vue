@@ -120,11 +120,24 @@ const quickLinks = [
 
           <form @submit.prevent="onSubmit">
             <InkField label="姓名" required :error="errors.name">
-              <input v-model.trim="form.name" class="ink-input" type="text" placeholder="真实姓名" />
+              <input
+                v-model.trim="form.name"
+                class="ink-input"
+                type="text"
+                autocomplete="name"
+                aria-required="true"
+                placeholder="真实姓名"
+              />
             </InkField>
 
             <InkField label="手机号" :error="errors.phone" hint="11 位手机号，留空表示不修改，填写后将覆盖原值">
-              <input v-model.trim="form.phone" class="ink-input" type="tel" placeholder="如 13800000000" />
+              <input
+                v-model.trim="form.phone"
+                class="ink-input"
+                type="tel"
+                autocomplete="tel"
+                placeholder="如 13800000000"
+              />
             </InkField>
 
             <InkField label="邮箱" :error="errors.email">
@@ -132,6 +145,7 @@ const quickLinks = [
                 v-model.trim="form.email"
                 class="ink-input"
                 type="email"
+                autocomplete="email"
                 placeholder="如 name@example.edu"
               />
             </InkField>
@@ -150,7 +164,7 @@ const quickLinks = [
         <div class="panel-head">
           <span class="panel-title">账号安全</span>
         </div>
-        <p class="security-note">定期更换密码可以降低账号被他人使用的风险。</p>
+        <p class="security-note">修改密码需先验证原密码；修改成功后，其它设备上的登录会被强制退出。</p>
         <InkButton size="sm" @click="pwdOpen = true">修改密码</InkButton>
       </div>
 

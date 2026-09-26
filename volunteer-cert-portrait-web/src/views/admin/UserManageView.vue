@@ -314,7 +314,7 @@ function resetQuery() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">账号列表</span>
+      <h2 class="panel-title">账号列表</h2>
       <span class="panel-extra">
         <span class="panel-note">
           共 {{ formatNumber(total) }} 个账号 · 全校 {{ formatNumber(roleCount) }} 人
@@ -479,17 +479,24 @@ function resetQuery() {
 </template>
 
 <style scoped>
-.panel-gap {
-  margin-top: 36px;
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
 }
 
+.panel-gap {
+  margin-top: var(--sp-7);
+}
+
+/* 重置口令是不可逆操作，说明文字比字段提示（12px 灰）提一档，
+   让「登录态失效」这句后果先被看到 */
 .reset-note {
-  margin: 18px 0 0;
-  padding: 12px 14px;
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-3) var(--sp-4);
   border: 1px dashed var(--c-line);
-  font-size: 12px;
-  line-height: 1.9;
-  color: var(--c-ink-3);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--c-ink-2);
 }
 
 .panel-note {
@@ -512,13 +519,13 @@ function resetQuery() {
   letter-spacing: 0.06em;
   color: var(--c-ink-2);
   border: 1px solid var(--c-line);
-  background: #fff;
+  background: var(--c-panel);
   white-space: nowrap;
 }
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 </style>

@@ -111,7 +111,7 @@ function resetQuery() {
 
   <section class="panel panel-gap">
     <div class="panel-head">
-      <span class="panel-title">八类画像标签分布</span>
+      <h2 class="panel-title">八类画像标签分布</h2>
       <span class="panel-extra panel-note">画像合计 {{ formatNumber(portraitTotal) }} 人</span>
     </div>
 
@@ -120,7 +120,7 @@ function resetQuery() {
 
   <section class="panel">
     <div class="panel-head">
-      <span class="panel-title">标签占比</span>
+      <h2 class="panel-title">标签占比</h2>
     </div>
 
     <figure class="dash-fig">
@@ -170,7 +170,7 @@ function resetQuery() {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">画像明细</span>
+      <h2 class="panel-title">画像明细</h2>
     </div>
 
     <InkTable
@@ -223,8 +223,13 @@ function resetQuery() {
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-gap {
-  margin-top: 36px;
+  margin-top: var(--sp-7);
 }
 
 .panel-note {
@@ -248,6 +253,12 @@ function resetQuery() {
   color: var(--c-ink);
 }
 
+/* 无标签时的破折号占位，与其它表格页的 .cell-mute 同款 */
+.cell-mute {
+  font-size: 13px;
+  color: var(--c-ink-3);
+}
+
 /* 印章式标签，沿用画像标签的朱砂细边语言 */
 .tag-chip {
   display: inline-block;
@@ -257,13 +268,13 @@ function resetQuery() {
   letter-spacing: 0.06em;
   color: var(--c-a2);
   border: 1px solid var(--c-a2);
-  background: #fff;
+  background: var(--c-panel);
   white-space: nowrap;
 }
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 </style>

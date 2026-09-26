@@ -136,7 +136,7 @@ async function remove(row) {
     </form>
 
     <div class="panel-head">
-      <span class="panel-title">公告列表</span>
+      <h2 class="panel-title">公告列表</h2>
       <span class="panel-extra">
         <span class="panel-note">共 {{ formatNumber(total) }} 条</span>
         <InkButton size="sm" variant="primary" @click="openCreate">发布公告</InkButton>
@@ -146,7 +146,7 @@ async function remove(row) {
     <InkTable :columns="columns" :rows="rows" :loading="loading" empty-text="没有符合条件的公告">
       <template #title="{ row }">
         <span class="notice-title" :class="{ 'is-top': row.top }">
-          <span v-if="row.top" class="notice-flag">顶</span>{{ row.title }}
+          <span v-if="row.top" class="notice-flag" aria-label="置顶">顶</span>{{ row.title }}
         </span>
       </template>
 
@@ -222,6 +222,11 @@ async function remove(row) {
 </template>
 
 <style scoped>
+/* 面板标题由展示用 span 换成 h2；h2 浏览器默认加粗，这里保持原常规字重 */
+.panel-title {
+  font-weight: 400;
+}
+
 .panel-note {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -242,7 +247,7 @@ async function remove(row) {
 .notice-flag {
   display: inline-block;
   margin-right: 6px;
-  padding: 0 4px;
+  padding: 0 var(--sp-1);
   font-size: 11px;
   line-height: 1.5;
   color: #fff;
@@ -252,7 +257,7 @@ async function remove(row) {
 
 .ink-filter-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding-bottom: 2px;
 }
 </style>

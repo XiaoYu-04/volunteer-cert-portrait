@@ -73,7 +73,7 @@ const actions = computed(() => {
     <nav class="ink-crumbs" aria-label="面包屑">
       <RouterLink to="/student/notifications">通知公告</RouterLink>
       <span class="sep" aria-hidden="true">/</span>
-      <span>通知详情</span>
+      <span aria-current="page">通知详情</span>
     </nav>
 
     <header class="page-head">
@@ -182,8 +182,11 @@ const actions = computed(() => {
   color: var(--c-ink-2);
 }
 
-/* 正文按管理员输入的换行原样显示，否则多段公告会被压成一行 */
+/* 正文按管理员输入的换行原样显示，否则多段公告会被压成一行；
+   再把行宽收到 52em、字号提到 15px，长公告才不至于横贯整屏读成一行 */
 .notice-content {
+  max-width: 52em;
+  font-size: 15px;
   white-space: pre-wrap;
   word-break: break-word;
 }
