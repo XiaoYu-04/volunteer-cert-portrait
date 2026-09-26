@@ -352,6 +352,16 @@ vcp-dependencies  独立 BOM
     （`.console-nav a:focus-visible{outline-offset:-2px}` 早就是这个做法，新加可聚焦元素时照抄）。
     回归脚本 `.tmp-shots/probe-tabs-fixed.cjs` / `probe-tabs-fixed2.cjs`（4 个 tab 页 + 375px 窄屏）。
 
+17. **`input[type=datetime-local]` 的值形态与后端收的形态**不是**一回事**（2026-09-26，签到管理「修正」弹窗）
+    原生选择器只认 `yyyy-MM-ddTHH:mm`（带 T），而后端 `VolunteerTimeUtils.toFlexibleDateTime`
+    只认 `yyyy-MM-dd HH:mm[:ss]`（**不认 T**，传进去就是 10001「格式不正确」），
+    而 `DateTimeUtils.formatDateTime` 读出来又是带秒的 `yyyy-MM-dd HH:mm:ss`。
+    三处形态各不相同，所以「打开弹窗」与「提交」各要转一次（`AttendanceView.vue` 的
+    `toPickerValue` / `toApiValue`）：**T 只存在于输入框里，不落接口**。
+    配 `step="60"` 保住分钟精度（与原 placeholder 一致）。同类改动照这个套路办，
+    验收时务必**拦截 PUT 请求体断言**，只看界面看不出带没带 T。
+    回归脚本 `.tmp-shots/probe-attendance-fix-picker.cjs`（真后端 14 项 / mock 10 项，含回滚）。
+
 ## 当前进度
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
