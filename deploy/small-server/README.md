@@ -146,7 +146,7 @@ sudo bash 03-deploy.sh
 |---|---|---|
 | `USE_ALIYUN_MIRROR` | `1` | apt 换阿里云内网镜像；非阿里云机器设 `0` |
 | `PGDG_MIRROR` | `aliyun` | PostgreSQL 源：`aliyun`（内网，不可达自动退公网）/ `official`（PGDG 官方脚本）/ `tuna`（TUNA 不镜像 PGDG，会自动转 aliyun） |
-| `JDK_SOURCE` | `auto` | `auto`=先试 bookworm-backports，失败回退 Temurin 压缩包；`temurin`=直接下压缩包；`backports`=只用官方包 |
+| `JDK_SOURCE` | `auto` | `auto` = bookworm-backports → **Oracle 官方 tar.gz** → 清华 Temurin（哪条通用哪条）；`oracle` = 只用 Oracle；`temurin` = 只用清华镜像；`backports` = 只用官方包 |
 | `NGINX_FROM_OFFICIAL` | `0` | `1`=用 nginx.org 官方源（版本新，国内下载慢） |
 | `SWAP_SIZE_MB` | `2048` | `0`=不建 swap（1 GB 机器强烈不建议） |
 | `VCP_DB_PASSWORD` | 无 | 数据库口令；不传就交互输入（脚本里不含任何口令） |
@@ -336,9 +336,15 @@ PGPASSWORD='<口令>' pg_restore -h 127.0.0.1 -U vcp -d volunteer_cert_portrait 
 
 1. **`bookworm-backports` 里没有 `openjdk-21`**（2026-09-27 实测：Debian 的
    `openjdk-21` 只在 trixie / forky / sid，没有任何 `~bpo12` 版本）。
-   所以 `01-install.sh` 里 backports 只是「先试一下」，真正装上的大概率是
-   **清华 TUNA 的 Temurin 21 压缩包**（约 190 MB，解到 `/opt/jdk-21`，用 update-alternatives 挂成
-   `/usr/bin/java`）。若哪天 backports 真收录了，脚本会自动走官方包，不用改。
+   所以 `01-install.sh` 里 backports 只是「先试一下」，真正装上的走压缩包：
+   **优先 Oracle 官方 tar.gz**（`https://download.oracle.com/java/21/latest/jdk-21_linux-x64_bin.tar.gz`，
+   实测 200 / 189.7 MB / `application/x-gzip`；路径里的 `latest` 永远指向最新 21.x，x64 与 aarch64 自动选），
+   失败再回退**清华 TUNA 的 Temurin 21**（约 190 MB）。两者都解到 `/opt/jdk-21`，
+   用 update-alternatives 挂成 `/usr/bin/java`（优先级 2100），并写 `/etc/profile.d/jdk21.sh`。
+   若哪天 backports 真收录了，脚本会自动走官方包，不用改。
+   ⚠️ **许可提醒**：Oracle JDK 21 的更新自 2026-09 起转为 OTN 许可，公网生产使用可能涉及费用；
+   校内演示/毕设一般无碍，想完全避开就用 `JDK_SOURCE=temurin`（Eclipse Temurin，GPLv2+CE，免费）。
+   两条路径都带断点续传（`curl -C -`）与「≥100 MB + gzip 魔数 1f8b」校验，防半包。
 2. **清华 TUNA 并不镜像 PGDG 的 apt 源**（实测 `mirrors.tuna.tsinghua.edu.cn/postgresql/repos/apt/`
    返回 404），国内能做 PGDG 镜像的是阿里云（`mirrors.aliyun.com/postgresql/repos/apt/`，
    ECS 内网地址 `mirrors.cloud.aliyuncs.com`）。所以 `PGDG_MIRROR=tuna` 这个取值会自动转 aliyun，
