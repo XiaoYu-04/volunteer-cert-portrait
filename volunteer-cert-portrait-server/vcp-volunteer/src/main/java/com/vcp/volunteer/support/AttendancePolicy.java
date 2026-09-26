@@ -67,7 +67,7 @@ public final class AttendancePolicy {
      * @param now             当前时间
      * @return 已过「活动结束 + 30 分钟」时返回 true
      */
-    public static boolean isSignOutWindowClosed(LocalDateTime activityEndTime, LocalDateTime now) {
+    private static boolean isSignOutWindowClosed(LocalDateTime activityEndTime, LocalDateTime now) {
         if (activityEndTime == null || now == null) {
             return false;
         }

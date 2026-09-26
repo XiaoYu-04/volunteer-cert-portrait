@@ -31,6 +31,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import static com.vcp.common.util.StringUtils.isBlank;
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 附件服务实现：文件落盘，数据库只存元数据。
  */
@@ -248,13 +251,5 @@ public class AttachmentServiceImpl implements AttachmentService {
             return value;
         }
         return value.substring(0, maxLength);
-    }
-
-    private static String trimToNull(String value) {
-        return isBlank(value) ? null : value.trim();
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

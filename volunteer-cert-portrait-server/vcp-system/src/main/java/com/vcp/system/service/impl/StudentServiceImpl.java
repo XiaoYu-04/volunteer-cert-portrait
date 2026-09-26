@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.vcp.common.util.StringUtils.hasText;
+
 /**
  * 学生档案服务实现。
  *
@@ -165,9 +167,5 @@ public class StudentServiceImpl implements StudentService {
         vo.setTotalDuration(student.getTotalDuration());
         vo.setPublicWelfareLevel(student.getPublicWelfareLevel());
         return vo;
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 }

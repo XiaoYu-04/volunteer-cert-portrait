@@ -36,30 +36,19 @@ import java.math.BigDecimal;
 public interface DurationRefMapper {
 
     /**
-     * 分页查询时长记录（前端列表用），一次 JOIN 拼齐前端要的全部字段。
+     * 列表与详情共用的 SELECT 字段 + JOIN 段，到 {@code WHERE sd.deleted = 0} 为止（含行尾换行）。
      *
-     * <p>筛选条件全部为空时不过滤；keyword 由调用方包成 {@code %关键字%} 后传入，
-     * 同时匹配学生姓名与活动名称（与前端 mock 的行为一致）。
+     * <p>两处查询的 SELECT 列与 6 个 LEFT JOIN 原先逐字重复，靠注释约定
+     * 「改一处要同时改另一处」；抽成编译期常量后由结构保证一致，不会再漏改其中一处。
+     * 注解里的常量引用必须是编译期常量，本常量只由文本块字面量构成，满足要求。
      *
-     * <p>时间字段在 SQL 里用 to_char 直接格式化成前端约定的字符串
-     * （{@code yyyy-MM-dd} / {@code yyyy-MM-dd HH:mm:ss}，与 DateTimeUtils 的输出一致）：
-     * 本查询直接映射成 VO、不经实体中转，而前端是把时间字段直接渲染的，
-     * 返回 LocalDateTime 会带上 ISO 的 T。
+     * <p>常量以换行结尾，注解里直接后接各自的追加条件（列表的 {@code <if>} 动态条件、
+     * 详情的 {@code AND sd.id = #{id}}）；拼接结果与抽取前的单段文本逐字相同。
      *
-     * <p>组织维度用 {@code COALESCE(sd.org_id, va.org_id)}：org_id 是后补的列，
-     * 历史数据为空，回退到活动归属才能让组织端看到自己已提交的记录。
-     * 同理活动类型用 {@code COALESCE(sd.activity_type, ac.category_name)} 兜底。
-     *
-     * @param page      分页对象，由 MyBatis-Plus 分页插件处理
-     * @param status    状态精确筛选，可为空
-     * @param college   学院精确筛选，可为空
-     * @param orgId     组织筛选（组织管理员传本组织 id），可为空
-     * @param studentId 学生筛选（学生传本人档案 id），可为空
-     * @param keyword   姓名/活动名模糊匹配串，已包 %，可为空
-     * @return 分页结果
+     * <p>接口字段隐式为 {@code public static final}（Java 语法不允许 private），
+     * 但它只服务本 Mapper 内的这两处查询。
      */
-    @Select("<script>"
-            + """
+    String COMMON_SELECT_SQL = """
             SELECT sd.id,
                    sd.student_id,
                    si.student_no,
@@ -86,6 +75,34 @@ public interface DurationRefMapper {
               LEFT JOIN org_info oi           ON oi.id = COALESCE(sd.org_id, va.org_id)
               LEFT JOIN sys_user au           ON au.id = sd.audit_user_id
              WHERE sd.deleted = 0
+            """;
+
+    /**
+     * 分页查询时长记录（前端列表用），一次 JOIN 拼齐前端要的全部字段。
+     *
+     * <p>筛选条件全部为空时不过滤；keyword 由调用方包成 {@code %关键字%} 后传入，
+     * 同时匹配学生姓名与活动名称（与前端 mock 的行为一致）。
+     *
+     * <p>时间字段在 SQL 里用 to_char 直接格式化成前端约定的字符串
+     * （{@code yyyy-MM-dd} / {@code yyyy-MM-dd HH:mm:ss}，与 DateTimeUtils 的输出一致）：
+     * 本查询直接映射成 VO、不经实体中转，而前端是把时间字段直接渲染的，
+     * 返回 LocalDateTime 会带上 ISO 的 T。
+     *
+     * <p>组织维度用 {@code COALESCE(sd.org_id, va.org_id)}：org_id 是后补的列，
+     * 历史数据为空，回退到活动归属才能让组织端看到自己已提交的记录。
+     * 同理活动类型用 {@code COALESCE(sd.activity_type, ac.category_name)} 兜底。
+     *
+     * @param page      分页对象，由 MyBatis-Plus 分页插件处理
+     * @param status    状态精确筛选，可为空
+     * @param college   学院精确筛选，可为空
+     * @param orgId     组织筛选（组织管理员传本组织 id），可为空
+     * @param studentId 学生筛选（学生传本人档案 id），可为空
+     * @param keyword   姓名/活动名模糊匹配串，已包 %，可为空
+     * @return 分页结果
+     */
+    @Select("<script>"
+            + COMMON_SELECT_SQL
+            + """
             <if test="status != null and status != ''">
                AND sd.status = #{status}
             </if>
@@ -114,38 +131,14 @@ public interface DurationRefMapper {
     /**
      * 查询单条时长记录，字段与列表一致。
      *
-     * <p>SELECT 列表与 {@link #selectDurationPage} 必须保持一致，改一处要同时改另一处。
+     * <p>SELECT 列表与 {@link #selectDurationPage} 共用 {@link #COMMON_SELECT_SQL}，
+     * 字段与 JOIN 由常量从结构上保证一致。
      *
      * @param id 时长记录 id
      * @return 记录；不存在或已逻辑删除时返回 null
      */
-    @Select("""
-            SELECT sd.id,
-                   sd.student_id,
-                   si.student_no,
-                   si.college,
-                   su.real_name                                     AS student_name,
-                   sd.activity_id,
-                   va.title                                         AS activity_title,
-                   COALESCE(sd.activity_type, ac.category_name)     AS activity_type,
-                   COALESCE(sd.org_id, va.org_id)                   AS org_id,
-                   oi.org_name,
-                   sd.duration                                      AS hours,
-                   to_char(va.start_time, 'YYYY-MM-DD')             AS service_date,
-                   sd.status,
-                   to_char(sd.submit_time, 'YYYY-MM-DD HH24:MI:SS') AS submitted_at,
-                   to_char(sd.audit_time,  'YYYY-MM-DD HH24:MI:SS') AS audited_at,
-                   au.real_name                                     AS auditor,
-                   sd.audit_remark                                  AS remark,
-                   sd.proof
-              FROM service_duration sd
-              LEFT JOIN student_info si       ON si.id = sd.student_id
-              LEFT JOIN sys_user su           ON su.id = si.user_id
-              LEFT JOIN volunteer_activity va ON va.id = sd.activity_id
-              LEFT JOIN activity_category ac  ON ac.id = va.category_id
-              LEFT JOIN org_info oi           ON oi.id = COALESCE(sd.org_id, va.org_id)
-              LEFT JOIN sys_user au           ON au.id = sd.audit_user_id
-             WHERE sd.deleted = 0
+    @Select(COMMON_SELECT_SQL
+            + """
                AND sd.id = #{id}
             """)
     DurationVO selectDurationDetail(@Param("id") Long id);
@@ -186,8 +179,7 @@ public interface DurationRefMapper {
      * @return 活动精简信息；不存在时返回 null（活动为逻辑删除时也返回 null）
      */
     @Select("""
-            SELECT va.id,
-                   va.title,
+            SELECT va.title,
                    va.org_id,
                    ac.category_name
               FROM volunteer_activity va

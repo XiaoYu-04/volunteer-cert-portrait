@@ -18,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 // Spring Boot 4 已迁移到 Jackson 3（包名 tools.jackson，非受检异常）。
 // 工程 classpath 里的 com.fasterxml.jackson 是 Knife4j 传递引入的库，
 // 容器不会为它注册 ObjectMapper Bean —— 注入它会启动失败。
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
@@ -168,7 +167,7 @@ public class OperationLogAspect {
      *
      * @param args 方法参数数组
      * @return JSON 串；无参数或参数全被过滤时返回空串
-     * @throws JacksonException 序列化失败时抛出（Jackson 3 起为非受检），由调用方统一兜住
+     * @throws tools.jackson.core.JacksonException 序列化失败时抛出（Jackson 3 起为非受检），由调用方统一兜住
      */
     private String toJson(Object[] args) {
         if (args == null || args.length == 0) {

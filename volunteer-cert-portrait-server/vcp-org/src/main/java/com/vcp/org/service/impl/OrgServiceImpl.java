@@ -29,6 +29,9 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.vcp.common.util.StringUtils.hasText;
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 志愿组织服务实现。
  */
@@ -207,13 +210,5 @@ public class OrgServiceImpl implements OrgService {
         }
         OrgMetrics metrics = port.getMetrics(orgId);
         return metrics == null ? OrgMetrics.empty() : metrics;
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    private static String trimToNull(String value) {
-        return hasText(value) ? value.trim() : null;
     }
 }

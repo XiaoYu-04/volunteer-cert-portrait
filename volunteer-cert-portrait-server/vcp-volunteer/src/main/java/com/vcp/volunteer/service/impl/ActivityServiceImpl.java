@@ -46,6 +46,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.vcp.common.util.NumberUtils.longValue;
+import static com.vcp.common.util.NumberUtils.ratio;
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 志愿活动服务实现。
  *
@@ -60,9 +64,6 @@ public class ActivityServiceImpl implements ActivityService {
 
     /** 活动预计时长的小数位：库里的 duration 是 NUMERIC(10,1)，多写的小数位会被静默四舍五入 */
     private static final int PLANNED_HOURS_SCALE = 1;
-
-    /** 比率（签到率 / 通过率）的小数位，前端 formatPercent 只取 1 位百分数 */
-    private static final int RATIO_SCALE = 4;
 
     /** 单人服务时长的上限，与前端发布表单的校验（0 ~ 24 小时）保持一致 */
     private static final BigDecimal MAX_PLANNED_HOURS = BigDecimal.valueOf(24);
@@ -314,7 +315,7 @@ public class ActivityServiceImpl implements ActivityService {
 
         OrgVO org = orgService.getOrg(targetOrgId);
         // org 的三个聚合字段由本域回填：vcp-org 侧没有这些数据，不回填页面会显示成 0
-        org.setActivities(valueOf(row.getActivityTotal()));
+        org.setActivities(longValue(row.getActivityTotal()));
         org.setSignRate(ratio(row.getSignedAttendanceTotal(), row.getAttendanceTotal()));
         org.setPassRate(ratio(row.getApprovedSignupTotal(), auditedSignupTotal(row)));
 
@@ -588,26 +589,7 @@ public class ActivityServiceImpl implements ActivityService {
      * @return 参与过审核的报名条数
      */
     private static Long auditedSignupTotal(OrgOverviewRow row) {
-        return valueOf(row.getApprovedSignupTotal()) + valueOf(row.getRejectedSignupTotal());
-    }
-
-    private static Long valueOf(Long value) {
-        return value == null ? 0L : value;
-    }
-
-    /**
-     * 求比率（0 ~ 1 的小数），前端用 formatPercent 渲染成百分数。
-     *
-     * @param numerator   分子
-     * @param denominator 分母
-     * @return 比率；分母为 0 或缺失时返回 0
-     */
-    private static BigDecimal ratio(Long numerator, Long denominator) {
-        if (numerator == null || denominator == null || denominator <= 0) {
-            return BigDecimal.ZERO.setScale(RATIO_SCALE, RoundingMode.HALF_UP);
-        }
-        return BigDecimal.valueOf(numerator)
-                .divide(BigDecimal.valueOf(denominator), RATIO_SCALE, RoundingMode.HALF_UP);
+        return longValue(row.getApprovedSignupTotal()) + longValue(row.getRejectedSignupTotal());
     }
 
     /**
@@ -636,7 +618,7 @@ public class ActivityServiceImpl implements ActivityService {
      * @return 指标项
      */
     private static StatItemVO stat(String key, String label, Long value, String unit) {
-        return stat(key, label, BigDecimal.valueOf(valueOf(value)), unit);
+        return stat(key, label, BigDecimal.valueOf(longValue(value)), unit);
     }
 
     /**
@@ -657,9 +639,5 @@ public class ActivityServiceImpl implements ActivityService {
         item.setDelta(null);
         item.setTrend(null);
         return item;
-    }
-
-    private static String trimToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 }

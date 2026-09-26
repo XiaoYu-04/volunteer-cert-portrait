@@ -20,10 +20,6 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-        </dependency>
 
         <!-- MyBatis-Plus 注解包（只有注解，不含 ORM 实现）：
              BaseEntity 需要用 @TableField(fill = ...) 声明 create_time/update_time 自动填充，

@@ -25,10 +25,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+
+import static com.vcp.certification.support.DurationFormatUtils.plainHours;
+import static com.vcp.common.util.NumberUtils.ratio;
+import static com.vcp.common.util.StringUtils.hasText;
+import static com.vcp.common.util.StringUtils.trimToNull;
 
 /**
  * 服务时长审核服务实现（学校管理员）。
@@ -128,8 +132,9 @@ public class DurationAuditServiceImpl implements DurationAuditService {
         DurationAuditSummaryVO vo = new DurationAuditSummaryVO();
         vo.setTotal(total);
         vo.setPassRate(total == 0
+                // total 为 0 时保持改前未补零的 BigDecimal.ZERO（输出精度不变），只把有分母的除法交给工具方法
                 ? BigDecimal.ZERO
-                : BigDecimal.valueOf(approved).divide(BigDecimal.valueOf(total), 3, RoundingMode.HALF_UP));
+                : ratio(approved, total, 3));
         // 顺序是契约：前端按下标取 items[0]（已通过）与 items[2]（已驳回）
         vo.setItems(List.of(
                 DurationSummaryItemVO.of("已通过", approved, "ok"),
@@ -285,17 +290,5 @@ public class DurationAuditServiceImpl implements DurationAuditService {
         Long count = serviceDurationMapper.selectCount(Wrappers.<ServiceDuration>lambdaQuery()
                 .eq(ServiceDuration::getStatus, status.getCode()));
         return count == null ? 0L : count;
-    }
-
-    private static String plainHours(BigDecimal hours) {
-        return hours == null ? "0" : hours.stripTrailingZeros().toPlainString();
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    private static String trimToNull(String value) {
-        return hasText(value) ? value.trim() : null;
     }
 }

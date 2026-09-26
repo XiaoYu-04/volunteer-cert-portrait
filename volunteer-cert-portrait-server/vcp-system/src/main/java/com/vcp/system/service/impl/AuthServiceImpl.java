@@ -33,6 +33,9 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import static com.vcp.common.util.StringUtils.hasText;
+import static com.vcp.common.util.StringUtils.nullToEmpty;
+
 /**
  * 认证服务实现。
  *
@@ -114,9 +117,9 @@ public class AuthServiceImpl implements AuthService {
     /**
      * 组织信息查询端口。
      *
-     * <p>用 ObjectProvider 而不是直接注入：vcp-org 还没实现该端口（待办 B7），
-     * 直接注入会因为找不到 Bean 而启动失败。取不到时安静跳过，
-     * 组织管理员的 orgId 留空，登录本身不受影响。
+     * <p>vcp-org 已提供实现（{@code OrgLookupPortImpl}，B7 已落地），完整应用里能正常取到；
+     * 仍用 ObjectProvider 而不是直接注入，是为了让实现缺失时（单模块测试、裁剪部署）
+     * 安静跳过而不是启动失败。取不到时组织管理员的 orgId 留空，登录本身不受影响。
      */
     private final ObjectProvider<OrgLookupPort> orgLookupPortProvider;
 
@@ -562,8 +565,9 @@ public class AuthServiceImpl implements AuthService {
     /**
      * 取组织管理员负责的组织 id。
      *
-     * <p>端口没有实现类时（vcp-org 未开工）返回 null，不抛异常 ——
-     * 缺 orgId 只影响组织端页面的数据范围，不该让登录整体失败。
+     * <p>vcp-org 已提供实现（{@code OrgLookupPortImpl}）；若运行时没有可用的实现
+     * （单模块测试、裁剪部署），这里返回 null，不抛异常 —— 缺 orgId 只影响
+     * 组织端页面的数据范围，不该让登录整体失败。
      *
      * @param userId 用户 id
      * @return 组织 id，取不到时返回 null
@@ -587,13 +591,5 @@ public class AuthServiceImpl implements AuthService {
 
     private boolean isOrgAdmin(SysRole role) {
         return role != null && RoleCodeEnum.ORG_ADMIN.getCode().equals(role.getRoleCode());
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    private static String nullToEmpty(String value) {
-        return value == null ? "" : value;
     }
 }

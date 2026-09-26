@@ -59,8 +59,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         } else if (!AuthUtils.isSchoolAdmin()) {
             throw new BusinessException(ErrorCodeEnum.NO_PERMISSION);
         }
-        // 数据范围只看登录态：前端传的 orgId 一律忽略（XML 里也没有这个筛选条件）
-        condition.setOrgId(null);
+        // 数据范围只看登录态：组织范围由 scopeOrgId 下传（查询条件里没有 orgId 字段）
 
         // 「现在」在 Service 取一次并往下传：列表里每行都要做惰性判定，
         // 各层各取一次时间会出现同一页里判定基准不一致的诡异现象
@@ -73,10 +72,9 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public PageResult<AttendanceVO> listMyAttendance(AttendanceQuery query) {
         AttendanceQuery condition = query == null ? new AttendanceQuery() : query;
-        // 数据范围只看登录态：前端传的 studentId / orgId 一律忽略（同 listAttendance 的口径）。
+        // 数据范围只看登录态：前端传的 studentId 一律忽略（同 listAttendance 的口径）。
         // studentId 单独作为入参下传，避免与筛选条件里的同名字段混淆
         condition.setStudentId(null);
-        condition.setOrgId(null);
         Long studentId = StudentIdentityUtils.requireCurrentStudentId();
 
         // 与列表同理：一页里每行都要做惰性判定与窗口判定，「现在」只能取一次

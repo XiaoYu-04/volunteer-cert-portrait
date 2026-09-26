@@ -36,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 活动报名服务实现。
  *
@@ -337,9 +339,5 @@ public class SignupServiceImpl implements SignupService {
                 ? row.getAuditRemark()
                 : null);
         return vo;
-    }
-
-    private static String trimToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
     }
 }

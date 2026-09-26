@@ -15,9 +15,6 @@ import java.io.Serializable;
 @Data
 public class ActivityBrief implements Serializable {
 
-    /** 活动ID → volunteer_activity.id */
-    private Long id;
-
     /** 活动名称 */
     private String title;
 

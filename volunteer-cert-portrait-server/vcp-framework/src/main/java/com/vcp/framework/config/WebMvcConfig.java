@@ -10,6 +10,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 
+import static com.vcp.framework.util.UploadPathUtils.normalizeUploadPrefix;
+
 /**
  * Web MVC 配置：目前只负责跨域。
  *
@@ -103,17 +105,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler(uploadUrlPattern)
                 .addResourceLocations(location)
                 .setCachePeriod(3600);
-    }
-
-    private static String normalizeUploadPrefix(String prefix) {
-        String value = prefix == null || prefix.isBlank() ? "/uploads" : prefix.trim();
-        if (!value.startsWith("/")) {
-            value = "/" + value;
-        }
-        while (value.endsWith("/")) {
-            value = value.substring(0, value.length() - 1);
-        }
-        return value;
     }
 
     /**

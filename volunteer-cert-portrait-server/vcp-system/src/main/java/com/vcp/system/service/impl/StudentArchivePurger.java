@@ -1,6 +1,5 @@
 package com.vcp.system.service.impl;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.vcp.system.entity.StudentInfo;
 import com.vcp.system.mapper.StudentInfoMapper;
 import com.vcp.system.service.StudentDurationPurgePort;
@@ -77,7 +76,8 @@ public class StudentArchivePurger {
      */
     @Transactional(rollbackFor = Exception.class)
     public void purgeByUserId(Long userId) {
-        StudentInfo archive = userId == null ? null : findByUserId(userId);
+        StudentInfo archive = userId == null ? null
+                : StudentArchiveQueries.findByUserId(studentInfoMapper, userId);
         if (archive == null) {
             // 管理员账号（或已销过档的账号）：没有档案就没有任何学生域数据要清
             return;
@@ -95,20 +95,5 @@ public class StudentArchivePurger {
 
         log.info("[销档] 账号删除，学生数据已级联清理。userId={}, studentId={}, studentNo={}",
                 userId, studentId, archive.getStudentNo());
-    }
-
-    /**
-     * 按账号 id 取在用档案。
-     *
-     * <p>查询自带 {@code @TableLogic} 的 {@code deleted = 0}：已销档的账号查不出来，
-     * 重复调用会直接返回，天然幂等。
-     *
-     * @param userId 账号 id
-     * @return 档案；该账号没有在用档案时返回 null
-     */
-    private StudentInfo findByUserId(Long userId) {
-        return studentInfoMapper.selectOne(Wrappers.<StudentInfo>lambdaQuery()
-                .eq(StudentInfo::getUserId, userId)
-                .last("LIMIT 1"));
     }
 }

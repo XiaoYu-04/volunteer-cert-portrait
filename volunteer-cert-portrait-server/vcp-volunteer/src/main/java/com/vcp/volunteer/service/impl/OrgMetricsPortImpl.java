@@ -7,8 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import static com.vcp.common.util.NumberUtils.longValue;
+import static com.vcp.common.util.NumberUtils.ratio;
 
 /**
  * 组织聚合指标端口实现：把本域的活动 / 报名 / 签到计数回填给 vcp-org。
@@ -29,9 +29,6 @@ import java.math.RoundingMode;
 @RequiredArgsConstructor
 public class OrgMetricsPortImpl implements OrgMetricsPort {
 
-    /** 比率小数位，与前端百分数展示（保留 1 位）匹配 */
-    private static final int RATIO_SCALE = 4;
-
     private final VolunteerActivityMapper activityMapper;
 
     @Override
@@ -43,30 +40,11 @@ public class OrgMetricsPortImpl implements OrgMetricsPort {
         if (row == null) {
             return OrgMetrics.empty();
         }
-        long approved = valueOf(row.getApprovedSignupTotal());
-        long rejected = valueOf(row.getRejectedSignupTotal());
+        long approved = longValue(row.getApprovedSignupTotal());
+        long rejected = longValue(row.getRejectedSignupTotal());
         return new OrgMetrics(
-                valueOf(row.getActivityTotal()),
+                longValue(row.getActivityTotal()),
                 ratio(row.getSignedAttendanceTotal(), row.getAttendanceTotal()),
                 ratio(approved, approved + rejected));
-    }
-
-    private static long valueOf(Long value) {
-        return value == null ? 0L : value;
-    }
-
-    /**
-     * 求比率（0 ~ 1）。
-     *
-     * @param numerator   分子
-     * @param denominator 分母
-     * @return 比率；分母为 0 或缺失时返回 0
-     */
-    private static BigDecimal ratio(Long numerator, Long denominator) {
-        if (numerator == null || denominator == null || denominator <= 0) {
-            return BigDecimal.ZERO.setScale(RATIO_SCALE, RoundingMode.HALF_UP);
-        }
-        return BigDecimal.valueOf(numerator)
-                .divide(BigDecimal.valueOf(denominator), RATIO_SCALE, RoundingMode.HALF_UP);
     }
 }

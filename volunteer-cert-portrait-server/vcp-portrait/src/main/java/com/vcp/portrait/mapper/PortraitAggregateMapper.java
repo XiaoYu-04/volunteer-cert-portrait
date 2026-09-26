@@ -53,21 +53,16 @@ import java.util.List;
 public interface PortraitAggregateMapper {
 
     /**
-     * 分页查询画像明细（按姓名/学号关键字、学院、标签筛选）。
+     * 分页查询与单条查询共用的 SELECT 字段 + JOIN 段（到 {@code LEFT JOIN sys_user} 为止，含行尾换行）。
      *
-     * <p>三个筛选参数都传 null 时表示不筛选（空串由 Service 归一成 null）。
-     * 标签筛选用「逗号包裹后 LIKE」的方式在逗号分隔串里做精确匹配，
-     * 避免 {@code tags LIKE '%服务型%'} 把「社区服务型」和「校园服务型」之外的
-     * 部分匹配也算进来。
+     * <p>两处查询的 12 个 SELECT 列与 3 个 JOIN 原先逐字重复；抽成编译期常量后由结构
+     * 保证一致，不用再靠人眼比对。常量以换行结尾，注解里直接后接各自的条件
+     * （列表的 {@code <where>} 动态条件、单条的 {@code WHERE sp.student_id = #{studentId}}）。
      *
-     * @param page    分页对象（由 MyBatis-Plus 分页插件下推 LIMIT/OFFSET）
-     * @param keyword 关键字，匹配姓名或学号，可为 null
-     * @param college 学院，精确匹配，可为 null
-     * @param tag     画像标签，可为 null
-     * @return 分页结果
+     * <p>接口字段隐式为 {@code public static final}（Java 语法不允许 private），
+     * 但它只服务本 Mapper 内的这两处查询。
      */
-    @Select("""
-            <script>
+    String COMMON_SELECT_SQL = """
             SELECT sp.student_id           AS student_id,
                    u.real_name             AS student_name,
                    si.student_no           AS student_no,
@@ -83,6 +78,25 @@ public interface PortraitAggregateMapper {
             FROM student_profile sp
             JOIN student_info si ON si.id = sp.student_id AND si.deleted = 0
             LEFT JOIN sys_user u ON u.id = si.user_id
+            """;
+
+    /**
+     * 分页查询画像明细（按姓名/学号关键字、学院、标签筛选）。
+     *
+     * <p>三个筛选参数都传 null 时表示不筛选（空串由 Service 归一成 null）。
+     * 标签筛选用「逗号包裹后 LIKE」的方式在逗号分隔串里做精确匹配，
+     * 避免 {@code tags LIKE '%服务型%'} 把「社区服务型」和「校园服务型」之外的
+     * 部分匹配也算进来。
+     *
+     * @param page    分页对象（由 MyBatis-Plus 分页插件下推 LIMIT/OFFSET）
+     * @param keyword 关键字，匹配姓名或学号，可为 null
+     * @param college 学院，精确匹配，可为 null
+     * @param tag     画像标签，可为 null
+     * @return 分页结果
+     */
+    @Select("<script>\n"
+            + COMMON_SELECT_SQL
+            + """
             <where>
                 <if test="keyword != null">
                     AND (u.real_name LIKE CONCAT('%', #{keyword}::text, '%')
@@ -109,22 +123,8 @@ public interface PortraitAggregateMapper {
      * @param studentId 学生档案 id
      * @return 画像明细；画像尚未生成（student_profile 无行）时返回 null
      */
-    @Select("""
-            SELECT sp.student_id           AS student_id,
-                   u.real_name             AS student_name,
-                   si.student_no           AS student_no,
-                   si.college              AS college,
-                   si.major                AS major,
-                   si.grade                AS grade,
-                   si.public_welfare_level AS level,
-                   sp.total_activities     AS total_activities,
-                   si.total_duration       AS total_duration,
-                   sp.category_preference  AS category_preference,
-                   sp.tags                 AS tags,
-                   sp.update_time          AS generated_at
-            FROM student_profile sp
-            JOIN student_info si ON si.id = sp.student_id AND si.deleted = 0
-            LEFT JOIN sys_user u ON u.id = si.user_id
+    @Select(COMMON_SELECT_SQL
+            + """
             WHERE sp.student_id = #{studentId}
             """)
     PortraitRow selectPortrait(@Param("studentId") Long studentId);

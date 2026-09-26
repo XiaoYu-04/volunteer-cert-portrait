@@ -9,6 +9,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+import static com.vcp.common.util.StringUtils.isBlank;
+
 /**
  * 活动与签到相关的时间字符串解析。
  *
@@ -146,9 +148,5 @@ public final class VolunteerTimeUtils {
         } catch (DateTimeParseException ignored) {
             return null;
         }
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

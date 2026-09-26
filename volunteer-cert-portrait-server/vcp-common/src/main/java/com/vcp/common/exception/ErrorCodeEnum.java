@@ -108,18 +108,4 @@ public enum ErrorCodeEnum implements ErrorCode {
         return message;
     }
 
-    /**
-     * 按码值反查错误码，查不到返回 null。
-     *
-     * @param code 码值
-     * @return 对应枚举，无匹配时为 null
-     */
-    public static ErrorCodeEnum of(int code) {
-        for (ErrorCodeEnum item : values()) {
-            if (item.code == code) {
-                return item;
-            }
-        }
-        return null;
-    }
 }

@@ -37,6 +37,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import static com.vcp.common.util.StringUtils.hasText;
+import static com.vcp.common.util.StringUtils.trimToNull;
+
 /**
  * 用户管理服务实现。
  *
@@ -445,13 +448,5 @@ public class UserServiceImpl implements UserService {
 
     private List<Long> idsOf(List<SysUser> users) {
         return users == null ? List.of() : users.stream().map(SysUser::getId).toList();
-    }
-
-    private static boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
-
-    private static String trimToNull(String value) {
-        return hasText(value) ? value.trim() : null;
     }
 }

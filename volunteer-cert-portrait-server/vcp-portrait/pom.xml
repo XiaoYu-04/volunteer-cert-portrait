@@ -17,11 +17,11 @@
     <dependencies>
         <dependency>
             <groupId>com.vcp</groupId>
-            <artifactId>vcp-certification</artifactId>
+            <artifactId>vcp-framework</artifactId>
         </dependency>
         <dependency>
             <groupId>com.vcp</groupId>
-            <artifactId>vcp-volunteer</artifactId>
+            <artifactId>vcp-common</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
