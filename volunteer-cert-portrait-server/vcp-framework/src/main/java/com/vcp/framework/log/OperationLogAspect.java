@@ -4,6 +4,7 @@ import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -212,16 +213,42 @@ public class OperationLogAspect {
      * 取客户端来源 IP。
      *
      * <p>非 Web 线程（定时任务、异步线程）没有请求上下文，此时返回空串。
-     * 注意这里取的是 {@code getRemoteAddr()}，经 Nginx 等反向代理后会是代理地址，
-     * 若将来部署在代理后面需改读 {@code X-Forwarded-For}。
+     *
+     * <p><b>代理场景（2026-09-27 起）</b>：生产部署是「浏览器 → Nginx → 后端」，
+     * Nginx 把后端连成了 127.0.0.1，直接读 {@code getRemoteAddr()} 会让操作日志里
+     * 全是 127.0.0.1（真机实测：日志页 IP 列清一色 127.0.0.1）。
+     * 因此按「X-Forwarded-For → X-Real-IP → getRemoteAddr()」的顺序取：
+     * <ol>
+     *   <li>{@code X-Forwarded-For} 取**第一段**（最靠近客户端的那一跳；
+     *       nginx 侧配置成 {@code $remote_addr} 覆盖写，客户端无法伪造）；</li>
+     *   <li>{@code X-Real-IP} 作为兜底（nginx 默认也发这个头）；</li>
+     *   <li>都没有（直连后端、本地开发、单测）就退回 {@code getRemoteAddr()}。</li>
+     * </ol>
+     * 后端在生产上只监听 127.0.0.1（见 vcp.env 的 SERVER_ADDRESS），
+     * 外部无法绕过 Nginx 直连，所以这里信任这两个头是安全的。
      *
      * @return 来源 IP；无请求上下文时为空串
      */
     private String currentIp() {
         RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-        if (attributes instanceof ServletRequestAttributes servletAttributes) {
-            return servletAttributes.getRequest().getRemoteAddr();
+        if (!(attributes instanceof ServletRequestAttributes servletAttributes)) {
+            return "";
         }
-        return "";
+        HttpServletRequest request = servletAttributes.getRequest();
+
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            // 形如 "203.0.113.7, 10.0.0.5"：第一个是最初的客户端
+            int comma = forwarded.indexOf(',');
+            String first = (comma > 0 ? forwarded.substring(0, comma) : forwarded).trim();
+            if (!first.isEmpty()) {
+                return first;
+            }
+        }
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        return request.getRemoteAddr();
     }
 }
