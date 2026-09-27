@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { listSignups, cancelSignup, listMyAttendance, signIn, signOut } from '@/api/volunteer'
+import { listDurations } from '@/api/certification'
 import { useTable } from '@/composables/useTable'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -56,15 +57,52 @@ async function loadAttendance() {
   }
 }
 
-/** 报名行 + 该行的签到记录。先拼好再喂给表格，模板里就不必反复调函数 */
+/* ---------- 已认证的服务时长 ----------
+   「服务时长」列展示的是**学校已认证到**的小时数，不是活动的预计时长：报名通过只代表
+   能参加，时长要等组织提交、学校审核通过后才真正落到学生头上（后端也只在审核通过时
+   才累加 student_info.total_duration，见待办 A5）。所以这一列从 0 起算 —— 没有已通过的
+   时长记录就是 0 小时，待审核 / 已驳回同样计 0。
+
+   与签到记录同理：一次取全再按 activityId 建索引。跟着列表分页取的话，翻到第 2 页时
+   对应的时长记录可能不在当前页，那一列会忽有忽无。数据范围由后端按登录态裁剪
+   （忽略请求里的 studentId），但 mock 不带登录态过滤，必须显式传 studentId，
+   否则会把全校学生的时长混进同一个 Map。
+
+   同一活动下只会有一条时长记录：service_duration.signup_id 是 NOT NULL UNIQUE，
+   且只有审核通过的报名才拿得到时长记录（DurationRefMapper.selectSignupId）。 */
+const certifiedByActivity = ref(new Map())
+
+async function loadCertified() {
+  try {
+    const data = await listDurations({
+      studentId: user.info?.studentId,
+      page: 1,
+      pageSize: 500,
+    })
+    const map = new Map()
+    ;(data?.list || [])
+      .filter((item) => item.status === 'APPROVED')
+      .forEach((item) => map.set(item.activityId, Number(item.hours) || 0))
+    certifiedByActivity.value = map
+  } catch {
+    // 时长拉不到不该把整页打挂：其余列照常展示，「服务时长」列一律按 0 小时渲染
+    certifiedByActivity.value = new Map()
+  }
+}
+
+/** 报名行 + 该行的签到记录与已认证时长。先拼好再喂给表格，模板里就不必反复调函数 */
 const enrichedRows = computed(() =>
-  rows.value.map((row) => ({ ...row, attendance: attendanceOf(row) })),
+  rows.value.map((row) => ({
+    ...row,
+    attendance: attendanceOf(row),
+    certifiedHours: certifiedByActivity.value.get(row.activityId) || 0,
+  })),
 )
 
 const columns = [
   { key: 'activityTitle', title: '活动' },
   { key: 'activityDate', title: '活动日期', width: '120px' },
-  { key: 'activityHours', title: '服务时长', width: '100px', align: 'right' },
+  { key: 'certifiedHours', title: '服务时长', width: '100px', align: 'right' },
   { key: 'appliedAt', title: '报名时间', width: '170px' },
   { key: 'status', title: '状态', width: '110px' },
   { key: 'attendance', title: '签到', width: '160px' },
@@ -86,6 +124,7 @@ function resetQuery() {
 onMounted(() => {
   dict.load()
   loadAttendance()
+  loadCertified()
 })
 
 async function onCancel(row) {
@@ -146,7 +185,7 @@ async function onSignOut(row) {
       <h1>我的报名</h1>
       <p class="page-head-sub">
         你提交过的全部报名申请，待审核与已通过的可以取消。活动开始前 30 分钟可签到，活动结束后 30
-        分钟内需签退。
+        分钟内需签退。「服务时长」列为学校已认证到的小时数，审核通过前计 0。
       </p>
     </header>
 
@@ -191,8 +230,12 @@ async function onSignOut(row) {
             <span class="col-num">{{ row.activityDate }}</span>
           </template>
 
-          <template #activityHours="{ row }">
-            <span class="col-num">{{ row.activityHours }} 小时</span>
+          <template #certifiedHours="{ row }">
+            <!-- 未认证到时长的（待审核 / 已驳回 / 组织还没提交）压暗显示 0 小时：
+                 这列是「已经算到你头上的时长」，与活动详情页那个预计时长不是一回事 -->
+            <span class="col-num" :class="{ 'cell-mute': !row.certifiedHours }">
+              {{ formatHours(row.certifiedHours) }}
+            </span>
           </template>
 
           <template #appliedAt="{ row }">
