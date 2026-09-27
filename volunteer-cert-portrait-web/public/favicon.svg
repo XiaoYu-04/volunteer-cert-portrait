@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="志愿服务数据志">
+  <rect x="1" y="1" width="62" height="62" rx="10" fill="#B03A2E"/>
+  <rect x="5" y="5" width="54" height="54" rx="7" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <text x="32" y="33" text-anchor="middle" dominant-baseline="central"
+        font-family="'Source Han Serif SC','Noto Serif SC','Songti SC','STSong','SimSun',Georgia,serif"
+        font-size="40" fill="#FFFFFF">志</text>
+</svg>
