@@ -15,6 +15,7 @@ import com.vcp.org.service.OrgService;
 import com.vcp.org.vo.OrgVO;
 import com.vcp.system.dto.AttachmentSaveDTO;
 import com.vcp.system.service.AttachmentService;
+import com.vcp.system.util.AttachmentUrls;
 import com.vcp.system.vo.AttachmentVO;
 import com.vcp.volunteer.constant.VolunteerConstants;
 import com.vcp.volunteer.dto.ActivityQuery;
@@ -545,13 +546,28 @@ public class ActivityServiceImpl implements ActivityService {
     /**
      * 校验并规范化封面地址。
      *
+     * <p>两种合法形态：
+     * <ol>
+     *   <li>{@code /api/v1/attachments/{id}/content} —— 2026-09-27 起图片存数据库后的地址，
+     *       前端上传封面拿到的就是它（与图文说明走同一套校验，见 AttachmentUrls）；</li>
+     *   <li>{@code /uploads/...} —— 图片落盘时代的旧地址，仅为让历史活动仍能被编辑而保留。</li>
+     * </ol>
+     * <p>踩坑记录：改造时只改了图文说明的校验（replaceAttachments），封面这里仍按旧前缀判断，
+     * 于是「图文说明能存、封面报『封面地址不合法』」—— 真机实测踩到，故收敛到工具类。
+     *
      * @param cover 前端提交的地址
-     * @return 空值或规范化后的 /uploads/... 地址
+     * @return 空值或规范化后的地址
      */
     private String normalizeCover(String cover) {
         String value = trimToNull(cover);
         if (value == null) {
             return null;
+        }
+        if (value.length() > 255) {
+            throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "封面地址不合法");
+        }
+        if (AttachmentUrls.isContentUrl(value)) {
+            return value;
         }
         String prefix = trimToNull(uploadPublicPrefix);
         if (prefix == null) {
@@ -560,7 +576,7 @@ public class ActivityServiceImpl implements ActivityService {
         while (prefix.endsWith("/")) {
             prefix = prefix.substring(0, prefix.length() - 1);
         }
-        if (!value.startsWith(prefix + "/") || value.length() > 255) {
+        if (!value.startsWith(prefix + "/")) {
             throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "封面地址不合法");
         }
         return value;

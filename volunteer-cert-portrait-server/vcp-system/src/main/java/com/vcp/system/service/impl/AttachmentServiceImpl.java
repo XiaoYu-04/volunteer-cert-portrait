@@ -8,6 +8,7 @@ import com.vcp.system.dto.AttachmentSaveDTO;
 import com.vcp.system.entity.Attachment;
 import com.vcp.system.mapper.AttachmentMapper;
 import com.vcp.system.service.AttachmentService;
+import com.vcp.system.util.AttachmentUrls;
 import com.vcp.system.vo.AttachmentContentVO;
 import com.vcp.system.vo.AttachmentVO;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +28,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.vcp.common.util.StringUtils.isBlank;
 import static com.vcp.common.util.StringUtils.trimToNull;
@@ -49,13 +48,8 @@ public class AttachmentServiceImpl implements AttachmentService {
     /** 防止解压炸弹：按宽高计算的上限 */
     private static final long MAX_IMAGE_PIXELS = 25_000_000L;
 
-    /** 内容接口地址的前后缀：上传拼地址与绑定解析地址共用，避免两处格式漂移 */
-    private static final String CONTENT_URL_PREFIX = "/api/v1/attachments/";
-    private static final String CONTENT_URL_SUFFIX = "/content";
-
-    /** 只认完整的内容接口地址，防止把别的字符串误当成图片引用 */
-    private static final Pattern CONTENT_URL_PATTERN =
-            Pattern.compile("^/api/v1/attachments/(\\d+)/content$");
+    // 内容接口地址的拼装与解析统一走 com.vcp.system.util.AttachmentUrls（单一事实来源）：
+    // 封面校验在 vcp-volunteer，图文说明校验在这里，两处各写一份正则必然漂移。
 
     private final AttachmentMapper attachmentMapper;
 
@@ -99,7 +93,7 @@ public class AttachmentServiceImpl implements AttachmentService {
         attachmentMapper.insert(attachment);
 
         // 自增 id 只有插入后才有，地址里带 id 才能按行定位二进制，所以先插再回填 file_url
-        String fileUrl = CONTENT_URL_PREFIX + attachment.getId() + CONTENT_URL_SUFFIX;
+        String fileUrl = AttachmentUrls.contentUrl(attachment.getId());
         attachmentMapper.update(null, Wrappers.<Attachment>lambdaUpdate()
                 .eq(Attachment::getId, attachment.getId())
                 .set(Attachment::getFileUrl, fileUrl));
@@ -133,7 +127,7 @@ public class AttachmentServiceImpl implements AttachmentService {
             if (dto == null || isBlank(dto.getFileUrl())) {
                 throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "图片地址不能为空");
             }
-            Long id = parseContentId(dto.getFileUrl().trim());
+            Long id = AttachmentUrls.parseContentId(dto.getFileUrl());
             if (id == null) {
                 throw new BusinessException(ErrorCodeEnum.PARAM_ERROR, "图片地址不合法");
             }
@@ -204,24 +198,6 @@ public class AttachmentServiceImpl implements AttachmentService {
                 attachment.getContentType(), attachment.getSha256(), attachment.getFileData());
     }
 
-    /**
-     * 从内容接口地址解析附件 id。
-     *
-     * @param fileUrl 附件地址，形如 {@code /api/v1/attachments/123/content}
-     * @return 附件 id；不是内容接口地址时返回 null
-     */
-    private static Long parseContentId(String fileUrl) {
-        Matcher matcher = CONTENT_URL_PATTERN.matcher(fileUrl);
-        if (!matcher.matches()) {
-            return null;
-        }
-        try {
-            return Long.valueOf(matcher.group(1));
-        } catch (NumberFormatException e) {
-            // 理论到不了：正则已限定纯数字。位数超出 long 时按非法地址处理
-            return null;
-        }
-    }
 
     /**
      * 计算内容的 SHA-256（十六进制小写），读取接口用它作 ETag。
