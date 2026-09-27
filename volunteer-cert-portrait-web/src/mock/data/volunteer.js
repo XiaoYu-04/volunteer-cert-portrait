@@ -1,5 +1,5 @@
-import { activities, categories, signups, attendance, students, orgList, users } from './dataset'
-import { ok, fail, paginate, like, eq, nextId, now, currentUserId } from './_helpers'
+import { activities, categories, signups, attendance, students, orgList, users } from './dataset.js'
+import { ok, fail, paginate, like, eq, nextId, now, currentUserId } from './_helpers.js'
 
 /**
  * 组织隔离：报名与签到记录本身不带 orgId，需要经 activityId 反查活动归属。

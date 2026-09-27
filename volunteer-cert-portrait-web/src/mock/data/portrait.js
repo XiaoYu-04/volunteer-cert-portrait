@@ -1,5 +1,5 @@
-import { portraits, profiles, students, users } from './dataset'
-import { ok, fail, paginate, like, eq, currentUserId } from './_helpers'
+import { portraits, profiles, students, users } from './dataset.js'
+import { ok, fail, paginate, like, eq, currentUserId } from './_helpers.js'
 
 export default [
   /* 静态段路由；本模块暂无 :studentId 路由（将来新增时须排在这两段之后） */

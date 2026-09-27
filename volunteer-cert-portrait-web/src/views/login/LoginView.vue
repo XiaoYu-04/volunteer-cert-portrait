@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
@@ -19,6 +19,20 @@ function validate() {
   errors.password = form.password ? '' : '请输入密码'
   return !errors.username && !errors.password
 }
+
+/**
+ * 被顶下线 / 登录过期时，request.js 会把服务端文案随 `notice` 带过来。
+ * 提示完立刻把它从地址栏抹掉：留着的话刷新一次又弹一次，而且截屏、分享
+ * 地址栏都会带上这串对别人没有意义的信息。
+ */
+onMounted(() => {
+  const notice = route.query.notice
+  if (typeof notice !== 'string' || !notice) return
+  toast.warn(notice, 4000)
+  const rest = { ...route.query }
+  delete rest.notice
+  router.replace({ query: rest })
+})
 
 async function onSubmit() {
   if (!validate() || loading.value) return

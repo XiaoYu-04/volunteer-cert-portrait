@@ -161,7 +161,17 @@ sa-token:
   # 30 天有效期，-1 表示不限制活跃超时
   timeout: 2592000
   active-timeout: -1
-  is-concurrent: true
+  # 同账号不允许同时在两个地方登录：false = 后来者顶掉先来者。
+  # 机制：每次登录都会新建一个终端（terminal），下次登录时 Sa-Token 发现已有终端就调
+  # replaced() 把旧终端的 token 标记为 BE_REPLACED（旧 token 再请求时抛 NotLoginException，
+  # 由全局异常处理器转成 20001，前端清 token 跳登录页）。
+  # 默认 deviceType 是 "DEF"，而本项目所有登录都不区分端（见 AuthServiceImpl.establishSession），
+  # 「已存在终端」对任何设备都成立 —— 即整个账号全局只有一个活 token，不限于同设备。
+  # 与 is-share 的配合：is-share=false 保证每次登录都签发新 token（不复用），
+  # 否则同一 deviceType 会把旧 token 直接返回给新登录者，等于没踢。
+  # ⚠️ 副作用（已知、接受）：真实后端因此无法「双 token」并存，改密接口里
+  # 「踢掉其它会话、保留当前会话」的分支退化为恒不命中（此时本来也只剩一个会话）。
+  is-concurrent: false
   is-share: false
   token-style: uuid
   # 仅从请求头读取，不写 Cookie，避免前后端分离场景下的 CSRF 问题

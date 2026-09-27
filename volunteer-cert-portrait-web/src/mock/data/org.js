@@ -1,5 +1,5 @@
-import { orgList } from './dataset'
-import { ok, fail, paginate, like, eq } from './_helpers'
+import { orgList } from './dataset.js'
+import { ok, fail, paginate, like, eq } from './_helpers.js'
 
 export default [
   {

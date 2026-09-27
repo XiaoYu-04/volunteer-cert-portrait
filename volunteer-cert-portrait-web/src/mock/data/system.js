@@ -1,7 +1,7 @@
-import { users, roles, students, notices, logs, collegeDict, orgList } from './dataset'
-import { collegeOptions, RE_STUDENT_NO } from './auth'
+import { users, roles, students, notices, logs, collegeDict, orgList } from './dataset.js'
+import { collegeOptions, RE_STUDENT_NO } from './auth.js'
 import { DICT_DEFS } from '@/stores/dict'
-import { ok, fail, paginate, like, eq, nextId, now } from './_helpers'
+import { ok, fail, paginate, like, eq, nextId, now } from './_helpers.js'
 
 /* ---------- 学院（sys_dict 里 dict_type = 'college' 的字典行）----------
 

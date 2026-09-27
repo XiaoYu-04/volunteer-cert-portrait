@@ -68,11 +68,20 @@ public class GlobalExceptionHandler {
      *
      * <p>返回 20001，前端拦截器命中该码会清除本地 token 并跳登录页。
      *
-     * @param e 未登录异常
+     * <p><b>被顶下线要单独给文案</b>：{@code is-concurrent: false}（见 application.yml）下，
+     * 同一账号第二次登录会把先登录那台的 token 标记为「已被顶下线」，它也走本处理器。
+     * 若与「登录已过期」共用默认文案，被顶的人只会看到一句「登录已过期」而无从判断
+     * 是自己超时了还是账号在别处被用了 —— 这两种情况的处置方式完全不同。
+     * 码值仍是 20001（前端行为不变：清 token 回登录页），只换文案。
+     *
+     * @param e 未登录异常，{@code getType()} 为 {@link NotLoginException#BE_REPLACED} 表示被顶下线
      * @return 认证失败响应
      */
     @ExceptionHandler(NotLoginException.class)
     public R<Void> handleNotLoginException(NotLoginException e) {
+        if (NotLoginException.BE_REPLACED.equals(e.getType())) {
+            return R.fail(ErrorCodeEnum.AUTH_FAILED, "账号已在其它地方登录，当前会话已失效");
+        }
         return R.fail(ErrorCodeEnum.AUTH_FAILED);
     }
 

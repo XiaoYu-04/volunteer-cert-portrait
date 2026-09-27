@@ -11,8 +11,8 @@ import {
   flow,
   notices,
   activities,
-} from './dataset'
-import { ok } from './_helpers'
+} from './dataset.js'
+import { ok } from './_helpers.js'
 
 export default [
   /* 首页/看板一次拉全，避免首屏串行发七八个请求 */

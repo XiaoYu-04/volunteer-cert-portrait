@@ -36,13 +36,21 @@ service.interceptors.request.use((config) => {
   return config
 })
 
-/** 清登录态并跳登录页。用 replace 避免在历史记录里堆积受保护页面 */
-function redirectToLogin() {
+/**
+ * 清登录态并跳登录页。用 replace 避免在历史记录里堆积受保护页面。
+ *
+ * @param {string} [notice] 服务端给的失效原因，随 query 带给登录页做一次性提示。
+ *   不带（或为空）时登录页不提示。存在的理由：同账号在别处登录会把这一台顶下线，
+ *   而它和「登录过期」在本函数看来是一样的 —— 都是清 token 回登录页。
+ *   不把原因带到登录页，被顶的人只会莫名其妙地发现自己被登出了。
+ */
+function redirectToLogin(notice) {
   removeToken()
   const { pathname, search, hash } = window.location
   const from = encodeURIComponent(pathname + search + hash)
   if (!pathname.startsWith('/login')) {
-    window.location.replace(`/login?redirect=${from}`)
+    const extra = notice ? `&notice=${encodeURIComponent(notice)}` : ''
+    window.location.replace(`/login?redirect=${from}${extra}`)
   }
 }
 
@@ -59,7 +67,7 @@ function unwrap(response) {
   }
 
   if (UNAUTHORIZED_CODES.includes(code)) {
-    redirectToLogin()
+    redirectToLogin(body.message)
   }
 
   throw new ApiError(code, body.message)

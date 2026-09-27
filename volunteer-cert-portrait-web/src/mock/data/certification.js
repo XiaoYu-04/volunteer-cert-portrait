@@ -1,5 +1,5 @@
-import { durations, audit, students } from './dataset'
-import { ok, fail, paginate, like, eq, nextId, now } from './_helpers'
+import { durations, audit, students } from './dataset.js'
+import { ok, fail, paginate, like, eq, nextId, now } from './_helpers.js'
 
 export default [
   /* ---------- 服务时长 ---------- */

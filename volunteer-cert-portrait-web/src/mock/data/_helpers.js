@@ -35,13 +35,104 @@ export function eq(value, expected) {
   return String(value) === String(expected)
 }
 
+/* ============================================================
+   会话注册表：一个账号只保留最新一个 token
+   ============================================================
+   对齐后端 sa-token 的 `is-concurrent: false`（见 application.yml）：
+   同账号第二次登录会把先登录那台的 token 标记失效，旧 token 再请求拿到 20001。
+   后端由 Sa-Token 维护终端列表，这里用一张「userId → 最新 token」的表等价实现，
+   拦截点在 mock/index.js 的分发层 —— 与后端把校验放在 SaInterceptor 而非各 Controller
+   是同一个位置关系。
+
+   落 localStorage 而不是留在内存：整页刷新会重建模块，纯内存的话刷新一次表就空了，
+   而 localStorage 里那个 token 还在 —— 用户会被自己的 token「顶下线」，
+   表现成「mock 模式下刷新页面必被踢回登录页」。存下来后刷新仍是同一会话，
+   真正的顶下线只发生在另一个标签页登录同一账号时。
+   跨标签页共享 localStorage 也正是这里想要的：另一个标签页登录才作数。
+   ============================================================ */
+
+const SESSIONS_KEY = 'vcp_mock_sessions'
+
+/** 解出请求头里的裸 token（去掉 'Bearer ' 前缀） */
+function bearerToken(headers = {}) {
+  return String(headers.Authorization || headers.authorization || '')
+    .replace(/^Bearer\s+/i, '')
+    .trim()
+}
+
+function loadSessions() {
+  try {
+    const raw = localStorage.getItem(SESSIONS_KEY)
+    const map = raw ? JSON.parse(raw) : null
+    return map && typeof map === 'object' ? map : {}
+  } catch {
+    // localStorage 不可用（隐私模式、被禁用）时退回空表：新token照发，只是不顶旧token
+    return {}
+  }
+}
+
+function saveSessions(map) {
+  try {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(map))
+  } catch {
+    // 写不进去不影响本次会话
+  }
+}
+
+/**
+ * 签发新 token 并把该账号此前的 token 作废。
+ * token 形如 'mock-token-3-k2m9x1'，带上随机后缀是为了让两次登录拿到不同的值 ——
+ * 否则「后登录顶掉先登录」在同一个浏览器里根本看不出来（两边 token 一样）。
+ */
+export function issueToken(userId) {
+  const token = `mock-token-${userId}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  const sessions = loadSessions()
+  sessions[String(userId)] = token
+  saveSessions(sessions)
+  return token
+}
+
+/** 主动登出：删掉该账号的记录，登出后旧 token 再请求会被 checkSession 判为失效 */
+export function revokeToken(headers = {}) {
+  const token = bearerToken(headers)
+  const sessions = loadSessions()
+  for (const [userId, current] of Object.entries(sessions)) {
+    if (current === token) delete sessions[userId]
+  }
+  saveSessions(sessions)
+}
+
+/**
+ * 会话状态检查，返回 'ok' | 'replaced' | 'invalid' | 'unknown'。
+ * 由 mock/index.js 的分发层统一前置调用 —— 位置对应后端的 SaInterceptor。
+ *
+ * 四种取值与后端的对应关系：
+ *   ok       当前账号记的就是这个 token            → 放行
+ *   replaced 记的是另一个 token（同账号又登录了）  → 后端 NotLoginException.BE_REPLACED
+ *   invalid  token 认得出、但表里没有这个账号      → 后端 INVALID_TOKEN（登出 / 记录被清）
+ *   unknown  token 压根不像 mock 发的（含没带）    → 不表态，交给 handler 照旧走
+ *
+ * invalid 与 replaced 分开是为了文案：前者是「登录过期」，后者才是「别处登录」，
+ * 后端也是两个分支（GlobalExceptionHandler 只对 BE_REPLACED 换文案）。
+ * unknown 不在这里拦，是为了保持改动前的行为 —— 无 token 时各 handler
+ * 本来就返回 20001「登录已过期」，不该被顶下线这条新逻辑改变。
+ */
+export function checkSession(headers = {}) {
+  const token = bearerToken(headers)
+  const m = token.match(/^mock-token-(\d+)-/)
+  if (!m) return 'unknown'
+  const current = loadSessions()[m[1]]
+  if (current === undefined) return 'invalid'
+  return current === token ? 'ok' : 'replaced'
+}
+
 /**
  * 从 Authorization 头里解出当前用户 id。
- * token 形如 'mock-token-3'，与 auth.js 的签发逻辑对应。
+ * token 形如 'mock-token-3-k2m9x1'，与 issueToken 的签发逻辑对应；
+ * 是否已被顶下线不在这里判 —— 那是 mock/index.js 分发层的统一前置检查。
  */
 export function currentUserId(headers = {}) {
-  const raw = headers.Authorization || headers.authorization || ''
-  const m = String(raw).match(/mock-token-(\d+)/)
+  const m = bearerToken(headers).match(/^mock-token-(\d+)-/)
   return m ? Number(m[1]) : null
 }
 

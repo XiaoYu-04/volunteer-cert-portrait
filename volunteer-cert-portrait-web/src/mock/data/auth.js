@@ -1,5 +1,5 @@
-import { users, students, collegeDict } from './dataset'
-import { ok, fail, currentUserId, nextId, now, persistUser } from './_helpers'
+import { users, students, collegeDict } from './dataset.js'
+import { ok, fail, currentUserId, issueToken, revokeToken, nextId, now, persistUser } from './_helpers.js'
 
 /* 注册校验。前端已拦一道，这里再拦一道 —— 客户端校验只是体验优化，
    不能当成数据守门人，真实后端同样必须自行校验。 */
@@ -82,8 +82,10 @@ export default [
         return fail(20002, '账号已停用，请联系学校管理员')
       }
       user.lastLoginAt = now()
+      /* 走 issueToken 而非拼一个固定值：签发新 token 的同时会作废该账号的旧 token，
+         这就是「同账号不允许同时登录」在 mock 侧的实现（拦截在 mock/index.js）。 */
       return ok({
-        token: `mock-token-${user.id}`,
+        token: issueToken(user.id),
         user: toSession(user),
       })
     },
@@ -187,14 +189,18 @@ export default [
       users.push(user)
       // 落盘，否则整页刷新后 mock 重置，新账号连同登录态一起消失
       persistUser(user)
-      return ok({ token: `mock-token-${id}`, user: toSession(user) }, '注册成功')
+      return ok({ token: issueToken(id), user: toSession(user) }, '注册成功')
     },
   },
 
   {
     method: 'post',
     path: '/v1/auth/logout',
-    handler: () => ok(null, '已退出登录'),
+    // 作废当前 token：与后端 StpUtil.logout() 对齐，登出后旧 token 再请求是 20001
+    handler: ({ headers }) => {
+      revokeToken(headers)
+      return ok(null, '已退出登录')
+    },
   },
 
   {
