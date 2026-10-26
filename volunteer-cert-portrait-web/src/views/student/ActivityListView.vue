@@ -23,12 +23,16 @@ const route = useRoute()
 // `/student/activities?keyword=<组织名>`。必须在 **setup 阶段**读进 defaultQuery ——
 // useTable 是 onMounted(load) 取首次数据，挂在 onMounted 里再赋值就已经晚了一轮、
 // 首屏会闪一次全量列表。
+//
+// type / status 同理：首页 Hero 的「按类型浏览」会带 `?type=<分类名>&status=`，
+// status 为空串表示放开列表页默认的「仅已发布」，否则演示库里只有 3 场已发布活动，
+// 点大多数分类都会是空结果。
 const { rows, total, loading, query, search } = useTable(listActivities, {
   defaultQuery: {
     pageSize: 12,
     keyword: typeof route.query.keyword === 'string' ? route.query.keyword : '',
-    type: '',
-    status: 'PUBLISHED',
+    type: typeof route.query.type === 'string' ? route.query.type : '',
+    status: typeof route.query.status === 'string' ? route.query.status : 'PUBLISHED',
   },
 })
 

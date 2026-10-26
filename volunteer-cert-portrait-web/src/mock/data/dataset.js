@@ -25,6 +25,42 @@
 // Node 的 ESM 解析器不像 Vite 那样会自动补扩展名
 import { loadPersistedUsers } from './_helpers.js'
 
+/**
+ * 演示活动封面（首页轮播用）。
+ *
+ * 图片从 sql/13_attachment_binary.sql 的演示活动图二进制中抽出，与真实后端
+ * /api/v1/attachments/{id}/content 的输出同源，mock 模式下不必依赖后端也能看到图。
+ * 这里用 new URL(..., import.meta.url) 而不是顶部 `import img from '...jpg'`：
+ * 本文件还会被 Node 的 verify-mock-data.mjs 直接加载，Node 不认识 .jpg 模块；
+ * new URL 在 Node 下只是一个 file:// 字符串，不影响断言，Vite 构建时才会改写为资源地址。
+ */
+const ACTIVITY_COVERS = {
+  elder: new URL(
+    '../../assets/activity-images/elder-apartment-companionship-cover.jpg',
+    import.meta.url,
+  ).href,
+  river: new URL(
+    '../../assets/activity-images/river-cleanup-survey-cover.jpg',
+    import.meta.url,
+  ).href,
+  children: new URL(
+    '../../assets/activity-images/children-afterclass-tutoring-cover.jpg',
+    import.meta.url,
+  ).href,
+  marathon: new URL(
+    '../../assets/activity-images/marathon-support-cover.jpg',
+    import.meta.url,
+  ).href,
+  heritage: new URL(
+    '../../assets/activity-images/heritage-culture-campus-cover.jpg',
+    import.meta.url,
+  ).href,
+  library: new URL(
+    '../../assets/activity-images/library-book-sorting-cover.jpg',
+    import.meta.url,
+  ).href,
+}
+
 /* ============================================================
    一、聚合指标（冻结）
    ============================================================ */
@@ -237,6 +273,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 5,
     orgId: 1,
+    cover: ACTIVITY_COVERS.elder,
     deadline: '2025-03-20',
     contact: '李同学 138****2201',
     description:
@@ -256,6 +293,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 3,
     orgId: 3,
+    cover: ACTIVITY_COVERS.river,
     deadline: '2025-03-10',
     contact: '王同学 138****3312',
     description:
@@ -275,6 +313,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 6,
     orgId: 4,
+    cover: ACTIVITY_COVERS.children,
     deadline: '2025-03-23',
     contact: '张同学 138****4423',
     description:
@@ -294,6 +333,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 4,
     orgId: 6,
+    cover: ACTIVITY_COVERS.marathon,
     deadline: '2025-04-15',
     contact: '陈同学 138****5534',
     description:
@@ -313,6 +353,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 2,
     orgId: 2,
+    cover: ACTIVITY_COVERS.heritage,
     deadline: '2025-03-17',
     contact: '刘同学 138****6645',
     description:
@@ -332,6 +373,7 @@ export const activities = [
     status: 'PUBLISHED',
     categoryId: 1,
     orgId: 1,
+    cover: ACTIVITY_COVERS.library,
     deadline: '2025-03-14',
     contact: '赵同学 138****7756',
     description:
