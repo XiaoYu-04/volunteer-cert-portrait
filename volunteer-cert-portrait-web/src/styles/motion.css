@@ -71,6 +71,15 @@
 
 .reveal-pending-fade.reveal-in { opacity: 1; }
 
+/* ---------- 首页活动影像轮播 ----------
+   轨道位移属于动效层（布局、边框、渐变在 ink.css）。
+   自动播放的计时与「减少动态效果」判断在 ActivityCarousel.vue 里，
+   系统开启 reduce 时压根不会启动计时器。 */
+.ink-carousel-track {
+  transition: transform 620ms var(--ease-out);
+  will-change: transform;
+}
+
 /* ---------- 打印：reveal 的隐藏初态绝不能印成空白 ---------- */
 @media print {
   .reveal-pending,

@@ -30,12 +30,110 @@
 /* ---------- Hero ---------- */
 .hero{padding:88px 0 76px; border-bottom:1px solid var(--c-line)}
 .hero-in{display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:36px; align-items:start}
-.hero-main{grid-column:1 / span 9}
-.hero-side{grid-column:10 / span 3; display:flex; justify-content:flex-end}
+.hero-main{grid-column:1 / span 6}
+.hero-side{grid-column:7 / span 6; display:flex; justify-content:flex-end; min-width:0}
 .vtitle{
   writing-mode:vertical-rl; text-orientation:upright;
   font-family:var(--font-display); font-size:22px; letter-spacing:.34em;
   color:var(--c-ink-3); border-right:1px solid var(--c-line); padding-right:18px;
+}
+/* ---------- 首页志愿活动影像轮播 ----------
+   零圆角、细墨线，与整站的「图版」语言一致；轨道位移在 motion.css（动效层）。 */
+.ink-carousel{
+  position:relative; width:100%; min-width:0; height:clamp(280px,34vw,440px);
+  overflow:hidden; border:1px solid var(--c-ink); background:var(--c-ink-2);
+}
+.ink-carousel-track{display:flex; height:100%; min-width:0}
+.ink-carousel-slide{
+  position:relative; flex:0 0 100%; display:block; height:100%;
+  color:#fff; background:var(--c-ink-2);
+}
+.ink-carousel-slide img{display:block; width:100%; height:100%; object-fit:cover}
+/* 底部压深，保证白色标题在浅色照片上也读得清 */
+.ink-carousel-slide::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(180deg,
+    rgba(20,18,15,.04) 0%,
+    rgba(20,18,15,.10) 48%,
+    rgba(20,18,15,.78) 100%);
+}
+.ink-carousel-kicker{
+  position:absolute; z-index:2; top:16px; left:18px;
+  padding:4px 9px; border:1px solid rgba(255,255,255,.55);
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.24em;
+  color:rgba(255,255,255,.86); background:rgba(20,18,15,.22);
+}
+.ink-carousel-cap{
+  position:absolute; z-index:1; left:0; right:0; bottom:0;
+  display:flex; flex-direction:column; gap:6px;
+  padding:22px 112px 18px 20px;
+}
+.ink-carousel-title{
+  display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  font-family:var(--font-display); font-size:clamp(16px,1.5vw,20px);
+  line-height:1.45; letter-spacing:.04em; color:#fff;
+}
+.ink-carousel-meta{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.08em;
+  color:rgba(255,255,255,.78);
+}
+.ink-carousel-ui{
+  position:absolute; z-index:3; right:12px; bottom:12px;
+  display:flex; align-items:center; gap:8px;
+}
+.ink-carousel-arrow{
+  width:30px; height:30px; display:grid; place-items:center;
+  border:1px solid rgba(255,255,255,.6); background:rgba(20,18,15,.34); color:#fff;
+  font-family:var(--font-mono); font-size:16px; line-height:1; cursor:pointer;
+  transition:background-color var(--t-fast) ease-out, border-color var(--t-fast) ease-out;
+}
+.ink-carousel-arrow:hover{background:var(--c-a2); border-color:var(--c-a2)}
+.ink-carousel-arrow:focus-visible{outline-offset:-2px}
+.ink-carousel-dots{display:flex; align-items:center; gap:5px}
+.ink-carousel-dot{
+  width:16px; height:3px; padding:0; border:0; cursor:pointer;
+  background:rgba(255,255,255,.42);
+  transition:background-color var(--t-fast) ease-out;
+}
+.ink-carousel-dot.is-current{background:#fff}
+.ink-carousel-dot:focus-visible{outline-offset:2px}
+
+/* ---------- 首页志愿风采照片墙 ----------
+   12 栏错落排布：第一行 5/4/3，第二行 3/4/5，第三行起每张 3 栏。
+   真后端演示库有 10 张封面，正好铺满 3 行；mock 只有 6 张，就是前两行。 */
+.ink-gallery{display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:28px 20px}
+.ink-gallery-item{display:block; min-width:0; color:inherit}
+.ink-gallery-item:nth-child(1){grid-column:span 5}
+.ink-gallery-item:nth-child(2){grid-column:span 4}
+.ink-gallery-item:nth-child(3){grid-column:span 3}
+.ink-gallery-item:nth-child(4){grid-column:span 3}
+.ink-gallery-item:nth-child(5){grid-column:span 4}
+.ink-gallery-item:nth-child(6){grid-column:span 5}
+.ink-gallery-item:nth-child(n+7){grid-column:span 3}
+.ink-gallery-item:focus-visible{outline-offset:4px}
+.ink-gallery-fig{margin:0}
+.ink-gallery-img{
+  display:block; width:100%; height:300px; object-fit:cover;
+  background:var(--c-line-2); transition:opacity var(--t-base) ease-out;
+}
+.ink-gallery-item:nth-child(n+4):nth-child(-n+6) .ink-gallery-img{height:230px}
+.ink-gallery-item:nth-child(n+7) .ink-gallery-img{height:210px}
+.ink-gallery-item:hover .ink-gallery-img{opacity:.92}
+.ink-gallery-item:hover .ink-gallery-title{color:var(--c-a2)}
+.ink-gallery-cap{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px;
+  margin-top:10px; padding-top:10px; border-top:1px solid var(--c-ink);
+}
+.ink-gallery-no{font-family:var(--font-mono); font-size:10px; letter-spacing:.2em; color:var(--c-a2)}
+.ink-gallery-title{
+  display:-webkit-box; flex:1 1 auto; min-width:0; overflow:hidden;
+  -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  font-family:var(--font-display); font-size:15px; line-height:1.5;
+  letter-spacing:.03em; color:var(--c-ink); transition:color var(--t-fast) ease-out;
+}
+.ink-gallery-meta{
+  flex:0 0 100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; color:var(--c-ink-3);
 }
 .hero-kicker{font-family:var(--font-mono); font-size:11px; letter-spacing:.26em; color:var(--c-a2)}
 .hero h1{
@@ -676,6 +774,10 @@
   .hero-main, .hero-side{grid-column:span 12}
   .hero-side{justify-content:flex-start}
   .vtitle{writing-mode:horizontal-tb; border-right:0; border-left:1px solid var(--c-line); padding-right:0; padding-left:18px}
+  /* 照片墙在平板宽度退两列，所有错落跨度归零、图片统一高度 */
+  .ink-gallery{grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px}
+  .ink-gallery .ink-gallery-item{grid-column:span 1}
+  .ink-gallery .ink-gallery-item .ink-gallery-img{height:220px}
   .sec-head .no, .sec-head h2, .sec-head p{grid-column:span 12}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ink-stat-card:nth-child(3n){border-right:1px solid var(--c-line)}
@@ -704,6 +806,7 @@
      窄屏直接收成一栏，行间距与原来一致。 */
   .hero-in, .sec-head{grid-template-columns:1fr}
   .hero-main, .hero-side, .sec-head .no, .sec-head h2, .sec-head p{grid-column:1 / -1}
+  .ink-gallery{grid-template-columns:1fr}
   /* 排行行 / 组织行里的名称、指标都是 nowrap，手机上最小内容宽度会把网格列顶宽；
      放开换行后列宽按可用宽度走，放得下时仍是一行。 */
   .ink-rank-row, .ink-org-row{flex-wrap:wrap; row-gap:6px}

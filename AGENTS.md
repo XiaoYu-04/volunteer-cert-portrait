@@ -445,7 +445,63 @@ vcp-dependencies  独立 BOM
       表现为「跳位」）；`-move` 时长**必须 ≥ 入场动画的 200ms**（Vue 的 `getTransitionInfo` 在「过渡 ≥ 动画」时
       判成 animation 而整段跳过 move）。
 
+21. **首页活动影像轮播：封面走活动列表接口，不要从看板接口取**（2026-10-26）
+    - `HomeView` 的 Hero 右侧 `ActivityCarousel` 用 `listActivities({ page:1, pageSize:12 })`
+      取 `cover`，再过滤 `status !== 'CANCELED'` 取前 6 张。**不要**改用
+      `/analytics/dashboard` 的 `activities`：`DashboardActivityVO` 没有 `cover` 字段，
+      且看板只返回 `PUBLISHED`（演示库只有 3 场），图片不够轮播。
+    - mock 的 6 张封面放在 `src/assets/activity-images/`，在 `dataset.js` 里用
+      `new URL('../../assets/activity-images/xxx.jpg', import.meta.url).href` 引用。
+      不要改成顶部 `import img from '...jpg'` —— `dataset.js` 会被 Node 的
+      `verify-mock-data.mjs` 直接加载，Node 不认识 `.jpg` 模块。Vite 只在
+      mock chunk 里发这些图；`VITE_USE_MOCK=false` 的生产产物**不会**包含它们（已实测）。
+    - `.ink-carousel` / `.hero-side` 的 `min-width:0` 不能省：轮播轨道里 6 张
+      `flex:0 0 100%` 的幻灯片会把 flex/grid 的 min-content 顶宽，窄屏下
+      布局视口被撑到 572px（视觉宽度 390），表现为页面横向滚动。
+    - 轮播轨道的 `transition: transform` 在 `motion.css`；自动播放的计时与
+      `prefers-reduced-motion` 判断在组件里（reduce 时压根不启动计时器）。
+
+22. **首页「志愿风采」照片墙与首页紧凑留白**（2026-10-26）
+    - `HomeView` 的 `photoActivities` 最多留 10 张封面：轮播取前 6 张，
+      照片墙用 `galleryItems` 把**后 4 张转到最前面**再拼上前 6 张 —— 否则
+      一进照片墙看到的又是轮播里那 6 张。mock 只有 6 张，保持原顺序。
+    - `ActivityGallery` 的 12 栏错落跨度（5/4/3、3/4/5、`nth-child(n+7)` 每张 3 栏）
+      在 `ink.css`。窄屏覆盖必须写成 `.ink-gallery .ink-gallery-item`
+      （与 `nth-child` 同权重、靠顺序生效），只写 `.ink-gallery-item` 盖不掉。
+    - 照片墙图片是 `loading="lazy"`：整页截图 / 自动化探针必须先把页面滚一遍
+      （同时触发 `v-reveal`），否则图集区域会是空白 + 只有占位底色。
+    - 首页的紧凑留白（`.hero-compact` / `.home-compact`）**只写在 `HomeView.vue`
+      的 scoped 样式里**，把 88px 收到 64px、区块头 44→28px、统计卡 34/30→26/24px。
+      不要改 `tokens.css` 的 `--sec-pad` 或 `ink.css` 的全局 `.sec` —— 其它页面
+      还按 88px 的节奏排。
+
+23. **首页 Hero「按类型浏览」与活动列表的 query 初值**（2026-10-26）
+    - Hero 按钮下方那排分类入口来自 `/analytics/dashboard` 的 `data.types`，
+      链接形如 `/student/activities?type=助老服务&status=`。`status` 必须传**空串**：
+      列表页默认 `PUBLISHED`，而演示库只有 3 场已发布活动，不放开状态的话
+      大多数分类点进去都是空结果。
+    - `ActivityListView` 的 `useTable` 初值里 `type` / `status` 都要从 `route.query`
+      读（`typeof === 'string'`），并在 **setup 阶段**写进 `defaultQuery` ——
+      和 `keyword` 同理，挂到 `onMounted` 里就晚了一轮。
+    - 这排入口的间距/字号刻意压到 `8px 10px` / `13px`（计数 `9px`），
+      为的是在 1440 宽的 6 栏 Hero 里让 6 个分类排成一行；改字号或间距前先量宽度。
+
 ## 当前进度
+
+**2026-10-26（首页 Hero 活动影像轮播 + 志愿风采照片墙 + 紧凑留白）**：学生首页标题右侧新增
+`ActivityCarousel`（6 张活动封面、5.2s 自动轮播、悬停/聚焦暂停、箭头与圆点切换、
+`prefers-reduced-motion` 降级）；活动区之后新增 `ActivityGallery`「志愿风采」照片墙
+（真后端演示库 10 张封面、mock 6 张，轮播未用的后 4 张置前，12 栏错落图集）；
+首页留白整体收紧（Hero 64/48、区块 64、区块头 28、统计卡 26/24）；Hero 两个按钮下方补
+「按类型浏览」分类入口（带场次数，链接带 `type` + 空 `status`，`ActivityListView`
+已支持从 `route.query` 读 `type` / `status` 初值）。封面与真实活动同源：
+真后端走 `GET /api/v1/activities` 的 `cover`
+（`/api/v1/attachments/{id}/content`），mock 用 `src/assets/activity-images/` 下从
+`sql/13_attachment_binary.sql` 抽出的 6 张演示图。`npm run verify:mock` 31 项全过、
+`npm run build` 通过；生产构建产物**不含** mock 图集，mock 构建产物含 6 张哈希图。
+Edge headless 实测（生产预览 + 真后端 / mock 构建各一轮）：1440/1200/1024/390
+四档均无横向滚动；轮播 6 图全部加载、自动换页；照片墙真后端 10 张 / mock 6 张全部加载；
+390 宽轮播与照片墙都落到单列；控制台零报错。踩坑见前端第 21、22 条。
 
 **已完成**：后端工程可构建可启动（`mvn package` 11 个模块全过）；数据库 16 张表已建成并验证
 （`sql/` 脚本在 PostgreSQL 18.6 实跑，**20 项一致性自检全部为 0**；已固化为
